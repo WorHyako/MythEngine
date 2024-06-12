@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION 3.24)
+
+option(LOG_GROUP_SOURCES "Log result of sources grouping" OFF)
+
+function(CREATE_SOURCE_GROUP IN_PATH)
+    file(GLOB_RECURSE SOURCES_FOR_GROUP "${IN_PATH}/*")
+    foreach (source IN LISTS SOURCES_FOR_GROUP)
+        get_filename_component(source_path ${source} PATH)
+        string(REPLACE ${PROJECT_SOURCE_DIR} "" relative_path "${source_path}")
+        if (${LOG_GROUP_SOURCES} OR ${LOG_ALL})
+            message(STATUS "Group: ${relative_path}. \nSource: ${source}")
+        endif ()
+        source_group("${relative_path}" FILES "${source}")
+    endforeach ()
+endfunction()

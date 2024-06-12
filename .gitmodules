@@ -1,0 +1,79 @@
+[submodule "Shared/ThirdParty/assimp"]
+	path = Shared/ThirdParty/assimp
+	url = https://github.com/assimp/assimp.git
+	branch = 277e191
+
+[submodule "Shared/ThirdParty/ShaderConductor"]
+	path = Shared/ThirdParty/ShaderConductor
+	url = https://github.com/microsoft/ShaderConductor.git
+	branch = f18f7b5
+
+[submodule "Shared/ThirdParty/glfw"]
+	path = Shared/ThirdParty/glfw
+	url = https://github.com/glfw/glfw.git
+	branch = 3fa2360
+
+[submodule "Shared/ThirdParty/glm"]
+	path = Shared/ThirdParty/glm
+	url = https://github.com/g-truc/glm.git
+	branch = efec5db
+
+[submodule "Shared/ThirdParty/stb"]
+	path = Shared/ThirdParty/stb
+	url = https://github.com/nothings/stb.git
+	branch = 5736b15
+
+[submodule "Shared/ThirdParty/imgui"]
+	path = Shared/ThirdParty/imgui
+	url = https://github.com/ocornut/imgui.git
+	branch = master
+
+[submodule "Shared/ThirdParty/mINI"]
+	path = Shared/ThirdParty/mINI
+	url = https://github.com/pulzed/mINI.git
+	branch = a1ff72e
+
+[submodule "Shared/ThirdParty/taskflow"]
+	path = Shared/ThirdParty/taskflow
+	url = https://github.com/taskflow/taskflow.git
+	branch = 9316d98
+
+[submodule "Shared/ThirdParty/tracy"]
+	path = Shared/ThirdParty/tracy
+	url = https://github.com/wolfpld/tracy.git
+	branch = 897aec5
+
+[submodule "Shared/ThirdParty/glslang"]
+	path = Shared/ThirdParty/glslang
+	url = https://github.com/KhronosGroup/glslang.git
+	branch = 6539733
+
+[submodule "Shared/ThirdParty/volk"]
+	path = Shared/ThirdParty/volk
+	url = https://github.com/zeux/volk.git
+	branch = vulkan-sdk-1.3.283
+
+[submodule "Shared/ThirdParty/easy_profiler"]
+	path = Shared/ThirdParty/easy_profiler
+	url = https://github.com/yse/easy_profiler.git
+	branch = 046d9bd
+
+[submodule "Shared/ThirdParty/optick"]
+	path = Shared/ThirdParty/optick
+	url = https://github.com/bombomby/optick.git
+	branch = eb392f1
+
+[submodule "Shared/ThirdParty/gli"]
+	path = Shared/ThirdParty/gli
+	url = https://github.com/g-truc/gli.git
+	branch = 779b99a
+
+[submodule "Shared/ThirdParty/ImGuizmo"]
+	path = Shared/ThirdParty/ImGuizmo
+	url = https://github.com/CedricGuillemet/ImGuizmo.git
+	branch = master
+
+[submodule "Shared/ThirdParty/bullet3"]
+	path = Shared/ThirdParty/bullet3
+	url = https://github.com/bulletphysics/bullet3.git
+	branch = 2c204c4
