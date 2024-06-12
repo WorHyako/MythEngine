@@ -1,12 +1,10 @@
 #include <RHI/Vulkan/Renderers/VulkanComputedImage.hpp>
 
-#include "imgui.h"
-
 ComputedImage::ComputedImage(VulkanRenderDevice& vkDev, const char* shaderName, uint32_t textureWidth, uint32_t textureHeight, bool supportDownload)
-    : ComputedItem(vkDev, sizeof(uint32_t))
-    , computedWidth(textureWidth)
-    , computedHeight(textureHeight)
-    , canDownloadImage(supportDownload)
+        : ComputedItem(vkDev, sizeof(uint32_t))
+        , computedWidth(textureWidth)
+        , computedHeight(textureHeight)
+        , canDownloadImage(supportDownload)
 {
     createComputedTexture(textureWidth, textureHeight);
     createComputedImageSetLayout();
@@ -45,41 +43,41 @@ bool ComputedImage::createComputedTexture(uint32_t computedWidth, uint32_t compu
         return false;
 
     if (!createImage(vkDev.device, vkDev.physicalDevice,
-        computedWidth, computedHeight, format,
-        VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | (canDownloadImage ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT : 0),
-        !canDownloadImage ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
-        computed.image, computed.imageMemory))
+                     computedWidth, computedHeight, format,
+                     VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | (canDownloadImage ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT : 0),
+                     !canDownloadImage ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                     computed.image, computed.imageMemory))
         return false;
 
     transitionImageLayout(vkDev, computed.image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
     return createTextureSampler(vkDev.device, &computedImageSampler) &&
-        createImageView(vkDev.device, computed.image, format, VK_IMAGE_ASPECT_COLOR_BIT, &computed.imageView);
+           createImageView(vkDev.device, computed.image, format, VK_IMAGE_ASPECT_COLOR_BIT, &computed.imageView);
 }
 
 bool ComputedImage::createComputedImageSetLayout()
 {
-    VkDescriptorPoolSize poolSizes[] =
-    {
-    	{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1},
-        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1}
-    };
+    const std::vector<VkDescriptorPoolSize> poolSizes =
+            {
+                    {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1},
+                    {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1}
+            };
 
     VkDescriptorPoolCreateInfo descriptorPoolInfo{};
     descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     descriptorPoolInfo.pNext = nullptr;
     descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-    descriptorPoolInfo.maxSets = 1* IM_ARRAYSIZE(poolSizes);
-    descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(IM_ARRAYSIZE(poolSizes));
-    descriptorPoolInfo.pPoolSizes = poolSizes;
+    descriptorPoolInfo.maxSets = static_cast<uint32_t>(poolSizes.size());
+    descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+    descriptorPoolInfo.pPoolSizes = poolSizes.data();
 
     VK_CHECK(vkCreateDescriptorPool(vkDev.device, &descriptorPoolInfo, nullptr, &descriptorPool));
 
     std::array<VkDescriptorSetLayoutBinding, 2> bindings =
-    {
-    	descriptorSetLayoutBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT),
-    	descriptorSetLayoutBinding(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-    };
+            {
+                    descriptorSetLayoutBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT),
+                    descriptorSetLayoutBinding(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+            };
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -127,10 +125,10 @@ bool ComputedImage::createDescriptorSet()
     imageDescriptorSet.pTexelBufferView = nullptr;
 
     std::vector<VkWriteDescriptorSet> writeDescriptorSets =
-    {
-        imageDescriptorSet,
-        bufferWriteDescriptorSet(descriptorSet, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-    };
+            {
+                    imageDescriptorSet,
+                    bufferWriteDescriptorSet(descriptorSet, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+            };
 
     vkUpdateDescriptorSets(vkDev.device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 

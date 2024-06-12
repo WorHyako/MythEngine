@@ -32,14 +32,14 @@ struct MeshUniformBuffer
     uint32_t p1, p2;
     uint32_t q1, q2;
     float morph;
-} mub;
+} meshUBO;
 
 void generateIndices(uint32_t* indices)
 {
-	for(uint32_t j = 0; j < numV - 1; j++)
-	{
-		for(uint32_t i = 0; i < numU - 1; i++)
-		{
+    for(uint32_t j = 0; j < numV - 1; j++)
+    {
+        for(uint32_t i = 0; i < numU - 1; i++)
+        {
             uint32_t ofs = (j * (numU - 1) + i) * 6;
 
             uint32_t i1 = (j + 0) * numU + (i + 0);
@@ -54,8 +54,8 @@ void generateIndices(uint32_t* indices)
             indices[ofs + 3] = i2;
             indices[ofs + 4] = i3;
             indices[ofs + 5] = i4;
-		}
-	}
+        }
+    }
 }
 
 void VulkanComputeMeshRender::initMesh()
@@ -74,16 +74,16 @@ void VulkanComputeMeshRender::initMesh()
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     createBuffer(vkDev.device, vkDev.physicalDevice, bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        stagingBuffer, stagingBufferMemory);
+                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                 stagingBuffer, stagingBufferMemory);
 
     {
         void* data;
         vkMapMemory(vkDev.device, stagingBufferMemory, 0, bufferSize, 0, &data);
-			// pregenerated index data
-			memcpy((void*)((uint8_t*)data + vertexBufferSize), indicesGen.data(), indexBufferSize);
-    	vkUnmapMemory(vkDev.device, stagingBufferMemory);
+        // pregenerated index data
+        memcpy((void*)((uint8_t*)data + vertexBufferSize), indicesGen.data(), indexBufferSize);
+        vkUnmapMemory(vkDev.device, stagingBufferMemory);
     }
 
     copyBuffer(vkDev, stagingBuffer, meshGen->computedBuffer, bufferSize);
@@ -102,20 +102,20 @@ void VulkanComputeMeshRender::initMesh()
     std::vector<const char*> shadersColor = { vertShader.c_str(), fragColorShader.c_str() };
 
     mesh = std::make_unique<ModelRenderer>(
-        vkDev, true,
-        meshGen->computedBuffer, meshGen->computedMemory,
-        vertexBufferSize, indexBufferSize,
-        imgGen->computed, imgGen->computedImageSampler,
-        shaders, (uint32_t)sizeof(mat4),
-        true);
+            vkDev, true,
+            meshGen->computedBuffer, meshGen->computedMemory,
+            vertexBufferSize, indexBufferSize,
+            imgGen->computed, imgGen->computedImageSampler,
+            shaders, (uint32_t)sizeof(mat4),
+            true);
 
     meshColor = std::make_unique<ModelRenderer>(
-        vkDev, true,
-        meshGen->computedBuffer, meshGen->computedMemory,
-        vertexBufferSize, indexBufferSize,
-        imgGen->computed, imgGen->computedImageSampler,
-        shadersColor, (uint32_t)sizeof(mat4),
-        true, mesh->getDepthTexture(), false);
+            vkDev, true,
+            meshGen->computedBuffer, meshGen->computedMemory,
+            vertexBufferSize, indexBufferSize,
+            imgGen->computed, imgGen->computedImageSampler,
+            shadersColor, (uint32_t)sizeof(mat4),
+            true, mesh->getDepthTexture(), false);
 }
 
 bool VulkanComputeMeshRender::initVulkan()
@@ -156,8 +156,8 @@ void VulkanComputeMeshRender::terminateVulkan()
     destroyVulkanInstance(vk_);
 }
 
-void VulkanComputeMeshRender::recreateSwapchain() {
-
+void VulkanComputeMeshRender::recreateSwapchain()
+{
     int width = 0, height = 0;
     glfwGetFramebufferSize(window_, &width, &height);
     while (width == 0 || height == 0)
@@ -171,75 +171,7 @@ void VulkanComputeMeshRender::recreateSwapchain() {
     cleanupSwapchain();
     vkDev.deviceQueueIndices.clear();
 
-    vkDev.framebufferWidth = width;
-    vkDev.framebufferHeight = height;
-
-    VK_CHECK(findSuitablePhysicalDevice(vk_.instance, &isDeviceSuitable, &vkDev.physicalDevice));
-    vkDev.graphicsFamily = findQueueFamilies(vkDev.physicalDevice, VK_QUEUE_GRAPHICS_BIT);
-    vkDev.computeFamily = findQueueFamilies(vkDev.physicalDevice, VK_QUEUE_COMPUTE_BIT);
-
-    vkDev.deviceQueueIndices.push_back(vkDev.graphicsFamily);
-    if (vkDev.graphicsFamily != vkDev.computeFamily)
-        vkDev.deviceQueueIndices.push_back(vkDev.computeFamily);
-
-    vkGetDeviceQueue(vkDev.device, vkDev.graphicsFamily, 0, &vkDev.graphicsQueue);
-    if (vkDev.graphicsQueue == nullptr)
-        exit(EXIT_FAILURE);
-
-    vkGetDeviceQueue(vkDev.device, vkDev.computeFamily, 0, &vkDev.computeQueue);
-    if (vkDev.computeQueue == nullptr)
-        exit(EXIT_FAILURE);
-
-    VkBool32 presentSupported = 0;
-    vkGetPhysicalDeviceSurfaceSupportKHR(vkDev.physicalDevice, vkDev.graphicsFamily, vk_.surface, &presentSupported);
-    if (!presentSupported)
-        exit(EXIT_FAILURE);
-
-    VK_CHECK(createSwapchain(vkDev.device, vkDev.physicalDevice, vk_.surface, vkDev.graphicsFamily, width, height, &vkDev.swapchain));
-    const size_t imageCount = createSwapchainImages(vkDev.device, vkDev.swapchain, vkDev.swapchainImages, vkDev.swapchainImageViews);
-    vkDev.commandBuffers.resize(imageCount);
-
-    VK_CHECK(createSemaphore(vkDev.device, &vkDev.semaphore));
-    VK_CHECK(createSemaphore(vkDev.device, &vkDev.renderSemaphore));
-
-    VkCommandPoolCreateInfo cpi{};
-    cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    cpi.pNext = nullptr;
-    cpi.flags = 0;
-    cpi.queueFamilyIndex = vkDev.graphicsFamily;
-
-    VK_CHECK(vkCreateCommandPool(vkDev.device, &cpi, nullptr, &vkDev.commandPool));
-
-    VkCommandBufferAllocateInfo ai{};
-    ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    ai.pNext = nullptr;
-    ai.commandPool = vkDev.commandPool;
-    ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    ai.commandBufferCount = static_cast<uint32_t>(vkDev.swapchainImages.size());
-
-    VK_CHECK(vkAllocateCommandBuffers(vkDev.device, &ai, &vkDev.commandBuffers[0]));
-
-    {
-        // Create compute command pool
-        VkCommandPoolCreateInfo cpi1{};
-        cpi1.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        cpi1.pNext = nullptr;
-        cpi1.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; /* Allow command from this pool buffers to be reset*/
-        cpi1.queueFamilyIndex = vkDev.computeFamily;
-
-        VK_CHECK(vkCreateCommandPool(vkDev.device, &cpi1, nullptr, &vkDev.computeCommandPool));
-
-        VkCommandBufferAllocateInfo ai1{};
-        ai1.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        ai1.pNext = nullptr;
-        ai1.commandPool = vkDev.computeCommandPool;
-        ai1.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        ai1.commandBufferCount = 1;
-
-        VK_CHECK(vkAllocateCommandBuffers(vkDev.device, &ai1, &vkDev.computeCommandBuffer));
-    }
-
-    vkDev.useCompute = true;
+    initVulkanRenderDeviceWithCompute(vk_, vkDev, width, height, VkPhysicalDeviceFeatures{});
 
     initMesh();
 
@@ -263,19 +195,18 @@ void VulkanComputeMeshRender::cleanupSwapchain()
     meshColor->freeTextureSampler(); // release sampler handle
     meshColor = nullptr;
 
-    for (auto imageView : vkDev.swapchainImageViews)
-    {
-        vkDestroyImageView(vkDev.device, imageView, nullptr);
-    }
-
-    vkDestroySwapchainKHR(vkDev.device, vkDev.swapchain, nullptr);
+    destroyVulkanRenderDevice(vkDev);
 }
 
 
 void VulkanComputeMeshRender::renderGUI(uint32_t imageIndex)
 {
+#if defined(WIN32)
+    int width, height;
+    glfwGetFramebufferSize(window_, &width, &height);
+#elif defined(__APPLE__)
     int width = 1600, height = 900;
-//    glfwGetFramebufferSize(window_, &width, &height);
+#endif
 
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize = ImVec2((float)width, (float)height);
@@ -293,7 +224,7 @@ void VulkanComputeMeshRender::renderGUI(uint32_t imageIndex)
     // Each torus knot is specified by a pair of coprime integers p and q.
     // https://en.wikipedia.org/wiki/Torus_knot
     static const std::vector<std::pair<uint32_t, uint32_t>> PQ = {
-        {2, 3}, {2, 5}, {2, 7}, {3, 4}, {2, 9}, {3, 5}, {5 ,8}
+            {2, 3}, {2, 5}, {2, 7}, {3, 4}, {2, 9}, {3, 5}, {5 ,8}
     };
 
     ImGui::Begin("Torus Knot params", nullptr);
@@ -349,7 +280,7 @@ void VulkanComputeMeshRender::composeFrame(VkCommandBuffer commandBuffer, uint32
 }
 
 VulkanComputeMeshRender::VulkanComputeMeshRender(const uint32_t screenWidth, uint32_t screenHeight)
-	: VulkanBaseRender(screenWidth, screenHeight)
+        : VulkanBaseRender(screenWidth, screenHeight)
 {
     glslang_initialize_process();
 
@@ -380,8 +311,8 @@ VulkanComputeMeshRender::VulkanComputeMeshRender(const uint32_t screenWidth, uin
 float easing(float x)
 {
     return (x < 0.5)
-        ? (4 * x * x * (3 * x - 1))
-        : (4 * (x - 1) * (x - 1) * (3 * (x - 1) + 1) + 1);
+           ? (4 * x * x * (3 * x - 1))
+           : (4 * (x - 1) * (x - 1) * (3 * (x - 1) + 1) + 1);
 }
 
 int VulkanComputeMeshRender::draw()
@@ -394,33 +325,33 @@ int VulkanComputeMeshRender::draw()
     {
         auto iter = morphQueue.begin();
 
-        mub.time = (float)glfwGetTime();
-        mub.morph = easing(morphCoef);
-        mub.p1 = iter->first;
-        mub.q1 = iter->second;
-        mub.p2 = (iter + 1)->first;
-        mub.q2 = (iter + 1)->second;
+        meshUBO.time = (float)glfwGetTime();
+        meshUBO.morph = easing(morphCoef);
+        meshUBO.p1 = iter->first;
+        meshUBO.q1 = iter->second;
+        meshUBO.p2 = (iter + 1)->first;
+        meshUBO.q2 = (iter + 1)->second;
 
-        mub.numU = numU;
-        mub.numV = numV;
-        mub.minU = -1.0f;
-        mub.maxU = 1.0f;
-        mub.minV = -1.0f;
-        mub.maxV = 1.0f;
+        meshUBO.numU = numU;
+        meshUBO.numV = numV;
+        meshUBO.minU = -1.0f;
+        meshUBO.maxU = 1.0f;
+        meshUBO.minV = -1.0f;
+        meshUBO.maxV = 1.0f;
 
-        meshGen->uploadUniformBuffer(sizeof(MeshUniformBuffer), &mub);
+        meshGen->uploadUniformBuffer(sizeof(MeshUniformBuffer), &meshUBO);
 
         meshGen->fillComputeCommandBuffer(nullptr, 0, meshGen->computedVertexCount / 2, 1, 1);
         meshGen->submit();
         vkDeviceWaitIdle(vkDev.device);
 
-        imgGen->fillComputeCommandBuffer(&mub.time, sizeof(float), imgGen->computedWidth / 16, imgGen->computedHeight / 16, 1);
+        imgGen->fillComputeCommandBuffer(&meshUBO.time, sizeof(float), imgGen->computedWidth / 16, imgGen->computedHeight / 16, 1);
         imgGen->submit();
         vkDeviceWaitIdle(vkDev.device);
 
         auto drawResult = drawFrame(vkDev,
-            [=](uint32_t imageIndex) { updateBuffers(imageIndex); },
-            [=](VkCommandBuffer commandBuffer, uint32_t imageIndex) { this->composeFrame(commandBuffer, imageIndex); });
+                                    [=](uint32_t imageIndex) { updateBuffers(imageIndex); },
+                                    [=](VkCommandBuffer commandBuffer, uint32_t imageIndex) { this->composeFrame(commandBuffer, imageIndex); });
 
         if(!drawResult)
         {

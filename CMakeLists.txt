@@ -63,23 +63,26 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/Shared/RHI)
 ####################
 ### Source files ###
 ####################
-#list(APPEND Source_File_Ext
-#        ${Platform_Path}/*.cpp
-#        ${Platform_Path}/*.hpp
-#        ${Platform_Path}/*.metal
-#        ${Platform_Path}/*.hlsl
-#        ${Platform_Path}/*.vs
-#        ${Platform_Path}/*.vert
-#        ${Platform_Path}/*.frag
-#        ${Platform_Path}/*.geom
-#        ${Platform_Path}/*.tesc
-#        ${Platform_Path}/*.tese
-#		${Platform_Path}/*.comp
-#        ${Platform_Path}/*.spv
-#        ${Platform_Path}/*.ini)
-list(APPEND Source_File_Ext
+if(WIN32)
+    list(APPEND Source_File_Ext
+            ${Platform_Path}/*.cpp
+            ${Platform_Path}/*.hpp
+            ${Platform_Path}/*.metal
+            ${Platform_Path}/*.hlsl
+            ${Platform_Path}/*.vs
+            ${Platform_Path}/*.vert
+            ${Platform_Path}/*.frag
+            ${Platform_Path}/*.geom
+            ${Platform_Path}/*.tesc
+            ${Platform_Path}/*.tese
+            ${Platform_Path}/*.comp
+            ${Platform_Path}/*.spv
+            ${Platform_Path}/*.ini)
+elseif (APPLE)
+    list(APPEND Source_File_Ext
         Platform/Win64/RHI/Vulkan/*.cpp
         Platform/Win64/UserInput/*.cpp)
+endif ()
 file(GLOB_RECURSE Platform_Sources ${Source_File_Ext})
 file(GLOB_RECURSE Shared_Sources ${PROJECT_SOURCE_DIR}/Shared/Engine/*.*pp)
 

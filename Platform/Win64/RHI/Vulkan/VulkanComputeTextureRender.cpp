@@ -16,8 +16,7 @@ bool VulkanComputeTextureRender::initVulkan()
     if (!setupDebugCallbacks(vk_.instance, &vk_.messenger, &vk_.reportCallback))
         exit(EXIT_FAILURE);
 
-    const auto createSurface = glfwCreateWindowSurface(vk_.instance, window_, nullptr, &vk_.surface);
-    if(createSurface != VK_SUCCESS)
+    if (glfwCreateWindowSurface(vk_.instance, window_, nullptr, &vk_.surface))
         exit(EXIT_FAILURE);
 
     if (!initVulkanRenderDeviceWithCompute(vk_, vkDev, kScreenWidth, kScreenHeight, VkPhysicalDeviceFeatures{}))

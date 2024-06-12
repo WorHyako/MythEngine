@@ -24,7 +24,8 @@ int __stdcall WinMain(
 	Window = new OpenGLWindow();
     //Window = new VulkanWindow();
 
-    Main(Window);
+    Window->Initialize();
+    Window->Run();
 };
 #endif
 

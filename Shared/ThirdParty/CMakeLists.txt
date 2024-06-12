@@ -52,11 +52,15 @@ endif ()
 ############
 if (${USE_VOLK})
     set(Volk_Root ${CMAKE_CURRENT_SOURCE_DIR}/volk)
-    #    if (WIN32)
-    set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_MACOS_MVK)
-    list(APPEND ThirdParty_Libs volk)
-    #    endif ()
+    if (WIN32)
+        set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
+    elseif (APPLE)
+        set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_MACOS_MVK)
+    endif ()
+
     add_subdirectory(${Volk_Root})
+
+    list(APPEND ThirdParty_Libs volk)
 endif ()
 
 #############
