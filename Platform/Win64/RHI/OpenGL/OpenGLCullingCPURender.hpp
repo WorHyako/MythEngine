@@ -9,6 +9,7 @@ class OpenGLCullingCPURender : public OpenGLBaseRender
 {
 public:
 	OpenGLCullingCPURender(GLApp* app);
+	~OpenGLCullingCPURender() override = default;
 
 	virtual int draw() override;
 

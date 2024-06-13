@@ -6,6 +6,7 @@ class OpenGLStudyRender : public OpenGLBaseRender
 {
 public:
 	OpenGLStudyRender(GLApp* app);
+	~OpenGLStudyRender() override = default;
 
 	virtual int draw() override;
 };

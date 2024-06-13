@@ -5,7 +5,7 @@ class OpenGLRender : public OpenGLBaseRender
 {
 public:
     OpenGLRender(GLApp* app);
-    ~OpenGLRender(){}
+    ~OpenGLRender() override = default;
 
     virtual int draw() override;
 };

@@ -9,6 +9,7 @@ class OpenGLOITransparencyRender : public OpenGLBaseRender
 {
 public:
 	OpenGLOITransparencyRender(GLApp* app);
+	~OpenGLOITransparencyRender() override = default;
 
 	virtual int draw() override;
 
