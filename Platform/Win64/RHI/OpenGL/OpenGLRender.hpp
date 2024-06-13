@@ -1,11 +1,14 @@
 #pragma once
 #include <RHI/OpenGL/OpenGLBaseRender.hpp>
 
-class OpenGLRender : public OpenGLBaseRender
+namespace OpenGLRenderLegacy
 {
-public:
-    OpenGLRender(GLApp* app);
-    ~OpenGLRender() override = default;
+    class OpenGLRender : public OpenGLBaseRender
+    {
+    public:
+        OpenGLRender(GLApp* app);
+        ~OpenGLRender() override = default;
 
-    virtual int draw() override;
-};
+        virtual int draw() override;
+    };
+}

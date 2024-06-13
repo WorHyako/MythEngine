@@ -24,10 +24,11 @@ namespace OpenGLUtils
 {
     // utility function for loading a 2D texture from file
     // ---------------------------------------------------
-    unsigned int loadTexture(char const* path, const Texture2DParam& TexParam)
+    unsigned int loadTexture2D(char const* path, const Texture2DParam& TexParam)
     {
         unsigned int textureID;
-        glGenTextures(1, &textureID);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glCreateTextures(GL_TEXTURE_2D, 1, &textureID);
 
         int width, height, nrChannels;
         // load image, create texture and generate the mipmaps
@@ -48,25 +49,35 @@ namespace OpenGLUtils
             if (TexParam.Format == GL_NONE)
             {
                 if (nrChannels == 1)
+                {
                     format = GL_RED;
+                    internalFormat = TexParam.bLoadHDR ? GL_R16F : GL_R8;
+                }
                 else if (nrChannels == 3)
+                {
                     format = GL_RGB;
+                    internalFormat = TexParam.bLoadHDR ? GL_RGB16F : GL_RGB8;
+                }
                 else if (nrChannels == 4)
+                {
                     format = GL_RGBA;
+                    internalFormat = TexParam.bLoadHDR ? GL_RGBA16F : GL_RGBA8;
+                }
             }
-            if (TexParam.InternalFormat == GL_NONE) internalFormat = static_cast<GLint>(format);
-
-            glBindTexture(GL_TEXTURE_2D, textureID);
-            glTexImage2D(GL_TEXTURE_2D, 0,
-                internalFormat,
-                width, height, 0, format, TexParam.TypeData, data);
-            glGenerateMipmap(GL_TEXTURE_2D);
+            if (TexParam.InternalFormat != GL_NONE)
+            {
+                internalFormat = TexParam.InternalFormat;
+            }
 
             // set the texture wrapping/filtering options (on the currently bound texture object)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, TexParam.WrapS);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, TexParam.WrapT);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, TexParam.MinFilter);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, TexParam.MagFilter);
+            glTextureParameteri(textureID, GL_TEXTURE_WRAP_S, TexParam.WrapS);
+            glTextureParameteri(textureID, GL_TEXTURE_WRAP_T, TexParam.WrapT);
+            glTextureParameteri(textureID, GL_TEXTURE_MIN_FILTER, TexParam.MinFilter);
+            glTextureParameteri(textureID, GL_TEXTURE_MAG_FILTER, TexParam.MagFilter);
+
+            glTextureStorage2D(textureID, 1, internalFormat, width, height);
+            glTextureSubImage2D(textureID, 0, 0, 0, width, height, format, TexParam.TypeData, data);
+            glGenerateTextureMipmap(textureID);
 
             stbi_image_free(data);
         }
@@ -82,19 +93,26 @@ namespace OpenGLUtils
     unsigned int loadCubemap(std::vector<std::string> faces)
     {
         unsigned int textureID;
-        glGenTextures(1, &textureID);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+        glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &textureID);
+        glTextureParameteri(textureID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTextureParameteri(textureID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(textureID, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(textureID, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(textureID, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
         stbi_set_flip_vertically_on_load(false); // tell stb_image.h to flip loaded texture's on the y-axis.
         int width, height, nrChannels;
         unsigned char* data;
+        stbi_info(faces[0].c_str(), &width, &height, &nrChannels);
+        glTextureStorage2D(textureID, 1, GL_RGB8, width, height);
         for (unsigned int i = 0; i < faces.size(); i++)
         {
             data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
             if (data)
             {
-                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB,
-                    width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+                glTextureSubImage3D(textureID, 0, 0, 0, i, width, height, 1, GL_RGB, GL_UNSIGNED_BYTE, data);
+                /*glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB,
+                    width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);*/
                 stbi_image_free(data);
             }
             else
@@ -103,11 +121,6 @@ namespace OpenGLUtils
                 stbi_image_free(data);
             }
         }
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
         return textureID;
     }
@@ -171,7 +184,7 @@ namespace OpenGLUtils
         glBindRenderbuffer(GL_RENDERBUFFER, 0);
     }
 
-    void createBuffer(
+    void createVAO(
         unsigned int& VAO,
         unsigned int& VBO,
         unsigned int& EBO,
@@ -180,53 +193,45 @@ namespace OpenGLUtils
         unsigned int sizeOfVertex,
         std::vector<unsigned int> indices)
     {
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
-        // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-        glBindVertexArray(VAO);
+        glCreateVertexArrays(1, &VAO);
+        glCreateBuffers(1, &VBO);
 
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STATIC_DRAW);
+        glNamedBufferData(VBO, vertices.size() * sizeof(float), &vertices[0], GL_STATIC_DRAW);
 
         if (indices.size() > 0)
         {
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), &indices[0], GL_STATIC_DRAW);
+            glCreateBuffers(1, &EBO);
+            glNamedBufferData(EBO, indices.size() * sizeof(int), &indices[0], GL_STATIC_DRAW);
         }
 
         // position attribute
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, (int)sizeOfVertex * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
+        glEnableVertexArrayAttrib(VAO, 0);
+        glVertexArrayAttribFormat(VAO, 0, 3, GL_FLOAT, GL_FALSE, 0);
+        glVertexArrayAttribBinding(VAO, 0, 0);
         if (typeVertex == typeOfVertex::PosNormal || typeVertex == typeOfVertex::PosNormalUV)
         {
             // normal attribute
-            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, (int)sizeOfVertex * sizeof(float), (void*)(3 * sizeof(float)));
-            glEnableVertexAttribArray(1);
+            glEnableVertexArrayAttrib(VAO, 1);
+            glVertexArrayAttribFormat(VAO, 1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GL_FLOAT));
+            glVertexArrayAttribBinding(VAO, 1, 0);
         }
         if (typeVertex == typeOfVertex::PosNormalUV)
         {
             // texture coord attribute
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, (int)sizeOfVertex * sizeof(float), (void*)(6 * sizeof(float)));
-            glEnableVertexAttribArray(2);
+            glEnableVertexArrayAttrib(VAO, 2);
+            glVertexArrayAttribFormat(VAO, 2, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(GL_FLOAT));
+            glVertexArrayAttribBinding(VAO, 2, 0);
         }
         else if (typeVertex == typeOfVertex::PosUV)
         {
             // texture coord attribute
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, (int)sizeOfVertex * sizeof(float), (void*)(3 * sizeof(float)));
-            glEnableVertexAttribArray(1);
+            glEnableVertexArrayAttrib(VAO, 1);
+            glVertexArrayAttribFormat(VAO, 1, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(GL_FLOAT));
+            glVertexArrayAttribBinding(VAO, 1, 0);
         }
 
-        // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        // remember: do NOT unbind the EBO while a VAO is active as the bound element buffer object IS stored in the VAO; keep the EBO bound.
-        //if (sizeof(indices) != 0)
-            //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-        // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
-        // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
-        //glBindVertexArray(0);*/
+        glVertexArrayVertexBuffer(VAO, 0, VBO, 0, (int)sizeOfVertex * sizeof(GL_FLOAT));
+        glVertexArrayElementBuffer(VAO, EBO);
     }
 
     void bindBuffer(unsigned int& buffer)
@@ -259,10 +264,6 @@ namespace OpenGLUtils
         unsigned int vbo1, vbo2;
         glGenBuffers(1, &vbo1);
         glGenBuffers(2, &vbo2);
-        glBindBuffer(GL_COPY_READ_BUFFER, vbo1);
-        // another approach
-        //glBindBuffer(GL_ARRAY_BUFFER, vbo1);
-        glBindBuffer(GL_COPY_WRITE_BUFFER, vbo2);
-        glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, 8 * sizeof(float));
+        glCopyNamedBufferSubData(vbo1, vbo2, 0, 0, 8 * sizeof(float));
     }
 }

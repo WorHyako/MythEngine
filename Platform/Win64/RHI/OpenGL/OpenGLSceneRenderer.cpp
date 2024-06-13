@@ -737,16 +737,16 @@ int OpenGLSceneRenderer::draw()
         1, 2, 3
     };
     unsigned int vegetationsVAO, vegetationsVBO, vegetationsEBO;
-    OpenGLUtils::createBuffer(vegetationsVAO, vegetationsVBO, vegetationsEBO, typeOfVertex::PosNormalUV, verticesVegetations, 8, indicesVegetations);
+    OpenGLUtils::createVAO(vegetationsVAO, vegetationsVBO, vegetationsEBO, typeOfVertex::PosNormalUV, verticesVegetations, 8, indicesVegetations);
 
     unsigned int cubeVAO, cubeVBO, cubeEBO;
-    OpenGLUtils::createBuffer(cubeVAO, cubeVBO, cubeEBO, typeOfVertex::PosNormalUV, vertices, 8);
+    OpenGLUtils::createVAO(cubeVAO, cubeVBO, cubeEBO, typeOfVertex::PosNormalUV, vertices, 8);
 
     unsigned int reflectionVAO, reflectionVBO, reflectionEBO;
-    OpenGLUtils::createBuffer(reflectionVAO, reflectionVBO, reflectionEBO, typeOfVertex::PosNormal, vertices, 8);
+    OpenGLUtils::createVAO(reflectionVAO, reflectionVBO, reflectionEBO, typeOfVertex::PosNormal, vertices, 8);
 
     unsigned int refractionVAO, refractionVBO, refractionEBO;
-    OpenGLUtils::createBuffer(refractionVAO, refractionVBO, refractionEBO, typeOfVertex::PosNormal, vertices, 8);
+    OpenGLUtils::createVAO(refractionVAO, refractionVBO, refractionEBO, typeOfVertex::PosNormal, vertices, 8);
 
     std::vector<glm::vec3> positionVegetations =
     {
@@ -783,7 +783,7 @@ int OpenGLSceneRenderer::draw()
         glm::vec3(0.0f, 0.0f, -3.0f)
     };
     unsigned int VBO, VAO, EBO;
-    OpenGLUtils::createBuffer(VAO, VBO, EBO, typeOfVertex::PosNormalUV, vertices, 8);
+    OpenGLUtils::createVAO(VAO, VBO, EBO, typeOfVertex::PosNormalUV, vertices, 8);
 
     std::vector<float> cullingVerticesCW = {
         // Back face
@@ -874,7 +874,7 @@ int OpenGLSceneRenderer::draw()
      -0.5f,  0.5f, -0.5f,  0.0f, 1.0f  // top-left
     };
     unsigned int cullingVBO, cullingVAO, cullingEBO;
-    OpenGLUtils::createBuffer(cullingVAO, cullingVBO, cullingEBO, typeOfVertex::PosUV, cullingVerticesCCW, 5);
+    OpenGLUtils::createVAO(cullingVAO, cullingVBO, cullingEBO, typeOfVertex::PosUV, cullingVerticesCCW, 5);
 
     std::vector<float> lightVertices = {
         // positions         // colors
@@ -903,7 +903,7 @@ int OpenGLSceneRenderer::draw()
     };
 
     unsigned int lightVAO, lightVBO, lightEBO;
-    OpenGLUtils::createBuffer(lightVAO, lightVBO, lightEBO, typeOfVertex::PosNormal, lightVertices, 6, lightIndices);
+    OpenGLUtils::createVAO(lightVAO, lightVBO, lightEBO, typeOfVertex::PosNormal, lightVertices, 6, lightIndices);
 
     std::vector<float> skyboxVertices = {
         // positions         // colors
@@ -932,7 +932,7 @@ int OpenGLSceneRenderer::draw()
     };
 
     unsigned int skyboxVAO, skyboxVBO, skyboxEBO;
-    OpenGLUtils::createBuffer(skyboxVAO, skyboxVBO, skyboxEBO, typeOfVertex::OnlyPos, skyboxVertices, 3, skyboxIndices);
+    OpenGLUtils::createVAO(skyboxVAO, skyboxVBO, skyboxEBO, typeOfVertex::OnlyPos, skyboxVertices, 3, skyboxIndices);
 
     float GeometryHousesVertexInfo[] = {
         -0.5f, 0.5f, 1.0f, 0.0f, 0.0f,// top - left
@@ -1478,15 +1478,15 @@ int OpenGLSceneRenderer::draw()
     // The FileSystem::getPath(...) is part of the GitHub repository so we can find files on any IDE/platform; replace it with your own image path.
     Texture2DParam TexParam;
     TexParam.MinFilter = GL_LINEAR_MIPMAP_LINEAR;
-    unsigned int diffuseMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/container2.png").c_str()/*, GL_SRGB */, TexParam);
+    unsigned int diffuseMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "textures/container2.png").c_str()/*, GL_SRGB */, TexParam);
     // specularMap
     // -----------
-    unsigned int specularMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/container2_specular.png").c_str(), TexParam);
+    unsigned int specularMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "textures/container2_specular.png").c_str(), TexParam);
     // emissionMap
     // -----------
-    unsigned int emissionMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/matrix.jpg").c_str(), TexParam);
+    unsigned int emissionMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "textures/matrix.jpg").c_str(), TexParam);
 
-    unsigned int translucencyMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/blending_transparent_window.png").c_str(), TexParam);
+    unsigned int translucencyMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "textures/blending_transparent_window.png").c_str(), TexParam);
 
     // PBR maps
     Texture2DParam PBR_TexParam;
@@ -1503,11 +1503,11 @@ int OpenGLSceneRenderer::draw()
     //unsigned int PBR_MetallicMap = loadTexture(FileSystem::getPath("resources/textures/IBL_PBR/rusted-steel-bl/rusted-steel_metallic.png").c_str(), GL_NONE, GL_NONE, GL_UNSIGNED_BYTE, GL_REPEAT);
     //unsigned int PBR_RoughnessMap = loadTexture(FileSystem::getPath("resources/textures/IBL_PBR/rusted-steel-bl/rusted-steel_roughness.png").c_str(), GL_NONE, GL_NONE, GL_UNSIGNED_BYTE, GL_REPEAT);
     //unsigned int PBR_AOMap = loadTexture(FileSystem::getPath("resources/textures/IBL_PBR/rusted-steel-bl/rusted-steel_ao.png").c_str(), GL_NONE, GL_NONE, GL_UNSIGNED_BYTE, GL_REPEAT);
-    unsigned int PBR_AlbedoMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_A.tga").c_str(), PBR_TexParam);
-    unsigned int PBR_NormalMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_N.tga").c_str(), PBR_TexParam);
-    unsigned int PBR_MetallicMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_M.tga").c_str(), PBR_TexParam);
-    unsigned int PBR_RoughnessMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_R.tga").c_str(), PBR_TexParam);
-    unsigned int PBR_AOMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Raw/Cerberus_AO.tga").c_str(), PBR_TexParam);
+    unsigned int PBR_AlbedoMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_A.tga").c_str(), PBR_TexParam);
+    unsigned int PBR_NormalMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_N.tga").c_str(), PBR_TexParam);
+    unsigned int PBR_MetallicMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_M.tga").c_str(), PBR_TexParam);
+    unsigned int PBR_RoughnessMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_R.tga").c_str(), PBR_TexParam);
+    unsigned int PBR_AOMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Raw/Cerberus_AO.tga").c_str(), PBR_TexParam);
 
     //unsigned int EquirectangularMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/IBLDiffuse/newport_loft.hdr").c_str(), GL_RGB16F, GL_RGB, GL_FLOAT, GL_CLAMP_TO_EDGE, GL_LINEAR);
     Texture2DParam EquirectangularTexParam;
@@ -1515,7 +1515,7 @@ int OpenGLSceneRenderer::draw()
     EquirectangularTexParam.InternalFormat = GL_RGB16F;
     EquirectangularTexParam.Format = GL_RGB;
     EquirectangularTexParam.TypeData = GL_FLOAT;
-    unsigned int EquirectangularMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/IBLDiffuse/newport_loft.hdr").c_str(), EquirectangularTexParam);
+    unsigned int EquirectangularMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "textures/IBLDiffuse/newport_loft.hdr").c_str(), EquirectangularTexParam);
 
     // PBR Shader
     pbrShader.use();
@@ -1553,14 +1553,14 @@ int OpenGLSceneRenderer::draw()
 
     //GLint internalFormat = GL_RGBA, GLenum format = GL_NONE, GLenum typeData = GL_UNSIGNED_BYTE, GLint textureWrapParam = GL_CLAMP_TO_EDGE, GLint minFilter = GL_LINEAR_MIPMAP_LINEAR, GLint maxFilter = GL_LINEAR
     Texture2DParam MappingTexParam;
-    MappingTexParam.InternalFormat = GL_RGB;
+    MappingTexParam.InternalFormat = GL_RGB8;
     MappingTexParam.SetWrap(GL_REPEAT);
-    unsigned int normalMappingDiffuseMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/NormalMapping/brickwall.jpg").c_str(), MappingTexParam);
-    unsigned int normalMappingNormalMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/NormalMapping/brickwall_normal.jpg").c_str(), MappingTexParam);
+    unsigned int normalMappingDiffuseMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "textures/NormalMapping/brickwall.jpg").c_str(), MappingTexParam);
+    unsigned int normalMappingNormalMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "textures/NormalMapping/brickwall_normal.jpg").c_str(), MappingTexParam);
 
-    unsigned int parallaxMappingDiffuseMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/ParallaxMapping/bricks_diffuse.jpg").c_str(), MappingTexParam);
-    unsigned int parallaxMappingNormalMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/ParallaxMapping/bricks_normal.jpg").c_str(), MappingTexParam);
-    unsigned int parallaxMappingDepthMap = OpenGLUtils::loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/ParallaxMapping/bricks_disp.jpg").c_str(), MappingTexParam);
+    unsigned int parallaxMappingDiffuseMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "textures/ParallaxMapping/bricks_diffuse.jpg").c_str(), MappingTexParam);
+    unsigned int parallaxMappingNormalMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "textures/ParallaxMapping/bricks_normal.jpg").c_str(), MappingTexParam);
+    unsigned int parallaxMappingDepthMap = OpenGLUtils::loadTexture2D((FilesystemUtilities::GetResourcesDir() + "textures/ParallaxMapping/bricks_disp.jpg").c_str(), MappingTexParam);
 
     // tell OpenGl for each sampler to which texture unit it belongs to (only has to be done once)
     // -------------------------------------------------------------------------------------------
@@ -1649,8 +1649,7 @@ int OpenGLSceneRenderer::draw()
     equirectangularToCubemapShader.use();
     equirectangularToCubemapShader.setInt("equirectangularMap", 0);
     equirectangularToCubemapShader.setMat4("projection", captureProjection);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, EquirectangularMap);
+    glBindTextures(0, 1, &EquirectangularMap);
 
     // viewport settings
     glViewport(0, 0, 512, 512); // don't forget to configure the viewport to the capture dimensions.
@@ -2024,12 +2023,9 @@ int OpenGLSceneRenderer::draw()
 
         //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         // bind textures on corresponding units
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, diffuseMap);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, specularMap);
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, emissionMap);
+        glBindTextures(0, 1, &diffuseMap);
+        glBindTextures(1, 1, &specularMap);
+        glBindTextures(2, 1, &emissionMap);
         glActiveTexture(GL_TEXTURE3);
         glBindTexture(GL_TEXTURE_2D, depthMap);
         glActiveTexture(GL_TEXTURE4);
@@ -2137,16 +2133,11 @@ int OpenGLSceneRenderer::draw()
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
 
-        glActiveTexture(GL_TEXTURE3);
-        glBindTexture(GL_TEXTURE_2D, PBR_AlbedoMap);
-        glActiveTexture(GL_TEXTURE4);
-        glBindTexture(GL_TEXTURE_2D, PBR_NormalMap);
-        glActiveTexture(GL_TEXTURE5);
-        glBindTexture(GL_TEXTURE_2D, PBR_MetallicMap);
-        glActiveTexture(GL_TEXTURE6);
-        glBindTexture(GL_TEXTURE_2D, PBR_RoughnessMap);
-        glActiveTexture(GL_TEXTURE7);
-        glBindTexture(GL_TEXTURE_2D, PBR_AOMap);
+        glBindTextures(3, 1, &PBR_AlbedoMap);
+        glBindTextures(4, 1, &PBR_NormalMap);
+        glBindTextures(5, 1, &PBR_MetallicMap);
+        glBindTextures(6, 1, &PBR_RoughnessMap);
+        glBindTextures(7, 1, &PBR_AOMap);
 
         pbrShader.setVec3("CamPos", camera.Position);
 
@@ -2208,13 +2199,11 @@ int OpenGLSceneRenderer::draw()
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
-        glDepthFunc(GL_LESS)*/;
+        glDepthFunc(GL_LESS);*/
 
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, normalMappingDiffuseMap);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, normalMappingNormalMap);
+        glBindTextures(0, 1, &normalMappingDiffuseMap);
+        glBindTextures(1, 1, &normalMappingNormalMap);
         normalMappingShaderToWorld.use();
         glm::mat4 normalMappingModelToWorld = glm::mat4(1.0f);
         normalMappingModelToWorld = glm::translate(normalMappingModelToWorld, glm::vec3(0.0f, 3.0f, -2.0f));
@@ -2250,12 +2239,9 @@ int OpenGLSceneRenderer::draw()
         normalMappingShaderToLocal.setVec3("pointLight.specular", glm::vec3(1.0f));
         renderTBNQuad();
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, parallaxMappingDiffuseMap);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, parallaxMappingNormalMap);
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, parallaxMappingDepthMap);
+        glBindTextures(0, 1, &parallaxMappingDiffuseMap);
+        glBindTextures(1, 1, &parallaxMappingNormalMap);
+        glBindTextures(2, 1, &parallaxMappingDepthMap);
         parallaxMappingShader.use();
         glm::mat4 parallaxMappingModel = glm::mat4(1.0f);
         parallaxMappingModel = glm::translate(parallaxMappingModel, glm::vec3(0.0f, 3.0f, 0.0f));
@@ -2355,8 +2341,7 @@ int OpenGLSceneRenderer::draw()
 
         //glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, translucencyMap);
+        glBindTextures(0, 1, &translucencyMap);
 
         vegetationShader.use();
         vegetationShader.setMat4("projection", projection);
@@ -2471,7 +2456,7 @@ int OpenGLSceneRenderer::draw()
         reflectionShader.setMat4("model", reflectionModel);
         reflectionShader.setVec3("cameraPos", camera.Position);
         glBindVertexArray(reflectionVAO);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, textureCubemap);
+        glBindTextures(0, 1, &textureCubemap);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         refractionShader.use();
@@ -2482,7 +2467,7 @@ int OpenGLSceneRenderer::draw()
         refractionShader.setMat4("model", refractionModel);
         refractionShader.setVec3("cameraPos", camera.Position);
         glBindVertexArray(refractionVAO);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, textureCubemap);
+        glBindTextures(0, 1, &textureCubemap);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         //glDepthMask(GL_FALSE);
@@ -2498,7 +2483,7 @@ int OpenGLSceneRenderer::draw()
 
         glBindVertexArray(skyboxVAO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skyboxEBO);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, textureCubemap);
+        glBindTextures(0, 1, &textureCubemap);
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
         glDepthFunc(GL_LESS);
