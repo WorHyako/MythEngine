@@ -60,7 +60,7 @@ struct DrawElementsIndirectCommand
     GLuint baseInstance_;
 };
 
-struct Texture2DParameter
+struct Texture2DParameterLegacy
 {
     bool bLoadHDR;
     bool bFlipVertical;
@@ -72,7 +72,7 @@ struct Texture2DParameter
     int MinFilter;
     int MagFilter;
 
-    Texture2DParameter()
+    Texture2DParameterLegacy()
 	    :
 		bLoadHDR(false),
 		bFlipVertical(true),
@@ -270,7 +270,7 @@ enum
     PosUV = 5
 }typedef typeOfVertex;
 
-glm::vec3 choosePointLightPosition(pointEnum index)
+glm::vec3 choosePointLightPositionLegacy(pointEnum index)
 {
     switch (index)
     {
@@ -292,12 +292,12 @@ glm::vec3 choosePointLightPosition(pointEnum index)
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-unsigned int loadTexture(const char* path, const Texture2DParam& TexParam);
-unsigned int loadCubemap(std::vector<std::string> faces);
-void renderSphere();
+unsigned int loadTextureLegacy(const char* path, const Texture2DParam& TexParam);
+unsigned int loadCubemapLegacy(std::vector<std::string> faces);
+void renderSphereLegacy();
 bool bUseBlinnPhong = false;
 
-void RenderScene(const unsigned int framebuffer, Camera* const camera, const std::vector<MeshStructure>& defaultLitObjects,
+void RenderSceneLegacy(const unsigned int framebuffer, Camera* const camera, const std::vector<MeshStructure>& defaultLitObjects,
     const std::vector<MeshStructure>& unlitObjects, const std::vector<MeshStructure>& translucentObjects, const bool bDrawStencil, const bool bUseCulling)
 {
     // Render Scene
@@ -498,7 +498,7 @@ void RenderScene(const unsigned int framebuffer, Camera* const camera, const std
     // -------------------------------------------------------------------------------
 }
 
-void RenderDepthMapScene(const unsigned int framebuffer, std::vector<MeshStructure>& depthMapObjects, Shader& depthMapShader, const glm::mat4& lightSpaceMatrix, const glm::vec3& lightPos, const bool bUseCulling, const std::vector<glm::mat4> shadowTransforms)
+void RenderDepthMapSceneLegacy(const unsigned int framebuffer, std::vector<MeshStructure>& depthMapObjects, Shader& depthMapShader, const glm::mat4& lightSpaceMatrix, const glm::vec3& lightPos, const bool bUseCulling, const std::vector<glm::mat4> shadowTransforms)
 {
     // Render Scene
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -559,7 +559,7 @@ void RenderDepthMapScene(const unsigned int framebuffer, std::vector<MeshStructu
 }
 
 unsigned int TBNQuadVAO, TBNQuadVBO;
-void renderTBNQuad()
+void renderTBNQuadLegacy()
 {
     if (TBNQuadVAO == 0)
     {
@@ -651,11 +651,11 @@ void renderTBNQuad()
     glBindVertexArray(0);
 }
 
-// renderQuad() renders a 1x1 XY quad in NDC
+// renderQuadLegacy() renders a 1x1 XY quad in NDC
 // -----------------------------------------
 unsigned int quadVAO = 0;
 unsigned int quadVBO;
-void renderQuad()
+void renderQuadLegacy()
 {
     if (quadVAO == 0)
     {
@@ -682,7 +682,7 @@ void renderQuad()
     glBindVertexArray(0);
 }
 
-void createTextureAttachment(unsigned int& texture, const unsigned int width, const unsigned int height)
+void createTextureAttachmentLegacy(unsigned int& texture, const unsigned int width, const unsigned int height)
 {
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -701,7 +701,7 @@ void createTextureAttachment(unsigned int& texture, const unsigned int width, co
     //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, texture, 0);
 }
 
-void createTextureMultisampleAttachment(unsigned int& texture, const float sample, const unsigned int width, const unsigned int height)
+void createTextureMultisampleAttachmentLegacy(unsigned int& texture, const float sample, const unsigned int width, const unsigned int height)
 {
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, texture);
@@ -716,7 +716,7 @@ void createTextureMultisampleAttachment(unsigned int& texture, const float sampl
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 }
 
-void createRenderBufferObject(unsigned int& rbo, const unsigned int width, const unsigned int height)
+void createRenderBufferObjectLegacy(unsigned int& rbo, const unsigned int width, const unsigned int height)
 {
     glGenRenderbuffers(1, &rbo);
     glBindRenderbuffer(GL_RENDERBUFFER, rbo);
@@ -729,7 +729,7 @@ void createRenderBufferObject(unsigned int& rbo, const unsigned int width, const
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
 
-void createRenderBufferMultisampleObject(unsigned int& rbo, const unsigned int width, const unsigned int height)
+void createRenderBufferMultisampleObjectLegacy(unsigned int& rbo, const unsigned int width, const unsigned int height)
 {
     glGenRenderbuffers(1, &rbo);
     glBindRenderbuffer(GL_RENDERBUFFER, rbo);
@@ -741,7 +741,7 @@ void createRenderBufferMultisampleObject(unsigned int& rbo, const unsigned int w
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
 
-void createBuffer(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO, typeOfVertex typeVertex, std::vector<float> vertices, unsigned int sizeOfVertex, std::vector<unsigned int> indices = std::vector<unsigned int>())
+void createBufferLegacy(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO, typeOfVertex typeVertex, std::vector<float> vertices, unsigned int sizeOfVertex, std::vector<unsigned int> indices = std::vector<unsigned int>())
 {
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -792,7 +792,7 @@ void createBuffer(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO, typeO
     //glBindVertexArray(0);*/
 }
 
-void BindBuffer(unsigned int& buffer)
+void bindBufferLegacy(unsigned int& buffer)
 {
     std::vector<unsigned int> data = {};
     glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(unsigned int), NULL, GL_STATIC_DRAW);
@@ -1058,16 +1058,16 @@ int OpenGLRender::draw()
         1, 2, 3
     };
     unsigned int vegetationsVAO, vegetationsVBO, vegetationsEBO;
-    createBuffer(vegetationsVAO, vegetationsVBO, vegetationsEBO, typeOfVertex::PosNormalUV, verticesVegetations, 8, indicesVegetations);
+    createBufferLegacy(vegetationsVAO, vegetationsVBO, vegetationsEBO, typeOfVertex::PosNormalUV, verticesVegetations, 8, indicesVegetations);
 
     unsigned int cubeVAO, cubeVBO, cubeEBO;
-    createBuffer(cubeVAO, cubeVBO, cubeEBO, typeOfVertex::PosNormalUV, vertices, 8);
+    createBufferLegacy(cubeVAO, cubeVBO, cubeEBO, typeOfVertex::PosNormalUV, vertices, 8);
 
     unsigned int reflectionVAO, reflectionVBO, reflectionEBO;
-    createBuffer(reflectionVAO, reflectionVBO, reflectionEBO, typeOfVertex::PosNormal, vertices, 8);
+    createBufferLegacy(reflectionVAO, reflectionVBO, reflectionEBO, typeOfVertex::PosNormal, vertices, 8);
 
     unsigned int refractionVAO, refractionVBO, refractionEBO;
-    createBuffer(refractionVAO, refractionVBO, refractionEBO, typeOfVertex::PosNormal, vertices, 8);
+    createBufferLegacy(refractionVAO, refractionVBO, refractionEBO, typeOfVertex::PosNormal, vertices, 8);
 
     std::vector<glm::vec3> positionVegetations =
     {
@@ -1104,7 +1104,7 @@ int OpenGLRender::draw()
         glm::vec3(0.0f, 0.0f, -3.0f)
     };
     unsigned int VBO, VAO, EBO;
-    createBuffer(VAO, VBO, EBO, typeOfVertex::PosNormalUV, vertices, 8);
+    createBufferLegacy(VAO, VBO, EBO, typeOfVertex::PosNormalUV, vertices, 8);
 
     std::vector<float> cullingVerticesCW = {
         // Back face
@@ -1195,7 +1195,7 @@ int OpenGLRender::draw()
      -0.5f,  0.5f, -0.5f,  0.0f, 1.0f  // top-left
     };
     unsigned int cullingVBO, cullingVAO, cullingEBO;
-    createBuffer(cullingVAO, cullingVBO, cullingEBO, typeOfVertex::PosUV, cullingVerticesCCW, 5);
+    createBufferLegacy(cullingVAO, cullingVBO, cullingEBO, typeOfVertex::PosUV, cullingVerticesCCW, 5);
 
     std::vector<float> lightVertices = {
         // positions         // colors
@@ -1224,7 +1224,7 @@ int OpenGLRender::draw()
     };
 
     unsigned int lightVAO, lightVBO, lightEBO;
-    createBuffer(lightVAO, lightVBO, lightEBO, typeOfVertex::PosNormal, lightVertices, 6, lightIndices);
+    createBufferLegacy(lightVAO, lightVBO, lightEBO, typeOfVertex::PosNormal, lightVertices, 6, lightIndices);
 
     std::vector<float> skyboxVertices = {
         // positions         // colors
@@ -1253,7 +1253,7 @@ int OpenGLRender::draw()
     };
 
     unsigned int skyboxVAO, skyboxVBO, skyboxEBO;
-    createBuffer(skyboxVAO, skyboxVBO, skyboxEBO, typeOfVertex::OnlyPos, skyboxVertices, 3, skyboxIndices);
+    createBufferLegacy(skyboxVAO, skyboxVBO, skyboxEBO, typeOfVertex::OnlyPos, skyboxVertices, 3, skyboxIndices);
 
     float GeometryHousesVertexInfo[] = {
         -0.5f, 0.5f, 1.0f, 0.0f, 0.0f,// top - left
@@ -1508,7 +1508,7 @@ int OpenGLRender::draw()
     glBindTexture(GL_TEXTURE_2D, 0);
 
     unsigned int hdrRBO;
-    createRenderBufferObject(hdrRBO, SCR_WIDTH, SCR_HEIGHT);
+    createRenderBufferObjectLegacy(hdrRBO, SCR_WIDTH, SCR_HEIGHT);
 
     unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
     glDrawBuffers(2, attachments);
@@ -1730,11 +1730,11 @@ int OpenGLRender::draw()
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
     // create a color attachment texture
     unsigned int textureColorbuffer;
-    createTextureAttachment(textureColorbuffer, SCR_WIDTH, SCR_HEIGHT);
+    createTextureAttachmentLegacy(textureColorbuffer, SCR_WIDTH, SCR_HEIGHT);
 
     // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
     unsigned int rbo;
-    createRenderBufferObject(rbo, SCR_WIDTH, SCR_HEIGHT);
+    createRenderBufferObjectLegacy(rbo, SCR_WIDTH, SCR_HEIGHT);
 
     //GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
     //glDrawBuffers(1, DrawBuffers);
@@ -1749,10 +1749,10 @@ int OpenGLRender::draw()
     glGenFramebuffers(1, &msFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, msFBO);
     unsigned int msFBOColorAttachment;
-    createTextureMultisampleAttachment(msFBOColorAttachment, 2.0f, SCR_WIDTH, SCR_HEIGHT);
+    createTextureMultisampleAttachmentLegacy(msFBOColorAttachment, 2.0f, SCR_WIDTH, SCR_HEIGHT);
 
     unsigned int msFBORenderAttachment;
-    createRenderBufferMultisampleObject(msFBORenderAttachment, SCR_WIDTH, SCR_HEIGHT);
+    createRenderBufferMultisampleObjectLegacy(msFBORenderAttachment, SCR_WIDTH, SCR_HEIGHT);
 
     if (glCheckFramebufferStatus(msFBO) == GL_FRAMEBUFFER_COMPLETE)
         std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
@@ -1799,44 +1799,44 @@ int OpenGLRender::draw()
     // The FileSystem::getPath(...) is part of the GitHub repository so we can find files on any IDE/platform; replace it with your own image path.
     Texture2DParam TexParam;
     TexParam.MinFilter = GL_LINEAR_MIPMAP_LINEAR;
-    unsigned int diffuseMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/container2.png").c_str()/*, GL_SRGB */, TexParam);
+    unsigned int diffuseMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/container2.png").c_str()/*, GL_SRGB */, TexParam);
     // specularMap
     // -----------
-    unsigned int specularMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/container2_specular.png").c_str(), TexParam);
+    unsigned int specularMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/container2_specular.png").c_str(), TexParam);
     // emissionMap
     // -----------
-    unsigned int emissionMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/matrix.jpg").c_str(), TexParam);
+    unsigned int emissionMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/matrix.jpg").c_str(), TexParam);
 
-    unsigned int translucencyMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/blending_transparent_window.png").c_str(), TexParam);
+    unsigned int translucencyMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/blending_transparent_window.png").c_str(), TexParam);
 
     // PBR maps
     Texture2DParam PBR_TexParam;
     PBR_TexParam.MinFilter = GL_LINEAR_MIPMAP_LINEAR;
     PBR_TexParam.SetWrap(GL_REPEAT);
     PBR_TexParam.bFlipVertical = false;
-    //unsigned int PBR_AlbedoMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/PBR/rustediron2_basecolor.png").c_str(), PBR_TexParam);
-    //unsigned int PBR_NormalMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/PBR/rustediron2_normal.png").c_str(), PBR_TexParam);
-    //unsigned int PBR_MetallicMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/PBR/rustediron2_metallic.png").c_str(), PBR_TexParam);
-    //unsigned int PBR_RoughnessMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/PBR/rustediron2_roughness.png").c_str(), PBR_TexParam);
-    //unsigned int PBR_AOMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/PBR/rustediron2_roughness.png").c_str(), PBR_TexParam);
-    //unsigned int PBR_AlbedoMap = loadTexture(FileSystem::getPath("resources/textures/IBL_PBR/rusted-steel-bl/rusted-steel_albedo.png").c_str(), GL_NONE, GL_NONE, GL_UNSIGNED_BYTE, GL_REPEAT);
-    //unsigned int PBR_NormalMap = loadTexture(FileSystem::getPath("resources/textures/IBL_PBR/rusted-steel-bl/rusted-steel_normal-ogl.png").c_str(), GL_NONE, GL_NONE, GL_UNSIGNED_BYTE, GL_REPEAT);
-    //unsigned int PBR_MetallicMap = loadTexture(FileSystem::getPath("resources/textures/IBL_PBR/rusted-steel-bl/rusted-steel_metallic.png").c_str(), GL_NONE, GL_NONE, GL_UNSIGNED_BYTE, GL_REPEAT);
-    //unsigned int PBR_RoughnessMap = loadTexture(FileSystem::getPath("resources/textures/IBL_PBR/rusted-steel-bl/rusted-steel_roughness.png").c_str(), GL_NONE, GL_NONE, GL_UNSIGNED_BYTE, GL_REPEAT);
-    //unsigned int PBR_AOMap = loadTexture(FileSystem::getPath("resources/textures/IBL_PBR/rusted-steel-bl/rusted-steel_ao.png").c_str(), GL_NONE, GL_NONE, GL_UNSIGNED_BYTE, GL_REPEAT);
-    unsigned int PBR_AlbedoMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_A.tga").c_str(), PBR_TexParam);
-    unsigned int PBR_NormalMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_N.tga").c_str(), PBR_TexParam);
-    unsigned int PBR_MetallicMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_M.tga").c_str(), PBR_TexParam);
-    unsigned int PBR_RoughnessMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_R.tga").c_str(), PBR_TexParam);
-    unsigned int PBR_AOMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Raw/Cerberus_AO.tga").c_str(), PBR_TexParam);
+    //unsigned int PBR_AlbedoMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/PBR/rustediron2_basecolor.png").c_str(), PBR_TexParam);
+    //unsigned int PBR_NormalMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/PBR/rustediron2_normal.png").c_str(), PBR_TexParam);
+    //unsigned int PBR_MetallicMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/PBR/rustediron2_metallic.png").c_str(), PBR_TexParam);
+    //unsigned int PBR_RoughnessMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/PBR/rustediron2_roughness.png").c_str(), PBR_TexParam);
+    //unsigned int PBR_AOMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/PBR/rustediron2_roughness.png").c_str(), PBR_TexParam);
+    //unsigned int PBR_AlbedoMap = loadTextureLegacy(FileSystem::getPath("resources/textures/IBL_PBR/rusted-steel-bl/rusted-steel_albedo.png").c_str(), GL_NONE, GL_NONE, GL_UNSIGNED_BYTE, GL_REPEAT);
+    //unsigned int PBR_NormalMap = loadTextureLegacy(FileSystem::getPath("resources/textures/IBL_PBR/rusted-steel-bl/rusted-steel_normal-ogl.png").c_str(), GL_NONE, GL_NONE, GL_UNSIGNED_BYTE, GL_REPEAT);
+    //unsigned int PBR_MetallicMap = loadTextureLegacy(FileSystem::getPath("resources/textures/IBL_PBR/rusted-steel-bl/rusted-steel_metallic.png").c_str(), GL_NONE, GL_NONE, GL_UNSIGNED_BYTE, GL_REPEAT);
+    //unsigned int PBR_RoughnessMap = loadTextureLegacy(FileSystem::getPath("resources/textures/IBL_PBR/rusted-steel-bl/rusted-steel_roughness.png").c_str(), GL_NONE, GL_NONE, GL_UNSIGNED_BYTE, GL_REPEAT);
+    //unsigned int PBR_AOMap = loadTextureLegacy(FileSystem::getPath("resources/textures/IBL_PBR/rusted-steel-bl/rusted-steel_ao.png").c_str(), GL_NONE, GL_NONE, GL_UNSIGNED_BYTE, GL_REPEAT);
+    unsigned int PBR_AlbedoMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_A.tga").c_str(), PBR_TexParam);
+    unsigned int PBR_NormalMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_N.tga").c_str(), PBR_TexParam);
+    unsigned int PBR_MetallicMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_M.tga").c_str(), PBR_TexParam);
+    unsigned int PBR_RoughnessMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Cerberus_R.tga").c_str(), PBR_TexParam);
+    unsigned int PBR_AOMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "objects/Cerberus_by_Andrew_Maximov/Textures/Raw/Cerberus_AO.tga").c_str(), PBR_TexParam);
 
-    //unsigned int EquirectangularMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/IBLDiffuse/newport_loft.hdr").c_str(), GL_RGB16F, GL_RGB, GL_FLOAT, GL_CLAMP_TO_EDGE, GL_LINEAR);
+    //unsigned int EquirectangularMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/IBLDiffuse/newport_loft.hdr").c_str(), GL_RGB16F, GL_RGB, GL_FLOAT, GL_CLAMP_TO_EDGE, GL_LINEAR);
     Texture2DParam EquirectangularTexParam;
     EquirectangularTexParam.bLoadHDR = true;
     EquirectangularTexParam.InternalFormat = GL_RGB16F;
     EquirectangularTexParam.Format = GL_RGB;
     EquirectangularTexParam.TypeData = GL_FLOAT;
-    unsigned int EquirectangularMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/IBLDiffuse/newport_loft.hdr").c_str(), EquirectangularTexParam);
+    unsigned int EquirectangularMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/IBLDiffuse/newport_loft.hdr").c_str(), EquirectangularTexParam);
 
     // PBR Shader
     pbrShader.use();
@@ -1870,18 +1870,18 @@ int OpenGLRender::draw()
         FilesystemUtilities::GetResourcesDir() + "textures/skybox/front.jpg",
         FilesystemUtilities::GetResourcesDir() + "textures/skybox/back.jpg"
     };
-    unsigned int textureCubemap = loadCubemap(faces_path);
+    unsigned int textureCubemap = loadCubemapLegacy(faces_path);
 
     //GLint internalFormat = GL_RGBA, GLenum format = GL_NONE, GLenum typeData = GL_UNSIGNED_BYTE, GLint textureWrapParam = GL_CLAMP_TO_EDGE, GLint minFilter = GL_LINEAR_MIPMAP_LINEAR, GLint maxFilter = GL_LINEAR
     Texture2DParam MappingTexParam;
     MappingTexParam.InternalFormat = GL_RGB;
     MappingTexParam.SetWrap(GL_REPEAT);
-    unsigned int normalMappingDiffuseMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/NormalMapping/brickwall.jpg").c_str(), MappingTexParam);
-    unsigned int normalMappingNormalMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/NormalMapping/brickwall_normal.jpg").c_str(), MappingTexParam);
+    unsigned int normalMappingDiffuseMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/NormalMapping/brickwall.jpg").c_str(), MappingTexParam);
+    unsigned int normalMappingNormalMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/NormalMapping/brickwall_normal.jpg").c_str(), MappingTexParam);
 
-    unsigned int parallaxMappingDiffuseMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/ParallaxMapping/bricks_diffuse.jpg").c_str(), MappingTexParam);
-    unsigned int parallaxMappingNormalMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/ParallaxMapping/bricks_normal.jpg").c_str(), MappingTexParam);
-    unsigned int parallaxMappingDepthMap = loadTexture((FilesystemUtilities::GetResourcesDir() + "textures/ParallaxMapping/bricks_disp.jpg").c_str(), MappingTexParam);
+    unsigned int parallaxMappingDiffuseMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/ParallaxMapping/bricks_diffuse.jpg").c_str(), MappingTexParam);
+    unsigned int parallaxMappingNormalMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/ParallaxMapping/bricks_normal.jpg").c_str(), MappingTexParam);
+    unsigned int parallaxMappingDepthMap = loadTextureLegacy((FilesystemUtilities::GetResourcesDir() + "textures/ParallaxMapping/bricks_disp.jpg").c_str(), MappingTexParam);
 
     // tell OpenGl for each sampler to which texture unit it belongs to (only has to be done once)
     // -------------------------------------------------------------------------------------------
@@ -2112,7 +2112,7 @@ int OpenGLRender::draw()
     glViewport(0, 0, 512, 512);
     brdfShader.use();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    renderQuad();
+    renderQuadLegacy();
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -2313,7 +2313,7 @@ int OpenGLRender::draw()
         float far = 25.0f;
         glm::mat4 shadowProj = glm::perspective(glm::radians(90.0f), aspect, near, far);
 
-        glm::vec3 pointLightPos = choosePointLightPosition(static_cast<pointEnum>(3));
+        glm::vec3 pointLightPos = choosePointLightPositionLegacy(static_cast<pointEnum>(3));
         std::vector<glm::mat4> shadowTransforms;
         shadowTransforms.push_back(shadowProj *
             glm::lookAt(pointLightPos, pointLightPos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
@@ -2329,13 +2329,13 @@ int OpenGLRender::draw()
             glm::lookAt(pointLightPos, pointLightPos + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
 
 
-        //RenderDepthMapScene(depthMapFBO, depthMapObjects, depthMapShader, lightSpaceMatrix, false, shadowTransforms);
+        //RenderDepthMapSceneLegacy(depthMapFBO, depthMapObjects, depthMapShader, lightSpaceMatrix, false, shadowTransforms);
         //glCullFace(GL_BACK);
         //glDisable(GL_CULL_FACE);
 
 
         glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
-        RenderDepthMapScene(depthCubemapFBO, depthMapObjects, depthCubemapShader, lightSpaceMatrix, pointLightPos, false, shadowTransforms);
+        RenderDepthMapSceneLegacy(depthCubemapFBO, depthMapObjects, depthCubemapShader, lightSpaceMatrix, pointLightPos, false, shadowTransforms);
 
         // Render First Color Pass
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -2401,7 +2401,7 @@ int OpenGLRender::draw()
         for (unsigned int i = 0; i < NR_POINT_LIGHTS; i++)
         {
             std::string number = std::to_string(i);
-            cubeShader.setVec3(("pointLights[" + number + "].position").c_str(), choosePointLightPosition((pointEnum)i));
+            cubeShader.setVec3(("pointLights[" + number + "].position").c_str(), choosePointLightPositionLegacy((pointEnum)i));
             cubeShader.setFloat(("pointLights[" + number + "].constant").c_str(), 1.0f);
             cubeShader.setFloat(("pointLights[" + number + "].linear").c_str(), 0.09f / 4.0f);
             cubeShader.setFloat(("pointLights[" + number + "].quadratic").c_str(), 0.032f / 4.0f);
@@ -2497,7 +2497,7 @@ int OpenGLRender::draw()
         //        ));
         //        pbrShader.setMat4("model", pbrModel);
         //        pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(pbrModel))));
-        //        renderSphere();
+        //        renderSphereLegacy();
         //    }
         //}
 
@@ -2516,7 +2516,7 @@ int OpenGLRender::draw()
             pbrModel = glm::scale(pbrModel, glm::vec3(0.5f));
             pbrShader.setMat4("model", pbrModel);
             pbrShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(pbrModel))));
-            renderSphere();
+            renderSphereLegacy();
         }
 
         // render skybox (render as last to prevent overdraw)
@@ -2544,14 +2544,14 @@ int OpenGLRender::draw()
         normalMappingShaderToWorld.setVec3("viewPos", camera.Position);
         normalMappingShaderToWorld.setFloat("material.shininess", 32.0f);
         normalMappingShaderToWorld.setBool("bUseBlinnPhong", bUseBlinnPhong);
-        normalMappingShaderToWorld.setVec3("pointLight.position", choosePointLightPosition((pointEnum)2));
+        normalMappingShaderToWorld.setVec3("pointLight.position", choosePointLightPositionLegacy((pointEnum)2));
         normalMappingShaderToWorld.setFloat("pointLight.constant", 1.0f);
         normalMappingShaderToWorld.setFloat("pointLight.linear", 0.09f);
         normalMappingShaderToWorld.setFloat("pointLight.quadratic", 0.032f);
         normalMappingShaderToWorld.setVec3("pointLight.ambient", glm::vec3(0.2f));
         normalMappingShaderToWorld.setVec3("pointLight.diffuse", glm::vec3(0.5f));
         normalMappingShaderToWorld.setVec3("pointLight.specular", glm::vec3(1.0f));
-        renderTBNQuad();
+        renderTBNQuadLegacy();
 
         normalMappingShaderToLocal.use();
         glm::mat4 normalMappingModelToLocal = glm::mat4(1.0f);
@@ -2562,14 +2562,14 @@ int OpenGLRender::draw()
         normalMappingShaderToLocal.setVec3("viewPos", camera.Position);
         normalMappingShaderToLocal.setFloat("material.shininess", 32.0f);
         normalMappingShaderToLocal.setBool("bUseBlinnPhong", bUseBlinnPhong);
-        normalMappingShaderToLocal.setVec3("pointLight.position", choosePointLightPosition((pointEnum)3));
+        normalMappingShaderToLocal.setVec3("pointLight.position", choosePointLightPositionLegacy((pointEnum)3));
         normalMappingShaderToLocal.setFloat("pointLight.constant", 1.0f);
         normalMappingShaderToLocal.setFloat("pointLight.linear", 0.09f);
         normalMappingShaderToLocal.setFloat("pointLight.quadratic", 0.032f);
         normalMappingShaderToLocal.setVec3("pointLight.ambient", glm::vec3(0.2f));
         normalMappingShaderToLocal.setVec3("pointLight.diffuse", glm::vec3(0.5f));
         normalMappingShaderToLocal.setVec3("pointLight.specular", glm::vec3(1.0f));
-        renderTBNQuad();
+        renderTBNQuadLegacy();
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, parallaxMappingDiffuseMap);
@@ -2586,14 +2586,14 @@ int OpenGLRender::draw()
         parallaxMappingShader.setVec3("viewPos", camera.Position);
         parallaxMappingShader.setFloat("material.shininess", 32.0f);
         parallaxMappingShader.setBool("bUseBlinnPhong", bUseBlinnPhong);
-        parallaxMappingShader.setVec3("pointLight.position", choosePointLightPosition((pointEnum)3));
+        parallaxMappingShader.setVec3("pointLight.position", choosePointLightPositionLegacy((pointEnum)3));
         parallaxMappingShader.setFloat("pointLight.constant", 1.0f);
         parallaxMappingShader.setFloat("pointLight.linear", 0.09f);
         parallaxMappingShader.setFloat("pointLight.quadratic", 0.032f);
         parallaxMappingShader.setVec3("pointLight.ambient", glm::vec3(0.2f));
         parallaxMappingShader.setVec3("pointLight.diffuse", glm::vec3(0.5f));
         parallaxMappingShader.setVec3("pointLight.specular", glm::vec3(1.0f));
-        renderTBNQuad();
+        renderTBNQuadLegacy();
 
 
 
@@ -2854,7 +2854,7 @@ int OpenGLRender::draw()
         for (unsigned int i = 0; i < NR_POINT_LIGHTS; i++)
         {
             defaultLitObject.defaultLitShaderParams->pointLights.push_back(
-                new FPointLightStructure(choosePointLightPosition(static_cast<pointEnum>(i)),
+                new FPointLightStructure(choosePointLightPositionLegacy(static_cast<pointEnum>(i)),
                     glm::vec3(0.2f), glm::vec3(0.5f), glm::vec3(1.0f),
                     1.0f, 0.09f, 0.032f));
         }
@@ -2872,7 +2872,7 @@ int OpenGLRender::draw()
         }
         defaultLitObjects.push_back(defaultLitObject);
 
-        RenderScene(msFBO, &camera, defaultLitObjects, std::vector<MeshStructure>(), std::vector<MeshStructure>(), false, false);
+        RenderSceneLegacy(msFBO, &camera, defaultLitObjects, std::vector<MeshStructure>(), std::vector<MeshStructure>(), false, false);
 
         camera.Yaw -= 180.0f;
         camera.ProcessMouseMovement(0, 0, false);
@@ -2999,7 +2999,7 @@ int OpenGLRender::draw()
 
 // utility function for loading a 2D texture from file
 // ---------------------------------------------------
-unsigned int loadTexture(char const* path, const Texture2DParam& TexParam)
+unsigned int loadTextureLegacy(char const* path, const Texture2DParam& TexParam)
 {
     unsigned int textureID;
     glGenTextures(1, &textureID);
@@ -3054,7 +3054,7 @@ unsigned int loadTexture(char const* path, const Texture2DParam& TexParam)
     return textureID;
 }
 
-unsigned int loadCubemap(std::vector<std::string> faces)
+unsigned int loadCubemapLegacy(std::vector<std::string> faces)
 {
     unsigned int textureID;
     glGenTextures(1, &textureID);
@@ -3089,7 +3089,7 @@ unsigned int loadCubemap(std::vector<std::string> faces)
 
 unsigned int sphereVAO = 0;
 unsigned int indexCount = 0;
-void renderSphere()
+void renderSphereLegacy()
 {
     if (sphereVAO == 0)
     {

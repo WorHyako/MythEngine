@@ -74,6 +74,12 @@ T clamp(T v, T a, T b)
 	return v;
 }
 
+template<typename T>
+T lerp(T a, T b, T v)
+{
+	return a + v * (b - a);
+}
+
 inline void getFrustumPlanes(glm::mat4 mvp, glm::vec4* planes)
 {
 	using glm::vec4;
