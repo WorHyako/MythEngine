@@ -30,7 +30,7 @@ const bool enableValidationLayers = false;
 const bool enableValidationFeaturesEnabled = false;
 const bool enableValidationFeaturesDisabled = false;
 #else
-const bool enableValidationLayers = true;
+const bool enableValidationLayers = false;
 const bool enableValidationFeaturesEnabled = false;
 const bool enableValidationFeaturesDisabled = true;
 #endif
@@ -347,7 +347,7 @@ void createInstance(VkInstance* instance)
             VK_MAKE_VERSION(1, 0, 0),
             "No Engine",
             VK_MAKE_VERSION(1, 0, 0),
-            VK_API_VERSION_1_3
+            VK_API_VERSION_1_2
     };
 
     VkInstanceCreateInfo createInfo = {
@@ -2582,7 +2582,7 @@ VulkanContextCreator::VulkanContextCreator(VulkanInstance& vk, VulkanRenderDevic
     if (!setupDebugCallbacks(vk.instance, &vk.messenger, &vk.reportCallback))
         exit(EXIT_FAILURE);
 
-    if (!glfwCreateWindowSurface(vk.instance, (GLFWwindow*) window, nullptr, &vk.surface))
+    if (glfwCreateWindowSurface(vk.instance, (GLFWwindow*) window, nullptr, &vk.surface) != VK_SUCCESS)
         exit(EXIT_FAILURE);
 
     if (!initVulkanRenderDevice3(vk, dev, screenWidth, screenHeight, ctxFeatures))
