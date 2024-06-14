@@ -1,6 +1,25 @@
 set(ThirdParty_Libs)
 set(ThirdParty_IncludeDirs)
 
+set(MessageQuiet OFF)
+function(message)
+    if (NOT MessageQuiet)
+        _message(${ARGN})
+    endif ()
+endfunction()
+
+macro(quiet Status)
+    set(MessageQuiet ${Status})
+endmacro()
+
+macro(quiet_add_subdirectory Subdir)
+    quiet(ON)
+    add_subdirectory(${Subdir})
+    quiet(OFF)
+endmacro()
+
+include(../../CmakeUtils/SourceGrouping.cmake)
+
 ##############
 #   assimp   #
 ##############
@@ -18,10 +37,10 @@ if (USE_ASSIMP)
     block(SCOPE_FOR POLICIES)
         cmake_policy(SET CMP0077 NEW)
 
-        add_subdirectory(${Assimp_Root})
+        quiet_add_subdirectory(${Assimp_Root})
     endblock()
 
-    set_target_properties(assimp PROPERTIES FOLDER "ThirdParty/assimp")
+    group_targets(TARGETS_PATH ${Assimp_Root})
 
     list(APPEND ThirdParty_Libs assimp)
 endif ()
@@ -37,9 +56,9 @@ if (USE_GLFW)
     set(GLFW_INSTALL OFF)
     set(USE_MSVC_RUNTIME_LIBRARY_DLL ON)
 
-    add_subdirectory(${Glfw_Root})
+    quiet_add_subdirectory(${Glfw_Root})
 
-    set_target_properties(glfw PROPERTIES FOLDER "ThirdParty/glfw")
+    group_targets(TARGETS_PATH ${Glfw_Root})
 
     list(APPEND ThirdParty_Libs glfw)
 endif ()
@@ -52,9 +71,9 @@ if (USE_GLSLANG)
     set(ENABLE_CTEST OFF)
     set(ENABLE_GLSLANG_JS OFF)
 
-    add_subdirectory(${Glslang_Root})
+    quiet_add_subdirectory(${Glslang_Root})
 
-    set_target_properties(glslang PROPERTIES FOLDER "ThirdParty/glslang")
+    group_targets(TARGETS_PATH ${Glslang_Root})
 
     list(APPEND ThirdParty_Libs glslang)
 endif ()
@@ -70,9 +89,9 @@ if (USE_VOLK)
         set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_MACOS_MVK)
     endif ()
 
-    add_subdirectory(${Volk_Root})
+    quiet_add_subdirectory(${Volk_Root})
 
-    set_target_properties(volk PROPERTIES FOLDER "ThirdParty/volk")
+    group_targets(TARGETS_PATH ${Volk_Root})
 
     list(APPEND ThirdParty_Libs volk)
 endif ()
@@ -86,7 +105,7 @@ if (USE_IMGUI)
     endif ()
 
     set(ImGui_Root ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
-    file(GLOB ImGui_Sources ${ImGui_Root}/*.*pp)
+    file(GLOB ImGui_Sources ${ImGui_Root}/*.cpp)
     if (APPLE)
         list(APPEND ImGui_Sources
                 ${ImGui_Root}/backends/imgui_impl_osx.mm
@@ -97,7 +116,7 @@ if (USE_IMGUI)
                 ${ImGui_Root}/backends/imgui_impl_opengl3.cpp)
     endif ()
 
-    add_library(imgui STATIC)
+    add_library(imgui)
     target_sources(imgui
             PRIVATE ${ImGui_Sources})
     target_include_directories(imgui
@@ -107,7 +126,7 @@ if (USE_IMGUI)
     target_link_libraries(imgui
             PUBLIC glfw)
 
-    set_target_properties(imgui PROPERTIES FOLDER "ThirdParty/ImGui")
+    group_targets(TARGETS_PATH ${ImGui_Root} CUSTOM_TARGET)
 
     list(APPEND ThirdParty_Libs imgui)
 endif ()
@@ -123,18 +142,18 @@ if (USE_IMGUIZMO)
     set(ImGuizmo_Root ${CMAKE_CURRENT_SOURCE_DIR}/ImGuizmo)
     file(GLOB Imguizmo_Sources ${ImGuizmo_Root}/*.cpp)
 
-    add_library(imguizmo)
+    add_library(ImGuizmo)
 
-    target_sources(imguizmo
+    target_sources(ImGuizmo
             PRIVATE ${Imguizmo_Sources})
 
-    target_include_directories(imgui
+    target_include_directories(ImGuizmo
             PUBLIC ${ImGuizmo_Root})
 
-    target_link_libraries(imguizmo
+    target_link_libraries(ImGuizmo
             PUBLIC imgui)
 
-    set_target_properties(imguizmo PROPERTIES FOLDER "ThirdParty/ImGui")
+    group_targets(TARGETS_PATH ${ImGuizmo_Root} CUSTOM_TARGET)
 
     list(APPEND ThirdParty_Libs imguizmo)
 endif ()
@@ -150,7 +169,7 @@ if (USE_STB)
     target_include_directories(stb
             INTERFACE ${Stb_Root})
 
-    set_target_properties(stb PROPERTIES FOLDER "ThirdParty/stb")
+    group_targets(TARGETS_PATH ${Stb_Root} CUSTOM_TARGET stb)
 
     list(APPEND ThirdParty_Libs stb)
 endif ()
@@ -159,14 +178,14 @@ endif ()
 #   mINI   #
 ############
 if (${USE_MINI})
-    set(Mini_Root ${CMAKE_CURRENT_SOURCE_DIR}/mINI/src)
+    set(Mini_Root ${CMAKE_CURRENT_SOURCE_DIR}/mINI)
 
     add_library(mINI INTERFACE)
 
     target_include_directories(mINI
-            INTERFACE ${Mini_Root})
+            INTERFACE ${Mini_Root}/src)
 
-    set_target_properties(mINI PROPERTIES FOLDER "ThirdParty/mINI")
+    group_targets(TARGETS_PATH ${Mini_Root} CUSTOM_TARGET)
 
     list(APPEND ThirdParty_Libs mINI)
 endif ()
@@ -187,7 +206,7 @@ if (USE_GLAD)
     target_include_directories(glad
             PUBLIC ${Glad_Root}/include)
 
-    set_target_properties(glad PROPERTIES FOLDER "ThirdParty/glad")
+    group_targets(TARGETS_PATH ${Glad_Root} CUSTOM_TARGET)
 
     list(APPEND ThirdParty_Libs glad)
 endif ()
@@ -198,9 +217,9 @@ endif ()
 if (USE_GLM)
     set(Glm_Root ${CMAKE_CURRENT_SOURCE_DIR}/glm)
 
-    add_subdirectory(${Glm_Root})
+    quiet_add_subdirectory(${Glm_Root})
 
-    set_target_properties(glm PROPERTIES FOLDER "ThirdParty/glm")
+    group_targets(TARGETS_PATH ${Glm_Root})
 
     list(APPEND ThirdParty_Libs glm)
 endif ()
@@ -212,9 +231,9 @@ if (USE_GLI)
     set(Gli_Root ${CMAKE_CURRENT_SOURCE_DIR}/gli)
     set(GLI_TEST_ENABLE OFF)
 
-    add_subdirectory(${Gli_Root})
+    quiet_add_subdirectory(${Gli_Root})
 
-    set_target_properties(gli PROPERTIES FOLDER "ThirdParty/gli")
+    group_targets(TARGETS_PATH ${Gli_Root})
 
     list(APPEND ThirdParty_Libs gli)
 endif ()
@@ -226,9 +245,9 @@ if (USE_TRACY)
     set(Tracy_Root ${CMAKE_CURRENT_SOURCE_DIR}/tracy)
     set(TRACY_ON_DEMAND ON)
 
-    add_subdirectory(${Tracy_Root})
+    quiet_add_subdirectory(${Tracy_Root})
 
-    set_target_properties(TracyClient PROPERTIES FOLDER "ThirdParty/Tracy")
+    group_targets(TARGETS_PATH ${Tracy_Root})
 
     list(APPEND ThirdParty_Libs Tracy::TracyClient)
 endif ()
@@ -241,9 +260,9 @@ if (USE_TASK_FLOW)
     set(TF_BUILD_EXAMPLES OFF)
     set(TF_BUILD_TESTS OFF)
 
-    add_subdirectory(${TaskFlow_Root})
+    quiet_add_subdirectory(${TaskFlow_Root})
 
-    set_target_properties(Taskflow PROPERTIES FOLDER "ThirdParty/Taskflow")
+    group_targets(TARGETS_PATH ${TaskFlow_Root})
 
     list(APPEND ThirdParty_Libs Taskflow)
 endif ()
@@ -258,12 +277,12 @@ if (USE_OPTICK)
 
     set(Optick_Root ${CMAKE_CURRENT_SOURCE_DIR}/optick})
 
-    add_subdirectory(${Optick_Root})
+    quiet_add_subdirectory(${Optick_Root})
 
     target_compile_definitions(Optick
             PUBLIC BUILD_WITH_OPTICK)
 
-    set_target_properties(Optick PROPERTIES FOLDER "ThirdParty/optick")
+    group_targets(TARGETS_PATH ${Optick_Root})
 
     list(APPEND ThirdParty_IncludeDirs ${Optick_Root}/src)
     list(APPEND ThirdParty_Libs Optick)
@@ -279,9 +298,9 @@ if (USE_EASY_PROFILER)
     set(EasyProfiler_Root ${CMAKE_CURRENT_SOURCE_DIR}/easy_profiler)
     set(EASY_PROFILER_NO_GUI ON)
 
-    add_subdirectory(${EasyProfiler_Root})
+    quiet_add_subdirectory(${EasyProfiler_Root})
 
-    set_target_properties(easy_profiler PROPERTIES FOLDER "ThirdParty/easy_profiler")
+    group_targets(TARGETS_PATH ${EasyProfiler_Root})
 
     target_compile_definitions(easy_profiler
             PUBLIC BUILD_WITH_EASY_PROFILER)
@@ -311,8 +330,10 @@ if (USE_BULLET3)
     block(SCOPE_FOR POLICIES)
         cmake_policy(SET CMP0077 NEW)
 
-        add_subdirectory(${Bullet3_Root})
+        quiet_add_subdirectory(${Bullet3_Root})
     endblock()
+
+    group_targets(TARGETS_PATH ${Bullet3_Root})
 
     add_library(bullet3::LinearMath ALIAS LinearMath)
     add_library(bullet3::Common ALIAS Bullet3Common)
@@ -320,14 +341,6 @@ if (USE_BULLET3)
     add_library(bullet3::Collision ALIAS BulletCollision)
     add_library(bullet3::Dynamics ALIAS BulletDynamics)
     add_library(bullet3::SoftBody ALIAS BulletSoftBody)
-
-    set_target_properties(LinearMath
-            Bullet3Common
-            BulletInverseDynamics
-            BulletCollision
-            BulletDynamics
-            BulletSoftBody
-            PROPERTIES FOLDER "ThirdParty/Bullet3")
 
     list(APPEND ThirdParty_IncludeDirs
             ${Bullet3_Root}/src)
