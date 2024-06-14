@@ -30,7 +30,7 @@ const bool enableValidationLayers = false;
 const bool enableValidationFeaturesEnabled = false;
 const bool enableValidationFeaturesDisabled = false;
 #else
-const bool enableValidationLayers = false;
+const bool enableValidationLayers = true;
 const bool enableValidationFeaturesEnabled = false;
 const bool enableValidationFeaturesDisabled = true;
 #endif
@@ -347,7 +347,7 @@ void createInstance(VkInstance* instance)
             VK_MAKE_VERSION(1, 0, 0),
             "No Engine",
             VK_MAKE_VERSION(1, 0, 0),
-            VK_API_VERSION_1_2
+            VK_API_VERSION_1_3
     };
 
     VkInstanceCreateInfo createInfo = {

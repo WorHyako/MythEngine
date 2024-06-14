@@ -5,6 +5,7 @@
 #endif
 #include <stb_image.h>
 #include <iostream>
+#include <GL/gl.h>
 
 Texture2DParameter::Texture2DParameter()
 : bLoadHDR(false)
@@ -225,33 +226,32 @@ namespace OpenGLUtils
     void bindBuffer(unsigned int& buffer)
     {
         std::vector<unsigned int> data = {};
-        glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(unsigned int), NULL, GL_STATIC_DRAW);
+        glNamedBufferData(buffer, data.size() * sizeof(unsigned int), NULL, GL_STATIC_DRAW);
 
-        glBufferSubData(GL_ARRAY_BUFFER, 10, data.size() * sizeof(unsigned int), data.data());
+        glNamedBufferSubData(buffer, 10, data.size() * sizeof(unsigned int), data.data());
 
-        glBindBuffer(GL_ARRAY_BUFFER, buffer);
         // get pointer
-        void* ptr = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+        void* ptr = glMapNamedBuffer(buffer, GL_WRITE_ONLY);
         // now copy data into memory
         memcpy(ptr, data.data(), sizeof(data));
         // make sure to tell OpenGL we're done the pointer
-        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glUnmapNamedBuffer(buffer);
 
         float positions[] = { 1.0f };
         float normals[] = { 1.0f };
         float texs[] = { 1.0f };
         // fill buffer
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(positions), &positions);
-        glBufferSubData(GL_ARRAY_BUFFER, sizeof(positions), sizeof(normals), &normals);
-        glBufferSubData(GL_ARRAY_BUFFER, sizeof(positions) + sizeof(normals), sizeof(texs), &texs);
+        glNamedBufferSubData(buffer, 0, sizeof(positions), &positions);
+        glNamedBufferSubData(buffer, sizeof(positions), sizeof(normals), &normals);
+        glNamedBufferSubData(buffer, sizeof(positions) + sizeof(normals), sizeof(texs), &texs);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(sizeof(positions)));
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)(sizeof(positions) + sizeof(normals)));
 
         unsigned int vbo1, vbo2;
-        glGenBuffers(1, &vbo1);
-        glGenBuffers(2, &vbo2);
+        glCreateBuffers(1, &vbo1);
+        glCreateBuffers(2, &vbo2);
         glCopyNamedBufferSubData(vbo1, vbo2, 0, 0, 8 * sizeof(float));
     }
 }

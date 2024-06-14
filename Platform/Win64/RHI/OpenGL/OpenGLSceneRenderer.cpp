@@ -770,18 +770,7 @@ int OpenGLSceneRenderer::draw()
         glm::vec3(1.5f,  0.2f, -1.5f),
         glm::vec3(-1.3f,  1.0f, -1.5f)
     };
-    unsigned int indices[] = {  // note that we start from 0!
-        0, 1, 3,  // first Triangle
-        1, 2, 3,  // second Triangle
-    };
 
-    glm::vec3 pointLightPositions[] =
-    {
-        glm::vec3(0.7f, 0.2f, 2.0f),
-        glm::vec3(2.3f, -3.3f, 4.0f),
-        glm::vec3(-4.0f, 2.0f, -12.0f),
-        glm::vec3(0.0f, 0.0f, -3.0f)
-    };
     unsigned int VBO, VAO, EBO;
     OpenGLUtils::createVAO(VAO, VBO, EBO, typeOfVertex::PosNormalUV, vertices, 8);
 
@@ -876,18 +865,7 @@ int OpenGLSceneRenderer::draw()
     unsigned int cullingVBO, cullingVAO, cullingEBO;
     OpenGLUtils::createVAO(cullingVAO, cullingVBO, cullingEBO, typeOfVertex::PosUV, cullingVerticesCCW, 5);
 
-    std::vector<float> lightVertices = {
-        // positions         // colors
-         0.5f,  0.5f,  -0.5f,  1.0f, 0.0f, 0.0f,// top right near
-         0.5f, -0.5f,  -0.5f,  0.0f, 1.0f, 0.0f,// bottom right near
-        -0.5f, -0.5f,  -0.5f,  0.0f, 0.0f, 1.0f,// bottom left near
-        -0.5f,  0.5f,  -0.5f,  0.5f, 0.5f, 0.5f,// top left near
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.0f,// top right near
-         0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f,// bottom right near
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, 1.0f,// bottom left near
-        -0.5f,  0.5f,  0.5f,  0.5f, 0.5f, 0.5f,// top left near
-    };
-    std::vector<unsigned int> lightIndices = {  // note that we start from 0!
+    std::vector<unsigned int> cubeIndices = {  // note that we start from 0!
         0, 1, 3,  // first Triangle
         1, 2, 3,  // second Triangle
         0, 1, 4,
@@ -901,9 +879,20 @@ int OpenGLSceneRenderer::draw()
         1, 2, 5,
         2, 5, 6
     };
+    std::vector<float> lightVertices = {
+        // positions         // colors
+         0.5f,  0.5f,  -0.5f,  1.0f, 0.0f, 0.0f,// top right near
+         0.5f, -0.5f,  -0.5f,  0.0f, 1.0f, 0.0f,// bottom right near
+        -0.5f, -0.5f,  -0.5f,  0.0f, 0.0f, 1.0f,// bottom left near
+        -0.5f,  0.5f,  -0.5f,  0.5f, 0.5f, 0.5f,// top left near
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.0f,// top right near
+         0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f,// bottom right near
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, 1.0f,// bottom left near
+        -0.5f,  0.5f,  0.5f,  0.5f, 0.5f, 0.5f,// top left near
+    };
 
     unsigned int lightVAO, lightVBO, lightEBO;
-    OpenGLUtils::createVAO(lightVAO, lightVBO, lightEBO, typeOfVertex::PosNormal, lightVertices, 6, lightIndices);
+    OpenGLUtils::createVAO(lightVAO, lightVBO, lightEBO, typeOfVertex::PosNormal, lightVertices, 6, cubeIndices);
 
     std::vector<float> skyboxVertices = {
         // positions         // colors
@@ -916,23 +905,9 @@ int OpenGLSceneRenderer::draw()
         -1.0f, -1.0f,  1.0f,  // bottom left far
         -1.0f,  1.0f,  1.0f,  // top left far
     };
-    std::vector<unsigned int> skyboxIndices = {  // note that we start from 0!
-        0, 1, 3,  // first Triangle
-        1, 2, 3,  // second Triangle
-        0, 1, 4,
-        1, 4, 5,
-        0, 3, 4,
-        3, 4, 7,
-        2, 3, 6,
-        3, 6, 7,
-        4, 5, 6,
-        4, 6, 7,
-        1, 2, 5,
-        2, 5, 6
-    };
 
     unsigned int skyboxVAO, skyboxVBO, skyboxEBO;
-    OpenGLUtils::createVAO(skyboxVAO, skyboxVBO, skyboxEBO, typeOfVertex::OnlyPos, skyboxVertices, 3, skyboxIndices);
+    OpenGLUtils::createVAO(skyboxVAO, skyboxVBO, skyboxEBO, typeOfVertex::OnlyPos, skyboxVertices, 3, cubeIndices);
 
     float GeometryHousesVertexInfo[] = {
         -0.5f, 0.5f, 1.0f, 0.0f, 0.0f,// top - left
@@ -1794,6 +1769,70 @@ int OpenGLSceneRenderer::draw()
 
     glEnable(GL_BLEND);
 
+    int heightmapWidth, heightmapHeight, heightmapNChannels;
+    unsigned char* heightmapData = stbi_load(
+        (FilesystemUtilities::GetResourcesDir() + "textures/Terrain/iceland_heightmap.png").c_str(),
+        &heightmapWidth, &heightmapHeight, &heightmapNChannels, 0);
+
+    // vertex generation
+    std::vector<float> terrainVertices;
+    float yScale = 64.0f / 256.0f, yShift = 16.0f;  // apply a scale+shift to the height data
+    for (unsigned int i = 0; i < heightmapHeight; i++)
+    {
+        for (unsigned int j = 0; j < heightmapWidth; j++)
+        {
+            // retrieve texel for (i,j) tex coord
+            unsigned char* texel = heightmapData + (j + heightmapWidth * i) * heightmapNChannels;
+            // raw height at coordinate
+            unsigned char y = texel[0];
+
+            // vertex
+            terrainVertices.push_back(-heightmapHeight / 2.0f + i);        // v.x
+            terrainVertices.push_back((int)y * yScale - yShift);           // v.y
+            terrainVertices.push_back(-heightmapWidth / 2.0f + j);        // v.z
+        }
+    }
+    stbi_image_free(heightmapData);
+
+    // index generation
+    std::vector<unsigned int> terrainIndices;
+    for (unsigned int i = 0; i < heightmapHeight - 1; i++)       // for each row a.k.a. each strip
+    {
+        for (unsigned int j = 0; j < heightmapWidth; j++)      // for each column
+        {
+            for (unsigned int k = 0; k < 2; k++)      // for each side of the strip
+            {
+                terrainIndices.push_back(j + heightmapWidth * (i + k));
+            }
+        }
+    }
+
+    const unsigned int NUM_STRIPS = heightmapHeight - 1;
+    const unsigned int NUM_VERTS_PER_STRIP = heightmapWidth * 2;
+
+    // register VAO
+    GLuint terrainVAO, terrainVBO, terrainEBO;
+    glGenVertexArrays(1, &terrainVAO);
+    glBindVertexArray(terrainVAO);
+
+    glGenBuffers(1, &terrainVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, terrainVBO);
+    glBufferData(GL_ARRAY_BUFFER,
+        terrainVertices.size() * sizeof(float),       // size of vertices buffer
+        &terrainVertices[0],                          // pointer to first element
+        GL_STATIC_DRAW);
+
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glGenBuffers(1, &terrainEBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, terrainEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+        terrainIndices.size() * sizeof(unsigned int), // size of indices buffer
+        &terrainIndices[0],                           // pointer to first element
+        GL_STATIC_DRAW);
+
     // Our state
     bool show_demo_window = true;
     bool show_another_window = false;
@@ -2131,11 +2170,8 @@ int OpenGLSceneRenderer::draw()
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
 
-        glBindTextures(3, 1, &PBR_AlbedoMap);
-        glBindTextures(4, 1, &PBR_NormalMap);
-        glBindTextures(5, 1, &PBR_MetallicMap);
-        glBindTextures(6, 1, &PBR_RoughnessMap);
-        glBindTextures(7, 1, &PBR_AOMap);
+        const GLuint pbrTextures[] = { PBR_AlbedoMap, PBR_NormalMap, PBR_MetallicMap, PBR_RoughnessMap, PBR_AOMap };
+        glBindTextures(3, 5, pbrTextures);
 
         pbrShader.setVec3("CamPos", camera.Position);
 
@@ -2199,9 +2235,8 @@ int OpenGLSceneRenderer::draw()
         glBindVertexArray(0);
         glDepthFunc(GL_LESS);*/
 
-
-        glBindTextures(0, 1, &normalMappingDiffuseMap);
-        glBindTextures(1, 1, &normalMappingNormalMap);
+        const GLuint normalMappingTextures[] = { normalMappingDiffuseMap, normalMappingNormalMap };
+        glBindTextures(0, 2, normalMappingTextures);
         normalMappingShaderToWorld.use();
         glm::mat4 normalMappingModelToWorld = glm::mat4(1.0f);
         normalMappingModelToWorld = glm::translate(normalMappingModelToWorld, glm::vec3(0.0f, 3.0f, -2.0f));
@@ -2237,9 +2272,8 @@ int OpenGLSceneRenderer::draw()
         normalMappingShaderToLocal.setVec3("pointLight.specular", glm::vec3(1.0f));
         renderTBNQuad();
 
-        glBindTextures(0, 1, &parallaxMappingDiffuseMap);
-        glBindTextures(1, 1, &parallaxMappingNormalMap);
-        glBindTextures(2, 1, &parallaxMappingDepthMap);
+        const GLuint parallaxMappingTextures[] = { parallaxMappingDiffuseMap, parallaxMappingNormalMap, parallaxMappingDepthMap };
+        glBindTextures(0, 3, parallaxMappingTextures);
         parallaxMappingShader.use();
         glm::mat4 parallaxMappingModel = glm::mat4(1.0f);
         parallaxMappingModel = glm::translate(parallaxMappingModel, glm::vec3(0.0f, 3.0f, 0.0f));

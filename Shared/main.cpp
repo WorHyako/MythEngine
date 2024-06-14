@@ -21,8 +21,8 @@ int __stdcall WinMain(
 
     RedirectIOToConsole();
 
-	//Window = new OpenGLWindow();
-    Window = new VulkanWindow();
+	Window = new OpenGLWindow();
+    //Window = new VulkanWindow();
 
     Window->Initialize();
     Window->Run();
