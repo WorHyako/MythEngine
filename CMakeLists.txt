@@ -91,8 +91,8 @@ list(APPEND Shared_Include_Dir
 #######################
 #   Source grouping   #
 #######################
-#create_source_group(${PROJECT_SOURCE_DIR}/Shared)
-#create_source_group(${Platform_Path})
+create_source_group(${PROJECT_SOURCE_DIR}/Shared)
+create_source_group(${Platform_Path})
 
 find_package(Vulkan REQUIRED)
 list(APPEND ThirdParty_Libs
@@ -117,6 +117,7 @@ target_sources(MythEngine
         ${CMAKE_CURRENT_SOURCE_DIR}/Shared/main.cpp
         ${Shared_Sources}
         ${Platform_Sources}
+        ${Editor_Sources}
         ${Rhi_Sources})
 
 target_compile_definitions(MythEngine
