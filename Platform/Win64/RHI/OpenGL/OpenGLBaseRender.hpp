@@ -7,6 +7,7 @@ class OpenGLBaseRender
 {
 public:
 	OpenGLBaseRender(GLApp* app);
+	virtual ~OpenGLBaseRender() = default;
 
 	virtual int draw() = 0;
 	virtual void buildShaders(){};

@@ -10,6 +10,7 @@ class OpenGLLargeSceneRender : public OpenGLBaseRender
 {
 public:
 	OpenGLLargeSceneRender(GLApp* app);
+	~OpenGLLargeSceneRender() override = default;
 
 	virtual int draw() override;
 

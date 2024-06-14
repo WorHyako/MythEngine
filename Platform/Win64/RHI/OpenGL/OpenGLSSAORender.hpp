@@ -9,6 +9,7 @@ class OpenGLSSAORender : public OpenGLBaseRender
 {
 public:
 	OpenGLSSAORender(GLApp* app);
+	~OpenGLSSAORender() override = default;
 
 	virtual int draw() override;
 

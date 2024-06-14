@@ -30,6 +30,7 @@ class OpenGLSceneCompositionRender : public OpenGLBaseRender
 {
 public:
 	OpenGLSceneCompositionRender(GLApp* app);
+	~OpenGLSceneCompositionRender() override = default;
 
 	virtual int draw() override;
 

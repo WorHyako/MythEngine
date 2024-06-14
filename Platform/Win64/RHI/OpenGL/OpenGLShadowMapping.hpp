@@ -9,6 +9,7 @@ class OpenGLShadowMappingRender : public OpenGLBaseRender
 {
 public:
 	OpenGLShadowMappingRender(GLApp* app);
+	~OpenGLShadowMappingRender() override = default;
 
 	virtual int draw() override;
 

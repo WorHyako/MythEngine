@@ -11,6 +11,7 @@ class OpenGLCullingGPURender : public OpenGLBaseRender
 {
 public:
 	OpenGLCullingGPURender(GLApp* app);
+	~OpenGLCullingGPURender() override = default;
 
 	virtual int draw() override;
 
