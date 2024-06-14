@@ -18,6 +18,7 @@
 #include <RHI/OpenGL/OpenGLCullingGPURender.hpp>
 #include <RHI/OpenGL/OpenGLOITransparency.hpp>
 #include <RHI/OpenGL/OpenGLSceneCompositionRender.hpp>
+#include <RHI/OpenGL/OpenGLSceneRenderer.hpp>
 #include <RHI/OpenGL/Framework/GLFWApp.hpp>
 #include <UserInput/GLFW/GLFWUserInput.hpp>
 
@@ -27,7 +28,7 @@ OpenGLWindow::OpenGLWindow()
 	app = new GLApp(&WindowParams);
 	window = app->getWindow();
 
-	render = new OpenGLSceneCompositionRender(app);
+	render = new OpenGLSceneRenderer(app);
 	render->buildBuffers();
 	render->buildShaders();
 
