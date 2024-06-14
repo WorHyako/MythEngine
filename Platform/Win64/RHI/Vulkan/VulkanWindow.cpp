@@ -28,16 +28,16 @@ VulkanWindow::VulkanWindow()
 {
 	//render_ = new VulkanRender();
 
-	vulkanRender_ = new VulkanComputeMeshRender(1600, 900);
+	/*vulkanRender_ = new VulkanComputeMeshRender(1600, 900);
 	window_ = vulkanRender_->GetWindow();
 
     GLFWUserInput* userInput = &GLFWUserInput::GetInput();
     glfwSetWindowUserPointer(window_, userInput);
-    InitializeCallbacks();
+    InitializeCallbacks();*/
 
 	//generateMeshFile();
 	//generateData();
-//	sceneRender_ = new SceneCompositionApp();
+	sceneRender_ = new SceneCompositionApp();
 
 }
 
@@ -53,7 +53,7 @@ int VulkanWindow::Run()
 		render_->Draw();
 	}*/
     static bool doOnce = true;
-#if 1
+#if 0
     if (doOnce)
     {
 		if (vulkanRender_)

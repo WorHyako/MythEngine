@@ -1187,7 +1187,7 @@ int OpenGLSceneRenderer::draw()
     glBindTexture(GL_TEXTURE_2D, 0);
 
     unsigned int hdrRBO;
-    OpenGLUtils::createRenderBufferObject(hdrRBO, SCR_WIDTH, SCR_HEIGHT);
+    OpenGLUtils::createRenderBufferObject(hdrFBO, hdrRBO, SCR_WIDTH, SCR_HEIGHT);
 
     unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
     glDrawBuffers(2, attachments);
@@ -1405,22 +1405,20 @@ int OpenGLSceneRenderer::draw()
     // framebuffer configuration
     // -------------------------
     unsigned int framebuffer;
-    glGenFramebuffers(1, &framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    glCreateFramebuffers(1, &framebuffer);
     // create a color attachment texture
     unsigned int textureColorbuffer;
-    OpenGLUtils::createTextureAttachment(textureColorbuffer, SCR_WIDTH, SCR_HEIGHT);
+    OpenGLUtils::createTextureAttachment(framebuffer, textureColorbuffer, SCR_WIDTH, SCR_HEIGHT);
 
     // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
     unsigned int rbo;
-    OpenGLUtils::createRenderBufferObject(rbo, SCR_WIDTH, SCR_HEIGHT);
+    OpenGLUtils::createRenderBufferObject(framebuffer, rbo, SCR_WIDTH, SCR_HEIGHT);
 
     //GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
     //glDrawBuffers(1, DrawBuffers);
 
-    if (glCheckFramebufferStatus(framebuffer) == GL_FRAMEBUFFER_COMPLETE)
+    if (glCheckNamedFramebufferStatus(framebuffer, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE)
         std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     //glDeleteFramebuffers(1, &framebuffer);
 
     // multisample framebuffer
@@ -1428,10 +1426,10 @@ int OpenGLSceneRenderer::draw()
     glGenFramebuffers(1, &msFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, msFBO);
     unsigned int msFBOColorAttachment;
-    OpenGLUtils::createTextureMultisampleAttachment(msFBOColorAttachment, 2.0f, SCR_WIDTH, SCR_HEIGHT);
+    OpenGLUtils::createTextureMultisampleAttachment(msFBO, msFBOColorAttachment, 2.0f, SCR_WIDTH, SCR_HEIGHT);
 
     unsigned int msFBORenderAttachment;
-    OpenGLUtils::createRenderBufferMultisampleObject(msFBORenderAttachment, SCR_WIDTH, SCR_HEIGHT);
+    OpenGLUtils::createRenderBufferMultisampleObject(msFBO, msFBORenderAttachment, SCR_WIDTH, SCR_HEIGHT);
 
     if (glCheckFramebufferStatus(msFBO) == GL_FRAMEBUFFER_COMPLETE)
         std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
