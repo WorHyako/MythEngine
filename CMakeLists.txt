@@ -91,8 +91,8 @@ list(APPEND Shared_Include_Dir
 #######################
 #   Source grouping   #
 #######################
-create_source_group(${PROJECT_SOURCE_DIR}/Shared)
-create_source_group(${Platform_Path})
+#create_source_group(${PROJECT_SOURCE_DIR}/Shared)
+#create_source_group(${Platform_Path})
 
 find_package(Vulkan REQUIRED)
 list(APPEND ThirdParty_Libs
@@ -106,6 +106,8 @@ sort_library(${ThirdParty_Libs})
 #   Executer   #
 ################
 add_executable(MythEngine ${Os_Flags})
+
+set(VS_STARTUP_PROJECT MythEngine)
 
 list(REMOVE_ITEM Platform_Sources
         /Users/worhyako/Coding/MythEngine/Platform/Win64/RHI/DX12/D3D12Window.hpp
@@ -134,5 +136,3 @@ target_link_libraries(MythEngine
 
 target_compile_features(MythEngine
         PRIVATE cxx_std_20)
-
-set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
