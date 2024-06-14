@@ -155,7 +155,7 @@ if (USE_IMGUIZMO)
 
     group_targets(TARGETS_PATH ${ImGuizmo_Root} CUSTOM_TARGET)
 
-    list(APPEND ThirdParty_Libs imguizmo)
+    list(APPEND ThirdParty_Libs ImGuizmo)
 endif ()
 
 ###########
