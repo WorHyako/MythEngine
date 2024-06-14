@@ -159,10 +159,10 @@ namespace OpenGLUtils
     unsigned int loadTexture2D(char const* path, const Texture2DParam& TexParam);
     unsigned int loadCubemap(std::vector<std::string> faces);
 
-    void createTextureAttachment(unsigned int& texture, const unsigned int width, const unsigned int height);
-    void createTextureMultisampleAttachment(unsigned int& texture, const float sample, const unsigned int width, const unsigned int height);
-    void createRenderBufferObject(unsigned int& rbo, const unsigned int width, const unsigned int height);
-    void createRenderBufferMultisampleObject(unsigned int& rbo, const unsigned int width, const unsigned int height);
+    void createTextureAttachment(unsigned int& framebuffer, unsigned int& texture, const unsigned int width, const unsigned int height);
+    void createTextureMultisampleAttachment(unsigned int& framebuffer, unsigned int& texture, const float sample, const unsigned int width, const unsigned int height);
+    void createRenderBufferObject(unsigned int& framebuffer, unsigned int& rbo, const unsigned int width, const unsigned int height);
+    void createRenderBufferMultisampleObject(unsigned int& framebuffer, unsigned int& rbo, const unsigned int width, const unsigned int height);
     void createVAO(
         unsigned int& VAO,
         unsigned int& VBO,

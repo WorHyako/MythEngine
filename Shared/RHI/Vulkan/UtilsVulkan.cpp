@@ -2582,7 +2582,7 @@ VulkanContextCreator::VulkanContextCreator(VulkanInstance& vk, VulkanRenderDevic
     if (!setupDebugCallbacks(vk.instance, &vk.messenger, &vk.reportCallback))
         exit(EXIT_FAILURE);
 
-    if (!glfwCreateWindowSurface(vk.instance, (GLFWwindow*) window, nullptr, &vk.surface))
+    if (glfwCreateWindowSurface(vk.instance, (GLFWwindow*) window, nullptr, &vk.surface) != VK_SUCCESS)
         exit(EXIT_FAILURE);
 
     if (!initVulkanRenderDevice3(vk, dev, screenWidth, screenHeight, ctxFeatures))

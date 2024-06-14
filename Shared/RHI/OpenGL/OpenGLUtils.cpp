@@ -5,6 +5,7 @@
 #endif
 #include <stb_image.h>
 #include <iostream>
+#include <GL/gl.h>
 
 Texture2DParameter::Texture2DParameter()
 : bLoadHDR(false)
@@ -125,63 +126,51 @@ namespace OpenGLUtils
         return textureID;
     }
 
-    void createTextureAttachment(unsigned int& texture, const unsigned int width, const unsigned int height)
+    void createTextureAttachment(unsigned int& framebuffer, unsigned int& texture, const unsigned int width, const unsigned int height)
     {
-        glGenTextures(1, &texture);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glCreateTextures(GL_TEXTURE_2D, 1, &texture);
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        glTextureStorage2D(texture, 1, GL_RGB8, width, height);
+        //glTextureSubImage2D(texture, 0, 0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
-
-        glBindTexture(GL_TEXTURE_2D, 0);
+        glNamedFramebufferTexture(framebuffer, GL_COLOR_ATTACHMENT0, texture, 0);
 
         //glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, 800, 600, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
 
         //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, texture, 0);
     }
 
-    void createTextureMultisampleAttachment(unsigned int& texture, const float sample, const unsigned int width, const unsigned int height)
+    void createTextureMultisampleAttachment(unsigned int& framebuffer, unsigned int& texture, const float sample, const unsigned int width, const unsigned int height)
     {
-        glGenTextures(1, &texture);
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, texture);
+        glCreateTextures(GL_TEXTURE_2D_MULTISAMPLE, 1, &texture);
 
-        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, sample, GL_RGB, width, height, GL_TRUE);
+        glTextureStorage2DMultisample(texture, sample, GL_RGB8, width, height, GL_TRUE);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, texture, 0);
-
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+        glNamedFramebufferTexture(framebuffer, GL_COLOR_ATTACHMENT0, texture, 0);
     }
 
-    void createRenderBufferObject(unsigned int& rbo, const unsigned int width, const unsigned int height)
+    void createRenderBufferObject(unsigned int& framebuffer, unsigned int& rbo, const unsigned int width, const unsigned int height)
     {
-        glGenRenderbuffers(1, &rbo);
-        glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-
+        glCreateRenderbuffers(1, &rbo);
         // use a single renderbuffer object for both a depth AND stencil buffer
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+        glNamedRenderbufferStorage(rbo, GL_DEPTH24_STENCIL8, width, height);
         // now actually attach it
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
-
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+        glNamedFramebufferRenderbuffer(framebuffer, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
     }
 
-    void createRenderBufferMultisampleObject(unsigned int& rbo, const unsigned int width, const unsigned int height)
+    void createRenderBufferMultisampleObject(unsigned int& framebuffer, unsigned int& rbo, const unsigned int width, const unsigned int height)
     {
-        glGenRenderbuffers(1, &rbo);
-        glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+        glCreateRenderbuffers(1, &rbo);
 
-        glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH24_STENCIL8, width, height);
+        glNamedRenderbufferStorageMultisample(rbo, 4, GL_DEPTH24_STENCIL8, width, height);
 
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
-
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+        glNamedFramebufferRenderbuffer(framebuffer, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
     }
 
     void createVAO(
@@ -237,33 +226,32 @@ namespace OpenGLUtils
     void bindBuffer(unsigned int& buffer)
     {
         std::vector<unsigned int> data = {};
-        glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(unsigned int), NULL, GL_STATIC_DRAW);
+        glNamedBufferData(buffer, data.size() * sizeof(unsigned int), NULL, GL_STATIC_DRAW);
 
-        glBufferSubData(GL_ARRAY_BUFFER, 10, data.size() * sizeof(unsigned int), data.data());
+        glNamedBufferSubData(buffer, 10, data.size() * sizeof(unsigned int), data.data());
 
-        glBindBuffer(GL_ARRAY_BUFFER, buffer);
         // get pointer
-        void* ptr = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+        void* ptr = glMapNamedBuffer(buffer, GL_WRITE_ONLY);
         // now copy data into memory
         memcpy(ptr, data.data(), sizeof(data));
         // make sure to tell OpenGL we're done the pointer
-        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glUnmapNamedBuffer(buffer);
 
         float positions[] = { 1.0f };
         float normals[] = { 1.0f };
         float texs[] = { 1.0f };
         // fill buffer
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(positions), &positions);
-        glBufferSubData(GL_ARRAY_BUFFER, sizeof(positions), sizeof(normals), &normals);
-        glBufferSubData(GL_ARRAY_BUFFER, sizeof(positions) + sizeof(normals), sizeof(texs), &texs);
+        glNamedBufferSubData(buffer, 0, sizeof(positions), &positions);
+        glNamedBufferSubData(buffer, sizeof(positions), sizeof(normals), &normals);
+        glNamedBufferSubData(buffer, sizeof(positions) + sizeof(normals), sizeof(texs), &texs);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(sizeof(positions)));
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)(sizeof(positions) + sizeof(normals)));
 
         unsigned int vbo1, vbo2;
-        glGenBuffers(1, &vbo1);
-        glGenBuffers(2, &vbo2);
+        glCreateBuffers(1, &vbo1);
+        glCreateBuffers(2, &vbo2);
         glCopyNamedBufferSubData(vbo1, vbo2, 0, 0, 8 * sizeof(float));
     }
 }

@@ -23,9 +23,12 @@
 #include <RHI/Vulkan/VulkanSceneCompositionRender.hpp>
 #include <UserInput/GLFW/GLFWUserInput.hpp>
 
+#define USE_VULKAN_SIMPLE_RENDERER 0
+
 VulkanWindow::VulkanWindow()
 	:WindowInterface()
 {
+#if USE_VULKAN_SIMPLE_RENDERER
 	//render_ = new VulkanRender();
 
 	vulkanRender_ = new VulkanComputeMeshRender(1600, 900);
@@ -35,10 +38,11 @@ VulkanWindow::VulkanWindow()
     glfwSetWindowUserPointer(window_, userInput);
     InitializeCallbacks();
 
+#else
 	//generateMeshFile();
 	//generateData();
-//	sceneRender_ = new SceneCompositionApp();
-
+	sceneRender_ = new SceneCompositionApp();
+#endif
 }
 
 VulkanWindow::~VulkanWindow()
@@ -53,7 +57,7 @@ int VulkanWindow::Run()
 		render_->Draw();
 	}*/
     static bool doOnce = true;
-#if 1
+#if USE_VULKAN_SIMPLE_RENDERER
     if (doOnce)
     {
 		if (vulkanRender_)

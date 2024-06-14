@@ -28,7 +28,7 @@ OpenGLWindow::OpenGLWindow()
 	app = new GLApp(&WindowParams);
 	window = app->getWindow();
 
-	render = new OpenGLSceneRenderer(app);
+	render = new OpenGLSceneCompositionRender(app);
 	render->buildBuffers();
 	render->buildShaders();
 
