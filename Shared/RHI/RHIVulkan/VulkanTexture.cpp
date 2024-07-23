@@ -1,0 +1,692 @@
+#include <RHI/RHIVulkan/VulkanBackend.hpp>
+
+#include <UtilsCubemap.hpp>
+#include <imgui.h>
+
+namespace RHI::Vulkan
+{
+    VkFormat VulkanDevice::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+    {
+        for (VkFormat format : candidates)
+        {
+            VkFormatProperties props;
+            vkGetPhysicalDeviceFormatProperties(ctx_.vkDev.physicalDevice, format, &props);
+
+            if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+            {
+                return format;
+            }
+            else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+            {
+                return format;
+            }
+        }
+
+        printf("failed to find supported format!\n");
+        exit(0);
+    }
+
+    uint32_t VulkanDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+    {
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(ctx_.vkDev.physicalDevice, &memProperties);
+
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+        {
+            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+            {
+                return i;
+            }
+        }
+
+        return 0xFFFFFFFF;
+    }
+
+    VkFormat VulkanDevice::findDepthFormat()
+    {
+        return findSupportedFormat(
+            { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+        );
+    }
+
+    bool hasStencilComponent(VkFormat format)
+    {
+        return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+    }
+
+    VulkanTexture VulkanDevice::addRGBATexture(int texWidth, int texHeight, void* data)
+    {
+        VulkanTexture tex;
+        tex.width = texWidth;
+        tex.height = texHeight;
+        tex.depth = 1;
+        tex.format = VK_FORMAT_R8G8B8A8_UNORM;
+        if (!createTextureImageFromData(tex.image.image, tex.image.imageMemory,
+            data, texWidth, texHeight, tex.format))
+        {
+            printf("Cannot create solid texture\n");
+            exit(EXIT_FAILURE);
+        }
+
+        transitionImageLayout(ctx_.vkDev, tex.image.image, tex.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        if (!createImageView(tex.image.image, tex.format, VK_IMAGE_ASPECT_COLOR_BIT, &tex.image.imageView))
+        {
+            printf("Cannot create image view for 2d texture\n");
+            exit(EXIT_FAILURE);
+        }
+
+        createTextureSampler(&tex.sampler);
+        resources_.allTextures.push_back(tex);
+        return tex;
+    }
+
+    VulkanTexture VulkanDevice::addSolidRGBATexture(uint32_t color)
+    {
+        VulkanTexture tex;
+        tex.width = 1;
+        tex.height = 1;
+        tex.depth = 1;
+        tex.format = VK_FORMAT_R8G8B8A8_UNORM;
+        if (!createTextureImageFromData(tex.image.image, tex.image.imageMemory,
+            &color, 1, 1, tex.format))
+        {
+            printf("Cannot create solid texture\n");
+            exit(EXIT_FAILURE);
+        }
+
+        transitionImageLayout(vkDev, tex.image.image, tex.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        if (!createImageView(tex.image.image, tex.format, VK_IMAGE_ASPECT_COLOR_BIT, &tex.image.imageView))
+        {
+            printf("Cannot create image view for solid texture\n");
+            exit(EXIT_FAILURE);
+        }
+
+        createTextureSampler(&tex.sampler);
+        resources_.allTextures.push_back(tex);
+
+        return tex;
+    }
+
+    VulkanTexture VulkanDevice::addColorTexture(int texWidth, int texHeight, VkFormat colorFormat, VkFilter minFilter, VkFilter maxFilter, VkSamplerAddressMode addressMode)
+    {
+        const uint32_t w = (texWidth > 0) ? texWidth : ctx_.vkDev.framebufferWidth;
+        const uint32_t h = (texHeight > 0) ? texHeight : ctx_.vkDev.framebufferHeight;
+
+        VulkanTexture res{};
+        res.width = w;
+        res.height = h;
+        res.depth = 1;
+        res.format = colorFormat;
+
+        if (!createOffscreenImage(
+            res.image.image, res.image.imageMemory,
+            w, h, colorFormat, 1, 0))
+        {
+            printf("Cannot create color texture\n");
+            exit(EXIT_FAILURE);
+        }
+
+        createImageView(res.image.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, &res.image.imageView);
+        createTextureSampler(&res.sampler, minFilter, maxFilter, addressMode);
+
+        transitionImageLayout(vkDev, res.image.image, colorFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        resources_.allTextures.push_back(res);
+        return res;
+    }
+
+    VulkanTexture VulkanDevice::addDepthTexture(int texWidth, int texHeight, VkImageLayout layout)
+    {
+        const uint32_t w = (texWidth > 0) ? texWidth : ctx_.vkDev.framebufferWidth;
+        const uint32_t h = (texHeight > 0) ? texHeight : ctx_.vkDev.framebufferHeight;
+
+        const VkFormat depthFormat = findDepthFormat();
+
+        VulkanTexture depth{};
+        depth.width = w;
+        depth.height = h;
+        depth.depth = 1;
+        depth.format = depthFormat;
+
+        if (!createImage(w, h, depthFormat,
+            VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth.image.image, depth.image.imageMemory))
+        {
+            printf("Cannot create depth texture\n");
+            exit(EXIT_FAILURE);
+        }
+
+        createImageView(depth.image.image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, &depth.image.imageView);
+        transitionImageLayout(vkDev, depth.image.image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, layout/*VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL*/);
+
+        if (!createDepthSampler(&depth.sampler))
+        {
+            printf("Cannot create a depth sampler");
+            exit(EXIT_FAILURE);
+        }
+
+        resources_.allTextures.push_back(depth);
+        return depth;
+    }
+
+    bool VulkanDevice::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory, VkImageCreateFlags flags, uint32_t mipLevels)
+    {
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.pNext = nullptr;
+        imageInfo.flags = flags;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.format = format;
+        imageInfo.extent = VkExtent3D{ width, height, 1 };
+        imageInfo.mipLevels = mipLevels;
+        imageInfo.arrayLayers = (uint32_t)((flags == VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) ? 6 : 1);
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.tiling = tiling;
+        imageInfo.usage = usage;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        imageInfo.queueFamilyIndexCount = 0;
+        imageInfo.pQueueFamilyIndices = nullptr;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        VK_CHECK(vkCreateImage(ctx_.vkDev.device, &imageInfo, nullptr, &image));
+
+        VkMemoryRequirements memRequirements;
+        vkGetImageMemoryRequirements(ctx_.vkDev.device, image, &memRequirements);
+
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.pNext = nullptr;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+
+        VK_CHECK(vkAllocateMemory(ctx_.vkDev.device, &allocInfo, nullptr, &imageMemory));
+
+        vkBindImageMemory(ctx_.vkDev.device, image, imageMemory, 0);
+        return true;
+    }
+
+    bool VulkanDevice::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView, VkImageViewType viewType, uint32_t layerCount, uint32_t mipLevels)
+    {
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.pNext = nullptr;
+        viewInfo.flags = 0;
+        viewInfo.image = image;
+        viewInfo.viewType = viewType;
+        viewInfo.format = format;
+        viewInfo.subresourceRange.aspectMask = aspectFlags;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = mipLevels;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = layerCount;
+
+        return (vkCreateImageView(ctx_.vkDev.device, &viewInfo, nullptr, imageView) == VK_SUCCESS);
+    }
+
+    bool VulkanDevice::createTextureSampler(VkSampler* sampler, VkFilter minFilter, VkFilter magFilter, VkSamplerAddressMode addressMode)
+    {
+        VkSamplerCreateInfo samplerInfo{};
+        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        samplerInfo.pNext = nullptr;
+        samplerInfo.flags = 0;
+        samplerInfo.magFilter = magFilter;
+        samplerInfo.minFilter = minFilter;
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        samplerInfo.addressModeU = addressMode; // VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        samplerInfo.addressModeV = addressMode; // VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        samplerInfo.addressModeW = addressMode; // VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        samplerInfo.mipLodBias = 0.0f;
+        samplerInfo.anisotropyEnable = VK_FALSE;
+        samplerInfo.maxAnisotropy = 1;
+        samplerInfo.compareEnable = VK_FALSE;
+        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+        samplerInfo.minLod = 0.0f;
+        samplerInfo.maxLod = 0.0f;
+        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        samplerInfo.unnormalizedCoordinates = VK_FALSE;
+
+        return (vkCreateSampler(ctx_.vkDev.device, &samplerInfo, nullptr, sampler) == VK_SUCCESS);
+    }
+
+    bool VulkanDevice::createDepthSampler(VkSampler* sampler)
+    {
+        VkSamplerCreateInfo si{};
+        si.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        si.pNext = nullptr;
+        si.magFilter = VK_FILTER_LINEAR;
+        si.minFilter = VK_FILTER_LINEAR;
+        si.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        si.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        si.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        si.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        si.mipLodBias = 0.0f;
+        si.maxAnisotropy = 1.0f;
+        si.minLod = 0.0f;
+        si.maxLod = 1.0f;
+        si.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+
+        return (vkCreateSampler(ctx_.vkDev.device, &si, nullptr, sampler) == VK_SUCCESS);
+    }
+
+    /** Offscreen rendering helpers */
+    bool VulkanDevice::createOffscreenImage(
+        VkImage& textureImage, VkDeviceMemory& textureImageMemory,
+        uint32_t texWidth, uint32_t texHeight,
+        VkFormat texFormat,
+        uint32_t layerCount, VkImageCreateFlags flags)
+    {
+        return createImage(texWidth, texHeight, texFormat, VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT /* necessary only for screenshot */ | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory, flags);
+    }
+
+    void VulkanDevice::destroyVulkanTexture(VulkanTexture& texture)
+    {
+        destroyVulkanImage(texture.image);
+        vkDestroySampler(ctx_.vkDev.device, texture.sampler, nullptr);
+    }
+
+    void VulkanDevice::destroyVulkanImage(VulkanImage& image)
+    {
+        vkDestroyImageView(ctx_.vkDev.device, image.imageView, nullptr);
+        vkDestroyImage(ctx_.vkDev.device, image.image, nullptr);
+        vkFreeMemory(ctx_.vkDev.device, image.imageMemory, nullptr);
+    }
+
+    bool VulkanDevice::createTextureImage(const char* filename, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* outTexWidth, uint32_t* outTexHeight)
+    {
+        int texWidth, texHeight, texChannels;
+        stbi_uc* pixels = stbi_load(filename, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+
+        if (!pixels)
+        {
+            printf("Failed to load [%s] texture\n", filename); fflush(stdout);
+            return false;
+        }
+
+        bool result = createTextureImageFromData(textureImage, textureImageMemory, pixels, texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM);
+
+        stbi_image_free(pixels);
+
+        if (outTexWidth && outTexHeight)
+        {
+            *outTexWidth = (uint32_t)texWidth;
+            *outTexHeight = (uint32_t)texHeight;
+        }
+
+        return result;
+    }
+
+    bool VulkanDevice::createMIPTextureImage(const char* filename, uint32_t mipLevels, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* width, uint32_t* height)
+    {
+        int texWidth, texHeight, texChannels;
+        stbi_uc* pixels = stbi_load(filename, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+
+        if (!pixels)
+        {
+            printf("Failed to load [%s] texture\n", filename); fflush(stdout);
+            return false;
+        }
+
+        uint32_t imgSize = texWidth * texHeight * texChannels;
+        uint32_t mipSize = (imgSize * 3) >> 1;
+        std::vector<uint8_t> mipData(mipSize);
+
+        uint8_t* dst = mipData.data();
+        uint8_t* src = dst;
+        memcpy(dst, pixels, imgSize);
+
+        uint32_t w = texWidth, h = texHeight;
+        for (uint32_t i = 1; i < mipLevels; i++)
+        {
+            dst += (w * h * texChannels) >> 2;
+
+            stbir_resize_uint8(src, w, h, 0,
+                dst, w / 2, h / 2, 0, texChannels);
+
+            w >>= 1;
+            h >>= 1;
+            src = dst;
+        }
+
+        bool result = createMIPTextureImageFromData(ctx_.vkDev, textureImage, textureImageMemory,
+            mipData.data(), mipLevels, texWidth, texHeight,
+            VK_FORMAT_R8G8B8A8_UNORM);
+
+        stbi_image_free(pixels);
+
+        if (width && height)
+        {
+            *width = texWidth;
+            *height = texHeight;
+        }
+
+        return true;
+    }
+
+    bool VulkanDevice::createCubeTextureImage(const char* filename, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* width, uint32_t* height)
+    {
+        int w, h, comp;
+        const float* img = stbi_loadf(filename, &w, &h, &comp, 3);
+        std::vector<float> img32(w * h * 4);
+
+        float24to32(w, h, img, img32.data());
+
+        if (!img)
+        {
+            printf("Failed to load [%s] texture\n", filename); fflush(stdout);
+            return false;
+        }
+
+        stbi_image_free((void*)img);
+
+        Bitmap in(w, h, 4, eBitmapFormat_Float, img32.data());
+        Bitmap out = convertEquirectangularMapToVerticalCross(in);
+
+        Bitmap cube = convertVerticalCrossToCubeMapFaces(out);
+
+        if (width && height)
+        {
+            *width = w;
+            *height = h;
+        }
+
+        return createTextureImageFromData(textureImage, textureImageMemory,
+            cube.data_.data(), cube.w_, cube.h_,
+            VK_FORMAT_R32G32B32A32_SFLOAT,
+            6, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+    }
+
+    bool VulkanDevice::createMIPCubeTextureImage(const char* filename, uint32_t mipLevels, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* width, uint32_t* height)
+    {
+        int comp;
+        int texWidth, texHeight;
+        const float* img = stbi_loadf(filename, &texWidth, &texHeight, &comp, 3);
+
+        if (!img) {
+            printf("Failed to load [%s] texture\n", filename); fflush(stdout);
+            return false;
+        }
+
+        uint32_t imageSize = texWidth * texHeight * 4;
+        uint32_t mipSize = imageSize * 6;
+
+        uint32_t w = texWidth, h = texHeight;
+        for (uint32_t i = 1; i < mipLevels; i++)
+        {
+            imageSize = w * h * 4;
+            w >>= 1;
+            h >>= 1;
+            mipSize += imageSize;
+        }
+
+        std::vector<float> mipData(mipSize);
+        float* src = mipData.data();
+        float* dst = mipData.data();
+
+        w = texWidth;
+        h = texHeight;
+        float24to32(w, h, img, dst);
+
+        for (uint32_t i = 1; i < mipLevels; i++)
+        {
+            imageSize = w * h * 4;
+            dst += w * h * 4;
+            stbir_resize_float_generic(
+                src, w, h, 0, dst, w / 2, h / 2, 0, 4,
+                STBIR_ALPHA_CHANNEL_NONE, 0, STBIR_EDGE_CLAMP, STBIR_FILTER_CUBICBSPLINE, STBIR_COLORSPACE_LINEAR, nullptr);
+
+            w >>= 1;
+            h >>= 1;
+            src = dst;
+        }
+
+        src = mipData.data();
+        dst = mipData.data();
+
+        std::vector<float> mipCube(mipSize * 6);
+        float* mip = mipCube.data();
+
+        w = texWidth;
+        h = texHeight;
+        uint32_t faceSize = w / 4;
+        for (uint32_t i = 0; i < mipLevels; i++)
+        {
+            Bitmap in(w, h, 4, eBitmapFormat_Float, src);
+            Bitmap out = convertEquirectangularMapToVerticalCross(in);
+            Bitmap cube = convertVerticalCrossToCubeMapFaces(out);
+
+            imageSize = faceSize * faceSize * 4;
+
+            memcpy(mip, cube.data_.data(), 6 * imageSize * sizeof(float));
+            mip += imageSize * 6;
+
+            src += w * h * 4;
+            w >>= 1;
+            h >>= 1;
+        }
+
+        stbi_image_free((void*)img);
+
+        if (width && height)
+        {
+            *width = texWidth;
+            *height = texHeight;
+        }
+
+        return createMIPTextureImageFromData(
+            textureImage, textureImageMemory,
+            mipCube.data(), mipLevels, faceSize, faceSize,
+            VK_FORMAT_R32G32B32A32_SFLOAT,
+            6, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+    }
+
+    bool VulkanDevice::createTextureImageFromData(
+        VkImage& textureImage, VkDeviceMemory& textureImageMemory,
+        void* imageData, uint32_t texWidth, uint32_t texHeight,
+        VkFormat texFormat,
+        uint32_t layerCount, VkImageCreateFlags flags)
+    {
+        createImage(texWidth, texHeight, texFormat, VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            textureImage, textureImageMemory, flags);
+
+        return updateTextureImage(textureImage, textureImageMemory, texWidth, texHeight, texFormat, layerCount, imageData);
+    }
+
+    bool VulkanDevice::createMIPTextureImageFromData(
+        VkImage& textureImage, VkDeviceMemory& textureImageMemory,
+        void* mipData, uint32_t mipLevels, uint32_t texWidth, uint32_t texHeight,
+        VkFormat texFormat,
+        uint32_t layerCount, VkImageCreateFlags flags)
+    {
+        createImage(
+            texWidth, texHeight, texFormat,
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            textureImage, textureImageMemory, flags, mipLevels);
+
+        // now allocate staging buffer for all MIP levels
+        uint32_t bytesPerPixel = bytesPerTexFormat(texFormat);
+
+        VkDeviceSize layerSize = texWidth * texHeight * bytesPerPixel;
+        VkDeviceSize imageSize = layerSize * layerCount;
+
+        uint32_t w = texWidth, h = texHeight;
+        for (uint32_t i = 1; i < mipLevels; i++)
+        {
+            w >>= 1;
+            h >>= 1;
+            imageSize += w * h * bytesPerPixel * layerCount;
+        }
+
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+        uploadBufferData(stagingBufferMemory, 0, mipData, imageSize);
+
+        transitionImageLayout(vkDev, textureImage, texFormat, VK_IMAGE_LAYOUT_UNDEFINED/*sourceImageLayout*/, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layerCount, mipLevels);
+        copyMIPBufferToImage(vkDev, stagingBuffer, textureImage, mipLevels, texWidth, texHeight, bytesPerPixel, layerCount);
+        transitionImageLayout(vkDev, textureImage, texFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layerCount, mipLevels);
+
+        vkDestroyBuffer(ctx_.vkDev.device, stagingBuffer, nullptr);
+        vkFreeMemory(ctx_.vkDev.device, stagingBufferMemory, nullptr);
+
+        return true;
+    }
+
+    static void float24to32(int w, int h, const float* img24, float* img32)
+    {
+        const int numPixels = w * h;
+        for (int i = 0; i != numPixels; i++)
+        {
+            *img32++ = *img24++;
+            *img32++ = *img24++;
+            *img32++ = *img24++;
+            *img32++ = 1.0f;
+        }
+    }
+
+    bool VulkanDevice::updateTextureImage(VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t texWidth, uint32_t texHeight, VkFormat texFormat, uint32_t layerCount, const void* imageData, VkImageLayout sourceImageLayout)
+    {
+        uint32_t bytesPerPixel = bytesPerTexFormat(texFormat);
+
+        VkDeviceSize layerSize = texWidth * texHeight * bytesPerPixel;
+        VkDeviceSize imageSize = layerSize * layerCount;
+
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+        uploadBufferData(stagingBufferMemory, 0, imageData, imageSize);
+
+        transitionImageLayout(vkDev, textureImage, texFormat, sourceImageLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layerCount);
+        copyBufferToImage(vkDev, stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), layerCount);
+        transitionImageLayout(vkDev, textureImage, texFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layerCount);
+
+        vkDestroyBuffer(ctx_.vkDev.device, stagingBuffer, nullptr);
+        vkFreeMemory(ctx_.vkDev.device, stagingBufferMemory, nullptr);
+
+        return true;
+    }
+
+
+    VulkanTexture VulkanDevice::loadCubemap(const char* fileName, uint32_t mipLevels)
+    {
+        VulkanTexture cubemap;
+
+        uint32_t w = 0, h = 0;
+
+        if (mipLevels > 1)
+            createMIPCubeTextureImage(fileName, mipLevels, cubemap.image.image, cubemap.image.imageMemory, &w, &h);
+        else
+            createCubeTextureImage(fileName, cubemap.image.image, cubemap.image.imageMemory, &w, &h);
+
+        createImageView(cubemap.image.image, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, &cubemap.image.imageView, VK_IMAGE_VIEW_TYPE_CUBE, 6, mipLevels);
+        createTextureSampler(&cubemap.sampler);
+
+        cubemap.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+
+        cubemap.width = w;
+        cubemap.height = h;
+        cubemap.depth = 1;
+
+        resources_.allTextures.push_back(cubemap);
+        return cubemap;
+    }
+
+    VulkanTexture VulkanDevice::loadKTX(const char* fileName)
+    {
+        gli::texture gliTex = gli::load_ktx(fileName);
+        gli::tvec3<uint32_t> extent(gliTex.extent(0));
+
+        VulkanTexture ktx{};
+        ktx.width = extent.x;
+        ktx.height = extent.y;
+        ktx.depth = 4;
+
+        if (!createTextureImageFromData(ctx_.vkDev, ktx.image.image, ktx.image.imageMemory,
+            (uint8_t*)gliTex.data(0, 0, 0), ktx.width, ktx.height, VK_FORMAT_R16G16_SFLOAT))
+        {
+            printf("ModelRenderer: failed to load BRDF LUT texture \n");
+            exit(EXIT_FAILURE);
+        }
+
+        createImageView(ktx.image.image, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, &ktx.image.imageView);
+        createTextureSampler(&ktx.sampler, VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+        resources_.allTextures.push_back(ktx);
+
+        return ktx;
+    }
+
+    VulkanTexture VulkanDevice::loadTexture2D(const char* fileName)
+    {
+        VulkanTexture tex;
+        if (!createTextureImage(fileName, tex.image.image, tex.image.imageMemory, &tex.width, &tex.height))
+        {
+            printf("Cannot load %s 2D texture file\n", fileName);
+            exit(EXIT_FAILURE);
+        }
+
+        VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
+        transitionImageLayout(vkDev, tex.image.image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        if (!createImageView(tex.image.image, format, VK_IMAGE_ASPECT_COLOR_BIT, &tex.image.imageView))
+        {
+            printf("Cannot create image view for 2d texture (%s)\n", fileName);
+            exit(EXIT_FAILURE);
+        }
+
+        createTextureSampler(&tex.sampler);
+        resources_.allTextures.push_back(tex);
+        return tex;
+    }
+
+
+    VulkanTexture VulkanDevice::createFontTexture(const char* fontFile)
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        VulkanImage img{};
+        img.image = VK_NULL_HANDLE;
+        VulkanTexture res{};
+        res.image = img;
+
+        // Build texture atlas
+        ImFontConfig cfg = ImFontConfig();
+        cfg.FontDataOwnedByAtlas = false;
+        cfg.RasterizerMultiply = 1.5f;
+        cfg.SizePixels = 768.0f / 32.0f;
+        cfg.PixelSnapH = true;
+        cfg.OversampleH = 4;
+        cfg.OversampleV = 4;
+        ImFont* Font = io.Fonts->AddFontFromFileTTF(fontFile, cfg.SizePixels, &cfg);
+
+
+        unsigned char* pixels = nullptr;
+        int texWidth = 1, texHeight = 1;
+        io.Fonts->GetTexDataAsRGBA32(&pixels, &texWidth, &texHeight);
+
+        if (!pixels || !createTextureImageFromData(res.image.image, res.image.imageMemory, pixels, texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM))
+        {
+            printf("Failed to load texture\n"); fflush(stdout);
+            return res;
+        }
+
+        createImageView(res.image.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, &res.image.imageView);
+        createTextureSampler(&res.sampler);
+
+        /* This is not strictly necessary, a font can be any texture */
+        io.Fonts->TexID = (ImTextureID)0;
+        io.FontDefault = Font;
+        io.DisplayFramebufferScale = ImVec2(1, 1);
+
+        resources_.allTextures.push_back(res);
+        return res;
+    }
+}
