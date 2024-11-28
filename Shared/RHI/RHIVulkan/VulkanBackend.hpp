@@ -62,15 +62,17 @@ namespace RHI::Vulkan
 #endif
 	};
 
-	struct VulkanWindow : public IWindow
+	Resolution detectResolution(int width, int height);
+
+	struct GLFWWindow : public IWindow
 	{
-		VulkanWindow(Resolution resolution)
+		GLFWWindow(Resolution resolution)
 			: IWindow(resolution)
 		{
 			window_ = glfwCreateWindow(resolution.width, resolution.height, "VulkanApp", nullptr, nullptr);
 		}
 
-		~VulkanWindow() override
+		~GLFWWindow() override
 		{
 			window_ = nullptr;
 		}
@@ -79,6 +81,10 @@ namespace RHI::Vulkan
 		{
 			return window_;
 		}
+
+		virtual void setWindowUserPointer(void* pointer) override;
+		virtual void assignCallbacks() override;
+
 	private:
 		GLFWwindow* window_;
 	};
@@ -90,13 +96,13 @@ namespace RHI::Vulkan
 		~VulkanRHIModule() override = default;
 
 		virtual IDynamicRHI* createRHI() override;
-		VulkanWindow* getWindowInterface() override
+		GLFWWindow* getWindowInterface() override
 		{
 			return window_;
 		}
 
 	private:
-		VulkanWindow* window_;
+		GLFWWindow* window_;
 	};
 
 	struct VulkanInstance final
@@ -206,7 +212,7 @@ namespace RHI::Vulkan
 
 	struct VulkanDynamicRHI : public IDynamicRHI
 	{
-		VulkanDynamicRHI(VulkanWindow* window);
+		VulkanDynamicRHI(GLFWWindow* window);
 		~VulkanDynamicRHI();
 
 		void createInstance();
@@ -219,7 +225,7 @@ namespace RHI::Vulkan
 		VulkanRenderDevice vkDev;
 		VulkanRenderContext ctx;
 	private:
-		VulkanWindow* window_;
+		GLFWWindow* window_;
 	};
 
 	struct SwapchainSupportDetails final

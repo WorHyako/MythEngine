@@ -109,6 +109,9 @@ namespace RHI
 	        return resolution_;
         }
 
+        virtual void setWindowUserPointer(void* pointer) = 0;
+        virtual void assignCallbacks() = 0;
+
     private:
         Resolution resolution_;
     };

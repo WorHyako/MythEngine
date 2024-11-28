@@ -10,9 +10,6 @@ const bool enableValidationFeaturesEnabled = false;
 const bool enableValidationFeaturesDisabled = true;
 #endif
 
-const int SCREEN_WIDTH = 1920;
-const int SCREEN_HEIGHT = 1080;
-
 namespace RHI::Vulkan
 {
     Resolution detectResolution(int width, int height)
@@ -34,6 +31,58 @@ namespace RHI::Vulkan
         return Resolution{ windowW, windowH };
     }
 
+    void GLFWWindow::setWindowUserPointer(void* pointer)
+    {
+        if (window_)
+        {
+            glfwSetWindowUserPointer(window_, pointer);
+        }
+    }
+
+    void GLFWWindow::assignCallbacks()
+    {
+        glfwSetCursorPosCallback(
+            window_,
+            [](GLFWwindow* window, double x, double y)
+            {
+                ImGui::GetIO().MousePos = ImVec2((float)x, (float)y);
+                int width, height;
+                glfwGetFramebufferSize(window, &width, &height);
+
+                void* ptr = glfwGetWindowUserPointer(window);
+                const float mx = static_cast<float>(x / width);
+                const float my = static_cast<float>(y / height);
+                reinterpret_cast<VulkanApp*>(ptr)->handleMouseMove(mx, my);
+            }
+        );
+
+        glfwSetMouseButtonCallback(
+            window_,
+            [](GLFWwindow* window, int button, int action, int mods)
+            {
+                auto& io = ImGui::GetIO();
+                const int idx = button == GLFW_MOUSE_BUTTON_LEFT ? 0 : button == GLFW_MOUSE_BUTTON_RIGHT ? 2 : 1;
+                io.MouseDown[idx] = action == GLFW_PRESS;
+
+                void* ptr = glfwGetWindowUserPointer(window);
+                reinterpret_cast<VulkanApp*>(ptr)->handleMouseClick(button, action == GLFW_PRESS);
+            }
+        );
+
+        glfwSetKeyCallback(
+            window_,
+            [](GLFWwindow* window, int key, int scancode, int action, int mods)
+            {
+                const bool pressed = action != GLFW_RELEASE;
+                if (key == GLFW_KEY_ESCAPE && pressed)
+                    glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+                void* ptr = glfwGetWindowUserPointer(window);
+                reinterpret_cast<VulkanApp*>(ptr)->handleKey(key, pressed);
+            }
+        );
+    }
+
     VulkanRHIModule::VulkanRHIModule()
 	    : IRHIModule()
     {
@@ -46,16 +95,6 @@ namespace RHI::Vulkan
 
         if (!glfwVulkanSupported())
             exit(EXIT_FAILURE);
-
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-
-        window_ = new VulkanWindow(detectResolution(SCREEN_WIDTH, SCREEN_HEIGHT));
-        if (!window_->getWindow())
-        {
-            glfwTerminate();
-            exit(EXIT_FAILURE);
-        }
     }
 
 	IDynamicRHI* VulkanRHIModule::createRHI()
@@ -64,7 +103,7 @@ namespace RHI::Vulkan
 		return VulkanRHI;
 	}
 
-	VulkanDynamicRHI::VulkanDynamicRHI(VulkanWindow* window)
+	VulkanDynamicRHI::VulkanDynamicRHI(GLFWWindow* window)
 		: ctx(vk, vkDev, initializeContextExtensions(), initializeContextFeatures())
 		, window_(window)
 	{

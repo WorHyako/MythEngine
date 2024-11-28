@@ -10,6 +10,8 @@
 #include <RHI/OpenGL/OpenGLWindow.hpp>
 #include <RHI/Vulkan/VulkanWindow.hpp>
 
+#define USE_VULKAN_RHI 0
+
 int __stdcall WinMain(
     HINSTANCE hInstance,
     HINSTANCE hPrevInstance,
@@ -17,15 +19,19 @@ int __stdcall WinMain(
     int nCmdShow
 )
 {
+#if USE_VULKAN_RHI
+
+#else
     mythSystem::WindowInterface* Window;
 
     RedirectIOToConsole();
 
-	//Window = new OpenGLWindow();
+    //Window = new OpenGLWindow();
     Window = new VulkanWindow();
 
     Window->Initialize();
     Window->Run();
+#endif
 };
 #endif
 
