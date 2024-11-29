@@ -9,10 +9,11 @@
 #define GLFW_INCLUDE_VULKAN
 #include <map>
 #include <string>
-#include <GLFW/glfw3.h>
 
 #include <glslang/Include/glslang_c_interface.h>
 #include <glslang/Public/resource_limits_c.h>
+
+#include <GLFW/glfw3.h>
 
 #include "RHICommon.hpp"
 
@@ -62,33 +63,6 @@ namespace RHI::Vulkan
 #endif
 	};
 
-	Resolution detectResolution(int width, int height);
-
-	struct GLFWWindow : public IWindow
-	{
-		GLFWWindow(Resolution resolution)
-			: IWindow(resolution)
-		{
-			window_ = glfwCreateWindow(resolution.width, resolution.height, "VulkanApp", nullptr, nullptr);
-		}
-
-		~GLFWWindow() override
-		{
-			window_ = nullptr;
-		}
-
-		GLFWwindow* getWindow()
-		{
-			return window_;
-		}
-
-		virtual void setWindowUserPointer(void* pointer) override;
-		virtual void assignCallbacks() override;
-
-	private:
-		GLFWwindow* window_;
-	};
-
 	class VulkanRHIModule : public IRHIModule
 	{
 	public:
@@ -96,13 +70,14 @@ namespace RHI::Vulkan
 		~VulkanRHIModule() override = default;
 
 		virtual IDynamicRHI* createRHI() override;
-		GLFWWindow* getWindowInterface() override
+
+		GLFWwindow* getWindowInterface() override
 		{
 			return window_;
 		}
 
 	private:
-		GLFWWindow* window_;
+		GLFWwindow* window_;
 	};
 
 	struct VulkanInstance final
@@ -212,7 +187,7 @@ namespace RHI::Vulkan
 
 	struct VulkanDynamicRHI : public IDynamicRHI
 	{
-		VulkanDynamicRHI(GLFWWindow* window);
+		VulkanDynamicRHI(GLFWwindow* window);
 		~VulkanDynamicRHI();
 
 		void createInstance();
@@ -225,7 +200,7 @@ namespace RHI::Vulkan
 		VulkanRenderDevice vkDev;
 		VulkanRenderContext ctx;
 	private:
-		GLFWWindow* window_;
+		GLFWwindow* window_;
 	};
 
 	struct SwapchainSupportDetails final

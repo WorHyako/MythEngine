@@ -6,19 +6,37 @@
 
 namespace mythSystem
 {
+    struct Resolution
+    {
+        uint32_t width = 0;
+        uint32_t height = 0;
+    };
 
     class WindowInterface
     {
     public:
-        WindowInterface();
+        WindowInterface(Resolution resolution);
         virtual ~WindowInterface();
 
         virtual bool Initialize();
 
         virtual int Run();
 
+        virtual Resolution& getResolution()
+        {
+            return resolution_;
+        }
+
+        virtual void setWindowUserPointer(void* pointer) = 0;
+        virtual void assignCallbacks() = 0;
+
+        virtual void handleKey(int key, bool pressed) = 0;
+        virtual void handleMouseClick(int button, bool pressed) = 0;
+        virtual void handleMouseMove(float mx, float my) = 0;
+
     protected:
         WindowParameters WindowParams;
+        Resolution resolution_;
     };
 
 };// namespace mythSystem

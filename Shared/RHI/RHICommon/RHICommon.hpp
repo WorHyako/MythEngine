@@ -90,32 +90,6 @@ namespace RHI
         COUNT,
     };
 
-    struct Resolution
-    {
-        uint32_t width = 0;
-        uint32_t height = 0;
-    };
-
-    struct IWindow
-    {
-        IWindow(Resolution resolution)
-	        : resolution_(resolution)
-        {}
-
-        virtual ~IWindow() = default;
-
-        virtual Resolution& getResolution()
-        {
-	        return resolution_;
-        }
-
-        virtual void setWindowUserPointer(void* pointer) = 0;
-        virtual void assignCallbacks() = 0;
-
-    private:
-        Resolution resolution_;
-    };
-
     class IRHICommandList : public IResource
     {
 	    
@@ -131,6 +105,11 @@ namespace RHI
 	    
     };
 
+    struct Resolution
+    {
+        uint32_t width = 0;
+        uint32_t height = 0;
+    };
 
     class IDynamicRHI
     {
@@ -151,7 +130,7 @@ namespace RHI
 
     public:
         virtual IDynamicRHI* createRHI() = 0;
-        virtual IWindow* getWindowInterface() = 0;
+        virtual void* getWindowInterface() = 0;
     };
 
 
