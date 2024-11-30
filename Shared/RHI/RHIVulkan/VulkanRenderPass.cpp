@@ -4,14 +4,14 @@
 namespace RHI::Vulkan
 {
 
-    RenderPass VulkanDevice::addFullScreenPass(bool useDepth, const RenderPassCreateInfo ci)
+    RenderPass Device::addFullScreenPass(bool useDepth, const RenderPassCreateInfo ci)
     {
-        RenderPass result(ctx_.vkDev, useDepth, ci);
+        RenderPass result(m_Context.vkDev, useDepth, ci);
         resources_.allRenderPasses.push_back(result.handle);
         return result;
     }
 
-    RenderPass VulkanDevice::addRenderPass(const std::vector<VulkanTexture>& outputs, const RenderPassCreateInfo& ci, bool useDepth)
+    RenderPass Device::addRenderPass(const std::vector<VulkanTexture>& outputs, const RenderPassCreateInfo& ci, bool useDepth)
     {
         VkRenderPass renderPass;
 
@@ -48,7 +48,7 @@ namespace RHI::Vulkan
         return rp;
     }
 
-    RenderPass VulkanDevice::addDepthRenderPass(const std::vector<VulkanTexture>& outputs, const RenderPassCreateInfo ci)
+    RenderPass Device::addDepthRenderPass(const std::vector<VulkanTexture>& outputs, const RenderPassCreateInfo ci)
     {
         VkRenderPass renderPass;
 
@@ -67,14 +67,14 @@ namespace RHI::Vulkan
     }
 
 
-    bool VulkanDevice::createColorOnlyRenderPass(VkRenderPass* renderPass, const RenderPassCreateInfo& ci, VkFormat colorFormat)
+    bool Device::createColorOnlyRenderPass(VkRenderPass* renderPass, const RenderPassCreateInfo& ci, VkFormat colorFormat)
     {
         RenderPassCreateInfo ci2 = ci;
         ci2.clearDepth_ = false;
         return createColorAndDepthRenderPass(false, renderPass, ci2, colorFormat);
     }
 
-    bool VulkanDevice::createColorAndDepthRenderPass(bool useDepth, VkRenderPass* renderPass, const RenderPassCreateInfo& ci, VkFormat colorFormat)
+    bool Device::createColorAndDepthRenderPass(bool useDepth, VkRenderPass* renderPass, const RenderPassCreateInfo& ci, VkFormat colorFormat)
     {
         const bool offscreenInt = ci.flags_ & eRenderPassBit_OffscreenInternal;
         const bool first = ci.flags_ & eRenderPassBit_First;
@@ -177,10 +177,10 @@ namespace RHI::Vulkan
         renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
         renderPassInfo.pDependencies = dependencies.data();
 
-        return (vkCreateRenderPass(ctx_.vkDev.device, &renderPassInfo, nullptr, renderPass) == VK_SUCCESS);
+        return (vkCreateRenderPass(m_Context.device, &renderPassInfo, nullptr, renderPass) == VK_SUCCESS);
     }
 
-    bool VulkanDevice::createDepthOnlyRenderPass(VkRenderPass* renderPass, const RenderPassCreateInfo& ci)
+    bool Device::createDepthOnlyRenderPass(VkRenderPass* renderPass, const RenderPassCreateInfo& ci)
     {
         VkAttachmentDescription depthAttachment{};
         depthAttachment.flags = 0;
@@ -246,6 +246,6 @@ namespace RHI::Vulkan
         renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
         renderPassInfo.pDependencies = dependencies.data();
 
-        return (vkCreateRenderPass(ctx_.vkDev.device, &renderPassInfo, nullptr, renderPass) == VK_SUCCESS);
+        return (vkCreateRenderPass(m_Context.device, &renderPassInfo, nullptr, renderPass) == VK_SUCCESS);
     }
 }

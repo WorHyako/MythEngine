@@ -3,14 +3,14 @@
 
 namespace RHI::Vulkan
 {
-	bool VulkanDevice::createColorAndDepthFramebuffers(VkRenderPass renderPass, VkImageView depthImageView, std::vector<VkFramebuffer>& swapchainFramebuffers)
+	bool Device::createColorAndDepthFramebuffers(VkRenderPass renderPass, VkImageView depthImageView, std::vector<VkFramebuffer>& swapchainFramebuffers)
     {
-        swapchainFramebuffers.resize( ctx_.vkDev.swapchainImageViews.size());
+        swapchainFramebuffers.resize( m_Context.vkDev.swapchainImageViews.size());
 
-        for (size_t i = 0; i < ctx_.vkDev.swapchainImages.size(); i++)
+        for (size_t i = 0; i < m_Context.vkDev.swapchainImages.size(); i++)
         {
             std::array<VkImageView, 2> attachments = {
-                    ctx_.vkDev.swapchainImageViews[i],
+                    m_Context.vkDev.swapchainImageViews[i],
                     depthImageView
             };
 
@@ -21,17 +21,17 @@ namespace RHI::Vulkan
             framebufferInfo.renderPass = renderPass;
             framebufferInfo.attachmentCount = static_cast<uint32_t>((depthImageView == VK_NULL_HANDLE) ? 1 : 2);
             framebufferInfo.pAttachments = attachments.data();
-            framebufferInfo.width = ctx_.vkDev.framebufferWidth;
-            framebufferInfo.height = ctx_.vkDev.framebufferHeight;
+            framebufferInfo.width = m_Context.vkDev.framebufferWidth;
+            framebufferInfo.height = m_Context.vkDev.framebufferHeight;
             framebufferInfo.layers = 1;
 
-            VK_CHECK(vkCreateFramebuffer(ctx_.vkDev.device, &framebufferInfo, nullptr, &swapchainFramebuffers[i]));
+            VK_CHECK(vkCreateFramebuffer(m_Context.device, &framebufferInfo, nullptr, &swapchainFramebuffers[i]));
         }
 
         return true;
     }
 
-    VkFramebuffer VulkanDevice::addFramebuffer(RenderPass renderPass, const std::vector<VulkanTexture>& images)
+    VkFramebuffer Device::addFramebuffer(RenderPass renderPass, const std::vector<VulkanTexture>& images)
     {
         VkFramebuffer framebuffer;
 
@@ -50,7 +50,7 @@ namespace RHI::Vulkan
         fbInfo.height = images[0].height;
         fbInfo.layers = 1;
 
-        if (vkCreateFramebuffer(ctx_.vkDev.device, &fbInfo, nullptr, &framebuffer) != VK_SUCCESS)
+        if (vkCreateFramebuffer(m_Context.device, &fbInfo, nullptr, &framebuffer) != VK_SUCCESS)
         {
             printf("Unable to create offscreen framebuffer\n");
             exit(EXIT_FAILURE);
@@ -60,7 +60,7 @@ namespace RHI::Vulkan
         return framebuffer;
     }
 
-    std::vector<VkFramebuffer> VulkanDevice::addFramebuffers(VkRenderPass renderPass, VkImageView depthView)
+    std::vector<VkFramebuffer> Device::addFramebuffers(VkRenderPass renderPass, VkImageView depthView)
     {
         std::vector<VkFramebuffer> framebuffers;
         createColorAndDepthFramebuffers(renderPass, depthView, framebuffers);

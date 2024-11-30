@@ -4,7 +4,7 @@
 
 namespace RHI::Vulkan
 {
-    bool VulkanDevice::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+    bool Device::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
     {
         VkBufferCreateInfo bufferInfo{};
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -16,10 +16,10 @@ namespace RHI::Vulkan
         bufferInfo.queueFamilyIndexCount = 0;
         bufferInfo.pQueueFamilyIndices = nullptr;
 
-        VK_CHECK(vkCreateBuffer(ctx_.vkDev.device, &bufferInfo, nullptr, &buffer));
+        VK_CHECK(vkCreateBuffer(m_Context.device, &bufferInfo, nullptr, &buffer));
 
         VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(ctx_.vkDev.device, buffer, &memRequirements);
+        vkGetBufferMemoryRequirements(m_Context.device, buffer, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -27,16 +27,16 @@ namespace RHI::Vulkan
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
-        VK_CHECK(vkAllocateMemory(ctx_.vkDev.device, &allocInfo, nullptr, &bufferMemory));
+        VK_CHECK(vkAllocateMemory(m_Context.device, &allocInfo, nullptr, &bufferMemory));
 
-        vkBindBufferMemory(ctx_.vkDev.device, buffer, bufferMemory, 0);
+        vkBindBufferMemory(m_Context.device, buffer, bufferMemory, 0);
 
         return true;
     }
 
-    bool VulkanDevice::createSharedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+    bool Device::createSharedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
     {
-        uint32_t familyCount = static_cast<uint32_t>(ctx_.vkDev.deviceQueueIndices.size());
+        uint32_t familyCount = static_cast<uint32_t>(m_Context.m_DeviceQueueIndices.size());
 
         if (familyCount < 2)
             return createBuffer(size, usage, properties, buffer, bufferMemory);
@@ -48,13 +48,13 @@ namespace RHI::Vulkan
         bufferInfo.size = size;
         bufferInfo.usage = usage;
         bufferInfo.sharingMode = (familyCount > 1) ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE;
-        bufferInfo.queueFamilyIndexCount = static_cast<uint32_t>(ctx_.vkDev.deviceQueueIndices.size());
-        bufferInfo.pQueueFamilyIndices = (familyCount > 1) ? ctx_.vkDev.deviceQueueIndices.data() : nullptr;
+        bufferInfo.queueFamilyIndexCount = static_cast<uint32_t>(m_Context.m_DeviceQueueIndices.size());
+        bufferInfo.pQueueFamilyIndices = (familyCount > 1) ? m_Context.m_DeviceQueueIndices.data() : nullptr;
 
-        VK_CHECK(vkCreateBuffer(ctx_.vkDev.device, &bufferInfo, nullptr, &buffer));
+        VK_CHECK(vkCreateBuffer(m_Context.device, &bufferInfo, nullptr, &buffer));
 
         VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(ctx_.vkDev.device, buffer, &memRequirements);
+        vkGetBufferMemoryRequirements(m_Context.device, buffer, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -62,14 +62,14 @@ namespace RHI::Vulkan
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
-        VK_CHECK(vkAllocateMemory(ctx_.vkDev.device, &allocInfo, nullptr, &bufferMemory));
+        VK_CHECK(vkAllocateMemory(m_Context.device, &allocInfo, nullptr, &bufferMemory));
 
-        vkBindBufferMemory(ctx_.vkDev.device, buffer, bufferMemory, 0);
+        vkBindBufferMemory(m_Context.device, buffer, bufferMemory, 0);
 
         return true;
     }
 
-    bool VulkanDevice::createUniformBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize bufferSize)
+    bool Device::createUniformBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize bufferSize)
     {
         return createBuffer(bufferSize,
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -77,27 +77,27 @@ namespace RHI::Vulkan
             buffer, bufferMemory);
     }
 
-    void VulkanDevice::uploadBufferData(const VkDeviceMemory& bufferMemory, VkDeviceSize deviceOffset, const void* data, const size_t dataSize)
+    void Device::uploadBufferData(const VkDeviceMemory& bufferMemory, VkDeviceSize deviceOffset, const void* data, const size_t dataSize)
     {
         EASY_FUNCTION()
 
     	void* mappedData = nullptr;
-        vkMapMemory(ctx_.vkDev.device, bufferMemory, deviceOffset, dataSize, 0, &mappedData);
+        vkMapMemory(m_Context.device, bufferMemory, deviceOffset, dataSize, 0, &mappedData);
         memcpy(mappedData, data, dataSize);
-        vkUnmapMemory(ctx_.vkDev.device, bufferMemory);
+        vkUnmapMemory(m_Context.device, bufferMemory);
     }
 
-    void VulkanDevice::downloadBufferData(const VkDeviceMemory& bufferMemory, VkDeviceSize deviceOffset, void* outData, size_t dataSize)
+    void Device::downloadBufferData(const VkDeviceMemory& bufferMemory, VkDeviceSize deviceOffset, void* outData, size_t dataSize)
     {
         EASY_FUNCTION()
 
     	void* mappedData = nullptr;
-        vkMapMemory(ctx_.vkDev.device, bufferMemory, deviceOffset, dataSize, 0, &mappedData);
+        vkMapMemory(m_Context.device, bufferMemory, deviceOffset, dataSize, 0, &mappedData);
         memcpy(outData, mappedData, dataSize);
-        vkUnmapMemory(ctx_.vkDev.device, bufferMemory);
+        vkUnmapMemory(m_Context.device, bufferMemory);
     }
 
-    VulkanBuffer VulkanDevice::addBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool createMapping)
+    VulkanBuffer Device::addBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool createMapping)
     {
         VulkanBuffer buffer{};
         buffer.buffer = VK_NULL_HANDLE;
@@ -117,12 +117,12 @@ namespace RHI::Vulkan
         }
 
         if (createMapping)
-            vkMapMemory(ctx_.vkDev.device, buffer.memory, 0, VK_WHOLE_SIZE, 0, &buffer.ptr);
+            vkMapMemory(m_Context.device, buffer.memory, 0, VK_WHOLE_SIZE, 0, &buffer.ptr);
 
         return buffer;
     }
 
-    VulkanBuffer VulkanDevice::addVertexBuffer(uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData)
+    VulkanBuffer Device::addVertexBuffer(uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData)
     {
         VulkanBuffer result;
         result.size = allocateVertexBuffer(&result.buffer, &result.memory, vertexBufferSize, vertexData, indexBufferSize, indexData);
@@ -130,7 +130,7 @@ namespace RHI::Vulkan
         return result;
     }
 
-    size_t VulkanDevice::allocateVertexBuffer(VkBuffer* storageBuffer, VkDeviceMemory* storageBufferMemory, size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData)
+    size_t Device::allocateVertexBuffer(VkBuffer* storageBuffer, VkDeviceMemory* storageBufferMemory, size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData)
     {
         VkDeviceSize bufferSize = vertexDataSize + indexDataSize;
 
@@ -141,10 +141,10 @@ namespace RHI::Vulkan
             stagingBuffer, stagingBufferMemory);
 
         void* data;
-        vkMapMemory(ctx_.vkDev.device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        vkMapMemory(m_Context.device, stagingBufferMemory, 0, bufferSize, 0, &data);
         memcpy(data, vertexData, vertexDataSize);
         memcpy((unsigned char*)data + vertexDataSize, indexData, indexDataSize);
-        vkUnmapMemory(ctx_.vkDev.device, stagingBufferMemory);
+        vkUnmapMemory(m_Context.device, stagingBufferMemory);
 
         createBuffer(
             bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -152,14 +152,14 @@ namespace RHI::Vulkan
 
         copyBuffer(vkDev, stagingBuffer, *storageBuffer, bufferSize);
 
-        vkDestroyBuffer(ctx_.vkDev.device, stagingBuffer, nullptr);
-        vkFreeMemory(ctx_.vkDev.device, stagingBufferMemory, nullptr);
+        vkDestroyBuffer(m_Context.device, stagingBuffer, nullptr);
+        vkFreeMemory(m_Context.device, stagingBufferMemory, nullptr);
 
         return bufferSize;
     }
 
     /* Helper mesh-related functions */
-    std::pair<BufferAttachment, BufferAttachment> VulkanDevice::makeMeshBuffers(const std::vector<float>& vertices, const std::vector<unsigned>& indices)
+    std::pair<BufferAttachment, BufferAttachment> Device::makeMeshBuffers(const std::vector<float>& vertices, const std::vector<unsigned>& indices)
     {
         const uint32_t indexBufferSize = uint32_t(indices.size() * sizeof(int));
         const uint32_t vertexBufferSize = uint32_t(vertices.size() * sizeof(float));
@@ -180,7 +180,7 @@ namespace RHI::Vulkan
         return { vertexBufferAttachment, indexBufferAttachment };
     }
 
-    std::pair<BufferAttachment, BufferAttachment> VulkanDevice::loadMeshToBuffer(
+    std::pair<BufferAttachment, BufferAttachment> Device::loadMeshToBuffer(
         const char* filename,
         bool useTextureCoordinates,
         bool useNormals,
@@ -236,7 +236,7 @@ namespace RHI::Vulkan
         return makeMeshBuffers(vertices, indices);
     }
 
-    std::pair<BufferAttachment, BufferAttachment> VulkanDevice::createPlaneBuffer_XZ(float sx, float sz)
+    std::pair<BufferAttachment, BufferAttachment> Device::createPlaneBuffer_XZ(float sx, float sz)
     {
         return makeMeshBuffers(
             std::vector<float> {
@@ -248,7 +248,7 @@ namespace RHI::Vulkan
             std::vector<unsigned int> { 0u, 1u, 2u, 0u, 3u, 2u });
     }
 
-    std::pair<BufferAttachment, BufferAttachment> VulkanDevice::createPlaneBuffer_XY(float sx, float sy)
+    std::pair<BufferAttachment, BufferAttachment> Device::createPlaneBuffer_XY(float sx, float sy)
     {
         return makeMeshBuffers(
             std::vector<float> {

@@ -33,8 +33,7 @@ namespace RHI::Vulkan
 	}
 
 	VulkanDynamicRHI::VulkanDynamicRHI(GLFWwindow* window)
-		: ctx(vk, vkDev, initializeContextExtensions(), initializeContextFeatures())
-		, window_(window)
+		: window_(window)
 	{
 		createInstance();
 
@@ -47,9 +46,10 @@ namespace RHI::Vulkan
         int width, height;
         glfwGetFramebufferSize(window_, &width, &height);
 
-        device_ = new VulkanDevice(
-            vk, vkDev, ctx.ctxExtensions, ctx.ctxFeatures,
-            width, height);
+        DeviceDesc desc = {};
+        desc.ctxExtensions = &initializeContextExtensions();
+        desc.ctxFeatures = &initializeContextFeatures();
+        m_Device = new Device(desc);
 	}
 
 	VulkanDynamicRHI::~VulkanDynamicRHI()

@@ -2,7 +2,7 @@
 
 namespace RHI::Vulkan
 {
-	VulkanCommandList::VulkanCommandList(VulkanRenderContext& ctx)
+	VulkanCommandList::VulkanCommandList(VulkanContext& ctx)
 		: ctx_(ctx)
 	{
 		
@@ -25,7 +25,7 @@ namespace RHI::Vulkan
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocInfo.commandBufferCount = 1;
 
-        vkAllocateCommandBuffers(ctx_.vkDev.device, &allocInfo, &commandBuffer);
+        vkAllocateCommandBuffers(ctx_.m_Device, &allocInfo, &commandBuffer);
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -56,7 +56,7 @@ namespace RHI::Vulkan
         vkQueueSubmit(ctx_.vkDev.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
         vkQueueWaitIdle(ctx_.vkDev.graphicsQueue);
 
-        vkFreeCommandBuffers(ctx_.vkDev.device, ctx_.vkDev.commandPool, 1, &commandBuffer);
+        vkFreeCommandBuffers(ctx_.m_Device, ctx_.vkDev.commandPool, 1, &commandBuffer);
     }
 
 
@@ -319,8 +319,8 @@ namespace RHI::Vulkan
         const std::function<void(VkCommandBuffer, uint32_t)>& composeFrameFunc)
     {
         uint32_t imageIndex = 0;
-        VkResult result = vkAcquireNextImageKHR(ctx_.vkDev.device, ctx_.vkDev.swapchain, 0, ctx_.vkDev.semaphore, VK_NULL_HANDLE, &imageIndex);
-        VK_CHECK(vkResetCommandPool(ctx_.vkDev.device, ctx_.vkDev.commandPool, 0));
+        VkResult result = vkAcquireNextImageKHR(ctx_.m_Device, ctx_.vkDev.swapchain, 0, ctx_.vkDev.semaphore, VK_NULL_HANDLE, &imageIndex);
+        VK_CHECK(vkResetCommandPool(ctx_.m_Device, ctx_.vkDev.commandPool, 0));
 
         if (result != VK_SUCCESS) return false;
 
@@ -365,7 +365,7 @@ namespace RHI::Vulkan
         pi.pImageIndices = &imageIndex;
 
         VK_CHECK(vkQueuePresentKHR(ctx_.vkDev.graphicsQueue, &pi));
-        VK_CHECK(vkDeviceWaitIdle(ctx_.vkDev.device));
+        VK_CHECK(vkDeviceWaitIdle(ctx_.m_Device));
 
         return true;
     }

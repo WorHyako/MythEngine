@@ -122,7 +122,7 @@ namespace RHI::Vulkan
         return 0;
     }
 
-    VkResult VulkanDevice::createShaderModule(ShaderModule* shader, const char* fileName)
+    VkResult Device::createShaderModule(ShaderModule* shader, const char* fileName)
     {
         if (compileShaderFile(fileName, *shader) < 1)
             return VK_NOT_READY;
@@ -132,6 +132,6 @@ namespace RHI::Vulkan
         createInfo.codeSize = shader->SPIRV.size() * sizeof(unsigned int);
         createInfo.pCode = shader->SPIRV.data();
 
-        return vkCreateShaderModule(ctx_.vkDev.device, &createInfo, nullptr, &shader->shaderModule);
+        return vkCreateShaderModule(m_Context.device, &createInfo, nullptr, &shader->shaderModule);
     }
 }

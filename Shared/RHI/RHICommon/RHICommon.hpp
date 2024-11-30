@@ -117,10 +117,10 @@ namespace RHI
         IDynamicRHI() = default;
         virtual ~IDynamicRHI() = default;
 
-        virtual IDevice* getDevice() { return device_; }
+        virtual IDevice* getDevice() { return m_Device; }
 
     protected:
-        IDevice* device_;
+        IDevice* m_Device;
     };
 
     class IRHIModule
