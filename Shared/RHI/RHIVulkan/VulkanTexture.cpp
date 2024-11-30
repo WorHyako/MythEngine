@@ -5,12 +5,12 @@
 
 namespace RHI::Vulkan
 {
-    VkFormat VulkanDevice::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+    VkFormat Device::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
     {
         for (VkFormat format : candidates)
         {
             VkFormatProperties props;
-            vkGetPhysicalDeviceFormatProperties(ctx_.vkDev.physicalDevice, format, &props);
+            vkGetPhysicalDeviceFormatProperties(m_Context.physicalDevice, format, &props);
 
             if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
             {
@@ -26,10 +26,10 @@ namespace RHI::Vulkan
         exit(0);
     }
 
-    uint32_t VulkanDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+    uint32_t Device::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
     {
         VkPhysicalDeviceMemoryProperties memProperties;
-        vkGetPhysicalDeviceMemoryProperties(ctx_.vkDev.physicalDevice, &memProperties);
+        vkGetPhysicalDeviceMemoryProperties(m_Context.physicalDevice, &memProperties);
 
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
         {
@@ -42,7 +42,7 @@ namespace RHI::Vulkan
         return 0xFFFFFFFF;
     }
 
-    VkFormat VulkanDevice::findDepthFormat()
+    VkFormat Device::findDepthFormat()
     {
         return findSupportedFormat(
             { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
@@ -56,7 +56,7 @@ namespace RHI::Vulkan
         return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
     }
 
-    VulkanTexture VulkanDevice::addRGBATexture(int texWidth, int texHeight, void* data)
+    VulkanTexture Device::addRGBATexture(int texWidth, int texHeight, void* data)
     {
         VulkanTexture tex;
         tex.width = texWidth;
@@ -70,7 +70,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        transitionImageLayout(ctx_.vkDev, tex.image.image, tex.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        transitionImageLayout(m_Context.vkDev, tex.image.image, tex.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         if (!createImageView(tex.image.image, tex.format, VK_IMAGE_ASPECT_COLOR_BIT, &tex.image.imageView))
         {
@@ -83,7 +83,7 @@ namespace RHI::Vulkan
         return tex;
     }
 
-    VulkanTexture VulkanDevice::addSolidRGBATexture(uint32_t color)
+    VulkanTexture Device::addSolidRGBATexture(uint32_t color)
     {
         VulkanTexture tex;
         tex.width = 1;
@@ -111,10 +111,10 @@ namespace RHI::Vulkan
         return tex;
     }
 
-    VulkanTexture VulkanDevice::addColorTexture(int texWidth, int texHeight, VkFormat colorFormat, VkFilter minFilter, VkFilter maxFilter, VkSamplerAddressMode addressMode)
+    VulkanTexture Device::addColorTexture(int texWidth, int texHeight, VkFormat colorFormat, VkFilter minFilter, VkFilter maxFilter, VkSamplerAddressMode addressMode)
     {
-        const uint32_t w = (texWidth > 0) ? texWidth : ctx_.vkDev.framebufferWidth;
-        const uint32_t h = (texHeight > 0) ? texHeight : ctx_.vkDev.framebufferHeight;
+        const uint32_t w = (texWidth > 0) ? texWidth : m_Context.vkDev.framebufferWidth;
+        const uint32_t h = (texHeight > 0) ? texHeight : m_Context.vkDev.framebufferHeight;
 
         VulkanTexture res{};
         res.width = w;
@@ -139,10 +139,10 @@ namespace RHI::Vulkan
         return res;
     }
 
-    VulkanTexture VulkanDevice::addDepthTexture(int texWidth, int texHeight, VkImageLayout layout)
+    VulkanTexture Device::addDepthTexture(int texWidth, int texHeight, VkImageLayout layout)
     {
-        const uint32_t w = (texWidth > 0) ? texWidth : ctx_.vkDev.framebufferWidth;
-        const uint32_t h = (texHeight > 0) ? texHeight : ctx_.vkDev.framebufferHeight;
+        const uint32_t w = (texWidth > 0) ? texWidth : m_Context.vkDev.framebufferWidth;
+        const uint32_t h = (texHeight > 0) ? texHeight : m_Context.vkDev.framebufferHeight;
 
         const VkFormat depthFormat = findDepthFormat();
 
@@ -173,7 +173,7 @@ namespace RHI::Vulkan
         return depth;
     }
 
-    bool VulkanDevice::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory, VkImageCreateFlags flags, uint32_t mipLevels)
+    bool Device::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory, VkImageCreateFlags flags, uint32_t mipLevels)
     {
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -192,10 +192,10 @@ namespace RHI::Vulkan
         imageInfo.pQueueFamilyIndices = nullptr;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        VK_CHECK(vkCreateImage(ctx_.vkDev.device, &imageInfo, nullptr, &image));
+        VK_CHECK(vkCreateImage(m_Context.device, &imageInfo, nullptr, &image));
 
         VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(ctx_.vkDev.device, image, &memRequirements);
+        vkGetImageMemoryRequirements(m_Context.device, image, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -203,13 +203,13 @@ namespace RHI::Vulkan
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
-        VK_CHECK(vkAllocateMemory(ctx_.vkDev.device, &allocInfo, nullptr, &imageMemory));
+        VK_CHECK(vkAllocateMemory(m_Context.device, &allocInfo, nullptr, &imageMemory));
 
-        vkBindImageMemory(ctx_.vkDev.device, image, imageMemory, 0);
+        vkBindImageMemory(m_Context.device, image, imageMemory, 0);
         return true;
     }
 
-    bool VulkanDevice::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView, VkImageViewType viewType, uint32_t layerCount, uint32_t mipLevels)
+    bool Device::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView, VkImageViewType viewType, uint32_t layerCount, uint32_t mipLevels)
     {
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -224,10 +224,10 @@ namespace RHI::Vulkan
         viewInfo.subresourceRange.baseArrayLayer = 0;
         viewInfo.subresourceRange.layerCount = layerCount;
 
-        return (vkCreateImageView(ctx_.vkDev.device, &viewInfo, nullptr, imageView) == VK_SUCCESS);
+        return (vkCreateImageView(m_Context.device, &viewInfo, nullptr, imageView) == VK_SUCCESS);
     }
 
-    bool VulkanDevice::createTextureSampler(VkSampler* sampler, VkFilter minFilter, VkFilter magFilter, VkSamplerAddressMode addressMode)
+    bool Device::createTextureSampler(VkSampler* sampler, VkFilter minFilter, VkFilter magFilter, VkSamplerAddressMode addressMode)
     {
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -249,10 +249,10 @@ namespace RHI::Vulkan
         samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
         samplerInfo.unnormalizedCoordinates = VK_FALSE;
 
-        return (vkCreateSampler(ctx_.vkDev.device, &samplerInfo, nullptr, sampler) == VK_SUCCESS);
+        return (vkCreateSampler(m_Context.device, &samplerInfo, nullptr, sampler) == VK_SUCCESS);
     }
 
-    bool VulkanDevice::createDepthSampler(VkSampler* sampler)
+    bool Device::createDepthSampler(VkSampler* sampler)
     {
         VkSamplerCreateInfo si{};
         si.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -269,11 +269,11 @@ namespace RHI::Vulkan
         si.maxLod = 1.0f;
         si.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 
-        return (vkCreateSampler(ctx_.vkDev.device, &si, nullptr, sampler) == VK_SUCCESS);
+        return (vkCreateSampler(m_Context.device, &si, nullptr, sampler) == VK_SUCCESS);
     }
 
     /** Offscreen rendering helpers */
-    bool VulkanDevice::createOffscreenImage(
+    bool Device::createOffscreenImage(
         VkImage& textureImage, VkDeviceMemory& textureImageMemory,
         uint32_t texWidth, uint32_t texHeight,
         VkFormat texFormat,
@@ -284,20 +284,20 @@ namespace RHI::Vulkan
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory, flags);
     }
 
-    void VulkanDevice::destroyVulkanTexture(VulkanTexture& texture)
+    void Device::destroyVulkanTexture(VulkanTexture& texture)
     {
         destroyVulkanImage(texture.image);
-        vkDestroySampler(ctx_.vkDev.device, texture.sampler, nullptr);
+        vkDestroySampler(m_Context.device, texture.sampler, nullptr);
     }
 
-    void VulkanDevice::destroyVulkanImage(VulkanImage& image)
+    void Device::destroyVulkanImage(VulkanImage& image)
     {
-        vkDestroyImageView(ctx_.vkDev.device, image.imageView, nullptr);
-        vkDestroyImage(ctx_.vkDev.device, image.image, nullptr);
-        vkFreeMemory(ctx_.vkDev.device, image.imageMemory, nullptr);
+        vkDestroyImageView(m_Context.device, image.imageView, nullptr);
+        vkDestroyImage(m_Context.device, image.image, nullptr);
+        vkFreeMemory(m_Context.device, image.imageMemory, nullptr);
     }
 
-    bool VulkanDevice::createTextureImage(const char* filename, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* outTexWidth, uint32_t* outTexHeight)
+    bool Device::createTextureImage(const char* filename, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* outTexWidth, uint32_t* outTexHeight)
     {
         int texWidth, texHeight, texChannels;
         stbi_uc* pixels = stbi_load(filename, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
@@ -321,7 +321,7 @@ namespace RHI::Vulkan
         return result;
     }
 
-    bool VulkanDevice::createMIPTextureImage(const char* filename, uint32_t mipLevels, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* width, uint32_t* height)
+    bool Device::createMIPTextureImage(const char* filename, uint32_t mipLevels, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* width, uint32_t* height)
     {
         int texWidth, texHeight, texChannels;
         stbi_uc* pixels = stbi_load(filename, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
@@ -353,7 +353,7 @@ namespace RHI::Vulkan
             src = dst;
         }
 
-        bool result = createMIPTextureImageFromData(ctx_.vkDev, textureImage, textureImageMemory,
+        bool result = createMIPTextureImageFromData(m_Context.vkDev, textureImage, textureImageMemory,
             mipData.data(), mipLevels, texWidth, texHeight,
             VK_FORMAT_R8G8B8A8_UNORM);
 
@@ -368,7 +368,7 @@ namespace RHI::Vulkan
         return true;
     }
 
-    bool VulkanDevice::createCubeTextureImage(const char* filename, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* width, uint32_t* height)
+    bool Device::createCubeTextureImage(const char* filename, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* width, uint32_t* height)
     {
         int w, h, comp;
         const float* img = stbi_loadf(filename, &w, &h, &comp, 3);
@@ -401,7 +401,7 @@ namespace RHI::Vulkan
             6, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
     }
 
-    bool VulkanDevice::createMIPCubeTextureImage(const char* filename, uint32_t mipLevels, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* width, uint32_t* height)
+    bool Device::createMIPCubeTextureImage(const char* filename, uint32_t mipLevels, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* width, uint32_t* height)
     {
         int comp;
         int texWidth, texHeight;
@@ -485,7 +485,7 @@ namespace RHI::Vulkan
             6, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
     }
 
-    bool VulkanDevice::createTextureImageFromData(
+    bool Device::createTextureImageFromData(
         VkImage& textureImage, VkDeviceMemory& textureImageMemory,
         void* imageData, uint32_t texWidth, uint32_t texHeight,
         VkFormat texFormat,
@@ -498,7 +498,7 @@ namespace RHI::Vulkan
         return updateTextureImage(textureImage, textureImageMemory, texWidth, texHeight, texFormat, layerCount, imageData);
     }
 
-    bool VulkanDevice::createMIPTextureImageFromData(
+    bool Device::createMIPTextureImageFromData(
         VkImage& textureImage, VkDeviceMemory& textureImageMemory,
         void* mipData, uint32_t mipLevels, uint32_t texWidth, uint32_t texHeight,
         VkFormat texFormat,
@@ -534,8 +534,8 @@ namespace RHI::Vulkan
         copyMIPBufferToImage(vkDev, stagingBuffer, textureImage, mipLevels, texWidth, texHeight, bytesPerPixel, layerCount);
         transitionImageLayout(vkDev, textureImage, texFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layerCount, mipLevels);
 
-        vkDestroyBuffer(ctx_.vkDev.device, stagingBuffer, nullptr);
-        vkFreeMemory(ctx_.vkDev.device, stagingBufferMemory, nullptr);
+        vkDestroyBuffer(m_Context.device, stagingBuffer, nullptr);
+        vkFreeMemory(m_Context.device, stagingBufferMemory, nullptr);
 
         return true;
     }
@@ -552,7 +552,7 @@ namespace RHI::Vulkan
         }
     }
 
-    bool VulkanDevice::updateTextureImage(VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t texWidth, uint32_t texHeight, VkFormat texFormat, uint32_t layerCount, const void* imageData, VkImageLayout sourceImageLayout)
+    bool Device::updateTextureImage(VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t texWidth, uint32_t texHeight, VkFormat texFormat, uint32_t layerCount, const void* imageData, VkImageLayout sourceImageLayout)
     {
         uint32_t bytesPerPixel = bytesPerTexFormat(texFormat);
 
@@ -569,14 +569,14 @@ namespace RHI::Vulkan
         copyBufferToImage(vkDev, stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), layerCount);
         transitionImageLayout(vkDev, textureImage, texFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layerCount);
 
-        vkDestroyBuffer(ctx_.vkDev.device, stagingBuffer, nullptr);
-        vkFreeMemory(ctx_.vkDev.device, stagingBufferMemory, nullptr);
+        vkDestroyBuffer(m_Context.device, stagingBuffer, nullptr);
+        vkFreeMemory(m_Context.device, stagingBufferMemory, nullptr);
 
         return true;
     }
 
 
-    VulkanTexture VulkanDevice::loadCubemap(const char* fileName, uint32_t mipLevels)
+    VulkanTexture Device::loadCubemap(const char* fileName, uint32_t mipLevels)
     {
         VulkanTexture cubemap;
 
@@ -600,7 +600,7 @@ namespace RHI::Vulkan
         return cubemap;
     }
 
-    VulkanTexture VulkanDevice::loadKTX(const char* fileName)
+    VulkanTexture Device::loadKTX(const char* fileName)
     {
         gli::texture gliTex = gli::load_ktx(fileName);
         gli::tvec3<uint32_t> extent(gliTex.extent(0));
@@ -610,7 +610,7 @@ namespace RHI::Vulkan
         ktx.height = extent.y;
         ktx.depth = 4;
 
-        if (!createTextureImageFromData(ctx_.vkDev, ktx.image.image, ktx.image.imageMemory,
+        if (!createTextureImageFromData(m_Context.vkDev, ktx.image.image, ktx.image.imageMemory,
             (uint8_t*)gliTex.data(0, 0, 0), ktx.width, ktx.height, VK_FORMAT_R16G16_SFLOAT))
         {
             printf("ModelRenderer: failed to load BRDF LUT texture \n");
@@ -625,7 +625,7 @@ namespace RHI::Vulkan
         return ktx;
     }
 
-    VulkanTexture VulkanDevice::loadTexture2D(const char* fileName)
+    VulkanTexture Device::loadTexture2D(const char* fileName)
     {
         VulkanTexture tex;
         if (!createTextureImage(fileName, tex.image.image, tex.image.imageMemory, &tex.width, &tex.height))
@@ -649,7 +649,7 @@ namespace RHI::Vulkan
     }
 
 
-    VulkanTexture VulkanDevice::createFontTexture(const char* fontFile)
+    VulkanTexture Device::createFontTexture(const char* fontFile)
     {
         ImGuiIO& io = ImGui::GetIO();
         VulkanImage img{};

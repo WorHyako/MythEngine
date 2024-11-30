@@ -9,10 +9,8 @@ public:
 	VulkanSceneRenderer();
 	virtual ~VulkanSceneRenderer();
 
-	virtual void RenderScene() override;
-	virtual void InitializeRender() override;
+	virtual void renderScene() override;
+	virtual void initializeRender() override;
 
 private:
-	RHI::IRHIModule* rhiModule_;
-	RHI::IDynamicRHI* dynamicRHI_;
 };

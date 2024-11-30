@@ -23,7 +23,7 @@
 
 namespace RHI::Vulkan
 {
-	class VulkanDevice;
+	class Device;
 
 	// Features we need for our Vulkan context
 	struct VulkanContextFeatures
@@ -63,23 +63,6 @@ namespace RHI::Vulkan
 #endif
 	};
 
-	class VulkanRHIModule : public IRHIModule
-	{
-	public:
-		VulkanRHIModule();
-		~VulkanRHIModule() override = default;
-
-		virtual IDynamicRHI* createRHI() override;
-
-		GLFWwindow* getWindowInterface() override
-		{
-			return window_;
-		}
-
-	private:
-		GLFWwindow* window_;
-	};
-
 	struct VulkanInstance final
 	{
 		VkInstance instance;
@@ -88,65 +71,16 @@ namespace RHI::Vulkan
 		VkDebugReportCallbackEXT reportCallback;
 	};
 
-	struct VulkanRenderDevice final
+	struct VulkanContext
 	{
-		uint32_t framebufferWidth;
-		uint32_t framebufferHeight;
-
-		VkDevice device;
-		VkQueue graphicsQueue;
-		VkPhysicalDevice physicalDevice;
-
-		uint32_t graphicsFamily;
-
-		VkSwapchainKHR swapchain;
-		VkSemaphore semaphore;
-		VkSemaphore renderSemaphore;
-
-		std::vector<VkImage> swapchainImages;
-		std::vector<VkImageView> swapchainImageViews;
-
-		VkCommandPool commandPool;
-		std::vector<VkCommandBuffer> commandBuffers;
-
-		bool useCompute = false;
-
-		uint32_t computeFamily;
-		VkQueue computeQueue;
-
-		// a list of all queues (for shared buffer allocations)
-		std::vector<uint32_t> deviceQueueIndices;
-		std::vector<VkQueue> deviceQueues;
-
-		VkCommandBuffer computeCommandBuffer;
-		VkCommandPool computeCommandPool;
-	};
-
-	/* A structure with pipeline parameters */
-	struct PipelineInfo
-	{
-		uint32_t width = 0;
-		uint32_t height = 0;
-
-		VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; /* defaults to triangles*/
-
-		bool useDepth = true;
-
-		bool useBlending = true;
-
-		bool dynamicScissorState = false;
-
-		uint32_t patchControlPoints = 0;
-	};
-
-	struct VulkanRenderContext
-	{
-		VulkanRenderContext(VulkanInstance& vk, VulkanRenderDevice& vkDev, VulkanContextExtensions contextExtensions, VulkanContextFeatures contextFeatures)
-			: vk(vk)
-			, vkDev(vkDev)
+		VulkanContext(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device, VulkanContextExtensions contextExtensions, VulkanContextFeatures contextFeatures)
+			: instance(instance)
+			, physicalDevice(physicalDevice)
+			, device(device)
 			, ctxExtensions(contextExtensions)
 			, ctxFeatures(contextFeatures)
-		{}
+		{
+		}
 
 		void updateBuffers(uint32_t imageIndex);
 		void composeFrame(VkCommandBuffer commandBuffer, uint32_t imageIndex);
@@ -179,10 +113,82 @@ namespace RHI::Vulkan
 			vkCmdBeginRenderPass(cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		}
 
+		VkInstance instance;
+		VkPhysicalDevice physicalDevice;
+		VkDevice device;
+		VkQueue graphicsQueue;
+
 		VulkanInstance vk;
-		VulkanRenderDevice vkDev;
+		//Device vkDev;
 		VulkanContextExtensions ctxExtensions;
 		VulkanContextFeatures ctxFeatures;
+	};
+
+	class VulkanRHIModule : public IRHIModule
+	{
+	public:
+		VulkanRHIModule();
+		~VulkanRHIModule() override = default;
+
+		virtual IDynamicRHI* createRHI() override;
+
+		GLFWwindow* getWindowInterface() override
+		{
+			return window_;
+		}
+
+	private:
+		GLFWwindow* window_;
+	};
+
+	struct DeviceDesc
+	{
+		uint32_t framebufferWidth;
+		uint32_t framebufferHeight;
+
+		VkInstance instance;
+		VkPhysicalDevice physicalDevice;
+		VkDevice device;
+
+		VulkanContextExtensions* ctxExtensions;
+		VulkanContextFeatures* ctxFeatures;
+
+		uint32_t graphicsFamily;
+		VkQueue graphicsQueue;
+
+		uint32_t computeFamily;
+		VkQueue computeQueue;
+		bool useCompute = false;
+
+		VkSwapchainKHR swapchain;
+		VkSemaphore semaphore;
+		VkSemaphore renderSemaphore;
+
+		std::vector<VkImage> swapchainImages;
+		std::vector<VkImageView> swapchainImageViews;
+
+		VkCommandPool commandPool;
+		std::vector<VkCommandBuffer> commandBuffers;
+
+		VkCommandBuffer computeCommandBuffer;
+		VkCommandPool computeCommandPool;
+	};
+
+	/* A structure with pipeline parameters */
+	struct PipelineInfo
+	{
+		uint32_t width = 0;
+		uint32_t height = 0;
+
+		VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; /* defaults to triangles*/
+
+		bool useDepth = true;
+
+		bool useBlending = true;
+
+		bool dynamicScissorState = false;
+
+		uint32_t patchControlPoints = 0;
 	};
 
 	struct VulkanDynamicRHI : public IDynamicRHI
@@ -197,8 +203,6 @@ namespace RHI::Vulkan
 		static VulkanContextExtensions& initializeContextExtensions();
 
 		VulkanInstance vk;
-		VulkanRenderDevice vkDev;
-		VulkanRenderContext ctx;
 	private:
 		GLFWwindow* window_;
 	};
@@ -398,7 +402,7 @@ namespace RHI::Vulkan
 
 	VkResult createSemaphore(VkDevice device, VkSemaphore* outSemaphore);
 
-	bool createDescriptorPool(VulkanRenderDevice& vkDev, uint32_t uniformBufferCount, uint32_t storageBufferCount, uint32_t samplerCount, VkDescriptorPool* descriptorPool);
+	bool createDescriptorPool(Device& vkDev, uint32_t uniformBufferCount, uint32_t storageBufferCount, uint32_t samplerCount, VkDescriptorPool* descriptorPool);
 
 	bool isDeviceSuitable(VkPhysicalDevice device);
 
@@ -415,7 +419,7 @@ namespace RHI::Vulkan
 	uint32_t findQueueFamilies(VkPhysicalDevice device, VkQueueFlags desiredFlags);
 
 	bool createGraphicsPipeline(
-		VulkanRenderDevice& vkDev,
+		Device& vkDev,
 		VkRenderPass renderPass, VkPipelineLayout pipelineLayout,
 		const std::vector<const char*>& shaderFiles,
 		VkPipeline* pipeline,
@@ -446,7 +450,7 @@ namespace RHI::Vulkan
 	struct RenderPass
 	{
 		RenderPass() = default;
-		explicit RenderPass(VulkanRenderDevice& vkDev, bool useDepth = true, const RenderPassCreateInfo& ci = RenderPassCreateInfo());
+		explicit RenderPass(Device& vkDev, bool useDepth = true, const RenderPassCreateInfo& ci = RenderPassCreateInfo());
 
 		RenderPassCreateInfo info;
 		VkRenderPass handle = VK_NULL_HANDLE;
@@ -454,15 +458,15 @@ namespace RHI::Vulkan
 
 	uint32_t bytesPerTexFormat(VkFormat fmt);
 
-	bool downloadImageData(VulkanRenderDevice& vkDev, VkImage& textureImage, uint32_t texWidth, uint32_t texHeight, VkFormat texFormat, uint32_t layerCount, void* imageData, VkImageLayout sourceImageLayout);
+	bool downloadImageData(Device& vkDev, VkImage& textureImage, uint32_t texWidth, uint32_t texHeight, VkFormat texFormat, uint32_t layerCount, void* imageData, VkImageLayout sourceImageLayout);
 
-	bool createDepthResources(VulkanRenderDevice& vkDev, uint32_t width, uint32_t height, VulkanImage& depth);
+	bool createDepthResources(Device& vkDev, uint32_t width, uint32_t height, VulkanImage& depth);
 
-	bool createTexturedVertexBuffer(VulkanRenderDevice& vkDev, const char* filename, VkBuffer* storageBuffer, VkDeviceMemory* storageBufferMemory, size_t* vertexBufferSize, size_t* indexBufferSize);
+	bool createTexturedVertexBuffer(Device& vkDev, const char* filename, VkBuffer* storageBuffer, VkDeviceMemory* storageBufferMemory, size_t* vertexBufferSize, size_t* indexBufferSize);
 
-	bool createPBRVertexBuffer(VulkanRenderDevice& vkDev, const char* filename, VkBuffer* storageBuffer, VkDeviceMemory* storageBufferMemory, size_t* vertexBufferSize, size_t* indexBufferSize);
+	bool createPBRVertexBuffer(Device& vkDev, const char* filename, VkBuffer* storageBuffer, VkDeviceMemory* storageBufferMemory, size_t* vertexBufferSize, size_t* indexBufferSize);
 
-	bool executeComputeShader(VulkanRenderDevice& vkDev,
+	bool executeComputeShader(Device& vkDev,
 		VkPipeline computePipeline, VkPipelineLayout pl, VkDescriptorSet ds,
 		uint32_t xsize, uint32_t ysize, uint32_t zsize);
 
@@ -482,15 +486,15 @@ namespace RHI::Vulkan
 			(fmt == VK_FORMAT_D32_SFLOAT_S8_UINT);
 	}
 
-	bool setVkObjectName(VulkanRenderDevice& vkDev, void* object, VkObjectType objectType, const char* name);
+	bool setVkObjectName(Device& vkDev, void* object, VkObjectType objectType, const char* name);
 
-	inline bool setVkImageName(VulkanRenderDevice& vkDev, void* object, const char* name)
+	inline bool setVkImageName(Device& vkDev, void* object, const char* name)
 	{
 		return setVkObjectName(vkDev, object, VK_OBJECT_TYPE_IMAGE, name);
 	}
 
 	/* This routine updates one texture discriptor in one descriptor set */
-	void updateTextureInDescriptorSetArray(VulkanRenderDevice& vkDev, VkDescriptorSet ds, VulkanTexture t, uint32_t textureIndex, uint32_t bindingIdx);
+	void updateTextureInDescriptorSetArray(Device& vkDev, VkDescriptorSet ds, VulkanTexture t, uint32_t textureIndex, uint32_t bindingIdx);
 
 	VkShaderStageFlagBits glslangShaderStageToVulkan(glslang_stage_t sh);
 	glslang_stage_t glslangShaderStageFromFileName(const char* fileName);
@@ -499,8 +503,8 @@ namespace RHI::Vulkan
 
 	struct VulkanResources
 	{
-		VulkanResources(VulkanRenderDevice& vkDev)
-			: vkDev_(vkDev)
+		VulkanResources(Device& vkDev)
+			: m_Device(vkDev)
 		{}
 		~VulkanResources();
 
@@ -520,24 +524,18 @@ namespace RHI::Vulkan
 		std::map<std::string, uint32_t> shaderMap;
 
 	private:
-		VulkanRenderDevice vkDev_;
+		Device m_Device;
 	};
 
-	class VulkanDevice final : public IDevice
+	class Device final : public IDevice
 	{
 	public:
-		VulkanDevice(
-			VulkanInstance& vk,
-			VulkanRenderDevice& vkDev,
-			VulkanContextExtensions& ctxExtensions,
-			VulkanContextFeatures& ctxFeatures,
-			uint32_t width,
-			uint32_t height);
-		virtual ~VulkanDevice();
+		Device(DeviceDesc& desc);
+		virtual ~Device();
 
 		VkPhysicalDeviceFeatures initVulkanRenderDeviceFeatures(const VulkanContextFeatures& ctxFeatures, VkPhysicalDeviceFeatures2& deviceFeatures2);
-		bool initVulkanRenderDevice(uint32_t width,
-			uint32_t height,
+		bool initVulkanRenderDevice(
+			DeviceDesc& desc,
 			std::function<bool(VkPhysicalDevice)> selector,
 			VkPhysicalDeviceFeatures deviceFeatures,
 			VkPhysicalDeviceFeatures2 deviceFeatures2);
@@ -657,7 +655,7 @@ namespace RHI::Vulkan
 		inline uint32_t getVulkanBufferAlignment()
 		{
 			VkPhysicalDeviceProperties devProps;
-			vkGetPhysicalDeviceProperties(ctx_.vkDev.physicalDevice, &devProps);
+			vkGetPhysicalDeviceProperties(m_Context.physicalDevice, &devProps);
 			return static_cast<uint32_t>(devProps.limits.minStorageBufferOffsetAlignment);
 		}
 
@@ -715,8 +713,13 @@ namespace RHI::Vulkan
 		VkResult createShaderModule(ShaderModule* shader, const char* fileName);
 
 	private:
-		VulkanRenderContext ctx_;
+		VulkanContext m_Context;
+		DeviceDesc* m_DeviceDesc;
 		VulkanResources resources_;
+
+		// a list of all queues (for shared buffer allocations)
+		std::vector<uint32_t> deviceQueueIndices;
+		std::vector<VkQueue> deviceQueues;
 
 		bool createGraphicsPipeline(
 			VkRenderPass renderPass, VkPipelineLayout pipelineLayout,
@@ -734,7 +737,7 @@ namespace RHI::Vulkan
 	class VulkanCommandList final : public IRHICommandList
 	{
 	public:
-		VulkanCommandList(VulkanRenderContext& ctx);
+		VulkanCommandList(VulkanContext& ctx);
 		virtual ~VulkanCommandList();
 
 		VkCommandBuffer beginSingleTimeCommands();
@@ -750,6 +753,6 @@ namespace RHI::Vulkan
 		bool drawFrame(const std::function<void(uint32_t)>& updateBuffersFunc, const std::function<void(VkCommandBuffer, uint32_t)>& composeFrameFunc);
 
 	private:
-		VulkanRenderContext ctx_;
+		VulkanContext m_Context;
 	};
 }

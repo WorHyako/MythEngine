@@ -4,7 +4,7 @@
 
 namespace RHI::Vulkan
 {
-    bool VulkanDevice::createGraphicsPipeline(
+    bool Device::createGraphicsPipeline(
         VkRenderPass renderPass, VkPipelineLayout pipelineLayout,
         const std::vector<const char*>& shaderFiles,
         VkPipeline* pipeline,
@@ -57,14 +57,14 @@ namespace RHI::Vulkan
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
-        viewport.width = static_cast<float>(customWidth > 0 ? customWidth : ctx_.vkDev.framebufferWidth);
-        viewport.height = static_cast<float>(customHeight > 0 ? customHeight : ctx_.vkDev.framebufferHeight);
+        viewport.width = static_cast<float>(customWidth > 0 ? customWidth : m_Context.vkDev.framebufferWidth);
+        viewport.height = static_cast<float>(customHeight > 0 ? customHeight : m_Context.vkDev.framebufferHeight);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
 
         VkRect2D scissor{};
         scissor.offset = { 0, 0 };
-        scissor.extent = { customWidth > 0 ? customWidth : ctx_.vkDev.framebufferWidth, customHeight > 0 ? customHeight : ctx_.vkDev.framebufferHeight };
+        scissor.extent = { customWidth > 0 ? customWidth : m_Context.vkDev.framebufferWidth, customHeight > 0 ? customHeight : m_Context.vkDev.framebufferHeight };
 
         VkPipelineViewportStateCreateInfo viewportState{};
         viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -150,12 +150,12 @@ namespace RHI::Vulkan
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
         pipelineInfo.basePipelineIndex = -1;
 
-        VK_CHECK(vkCreateGraphicsPipelines(ctx_.vkDev.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pipeline));
+        VK_CHECK(vkCreateGraphicsPipelines(m_Context.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pipeline));
 
         return true;
     }
 
-    VkPipeline VulkanDevice::addPipeline(VkRenderPass renderPass, VkPipelineLayout pipelineLayout,
+    VkPipeline Device::addPipeline(VkRenderPass renderPass, VkPipelineLayout pipelineLayout,
         const std::vector<const char*>& shaderFiles, const PipelineInfo& pipelineParams)
     {
         VkPipeline pipeline;
@@ -173,7 +173,7 @@ namespace RHI::Vulkan
     }
 
 
-    bool VulkanDevice::createPipelineLayout(VkDescriptorSetLayout dsLayout, VkPipelineLayout* pipelineLayout)
+    bool Device::createPipelineLayout(VkDescriptorSetLayout dsLayout, VkPipelineLayout* pipelineLayout)
     {
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -184,10 +184,10 @@ namespace RHI::Vulkan
         pipelineLayoutInfo.pushConstantRangeCount = 0;
         pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-        return (vkCreatePipelineLayout(ctx_.vkDev.device, &pipelineLayoutInfo, nullptr, pipelineLayout) == VK_SUCCESS);
+        return (vkCreatePipelineLayout(m_Context.device, &pipelineLayoutInfo, nullptr, pipelineLayout) == VK_SUCCESS);
     }
 
-    bool VulkanDevice::createPipelineLayoutWithConstants(VkDescriptorSetLayout dsLayout, VkPipelineLayout* pipelineLayout, uint32_t vtxConstSize, uint32_t fragConstSize)
+    bool Device::createPipelineLayoutWithConstants(VkDescriptorSetLayout dsLayout, VkPipelineLayout* pipelineLayout, uint32_t vtxConstSize, uint32_t fragConstSize)
     {
         const VkPushConstantRange ranges[] =
         {
@@ -216,10 +216,10 @@ namespace RHI::Vulkan
         pipelineLayoutInfo.pPushConstantRanges = (constSize == 0) ? nullptr :
             (vtxConstSize > 0) ? ranges : &ranges[1];
 
-        return (vkCreatePipelineLayout(ctx_.vkDev.device, &pipelineLayoutInfo, nullptr, pipelineLayout) == VK_SUCCESS);
+        return (vkCreatePipelineLayout(m_Context.device, &pipelineLayoutInfo, nullptr, pipelineLayout) == VK_SUCCESS);
     }
 
-    VkPipelineLayout VulkanDevice::addPipelineLayout(VkDescriptorSetLayout dsLayout, uint32_t vtxConstSize, uint32_t fragConstSize)
+    VkPipelineLayout Device::addPipelineLayout(VkDescriptorSetLayout dsLayout, uint32_t vtxConstSize, uint32_t fragConstSize)
     {
         VkPipelineLayout pipelineLayout;
         if (!createPipelineLayoutWithConstants(dsLayout, &pipelineLayout, vtxConstSize, fragConstSize))

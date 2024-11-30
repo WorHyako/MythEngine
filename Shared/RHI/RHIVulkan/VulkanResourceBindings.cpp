@@ -2,7 +2,7 @@
 
 namespace RHI::Vulkan
 {
-    VkDescriptorPool VulkanDevice::addDescriptorPool(const DescriptorSetInfo& dsInfo, uint32_t dSetCount)
+    VkDescriptorPool Device::addDescriptorPool(const DescriptorSetInfo& dsInfo, uint32_t dSetCount)
     {
         uint32_t uniformBufferCount = 0;
         uint32_t storageBufferCount = 0;
@@ -42,7 +42,7 @@ namespace RHI::Vulkan
 
         VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
 
-        if (vkCreateDescriptorPool(ctx_.vkDev.device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+        if (vkCreateDescriptorPool(m_Context.device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
         {
             printf("Cannot allocate descriptor pool\n");
             exit(EXIT_FAILURE);
@@ -53,7 +53,7 @@ namespace RHI::Vulkan
     }
 
 
-    VkDescriptorSetLayout VulkanDevice::addDescriptorSetLayout(const DescriptorSetInfo& dsInfo)
+    VkDescriptorSetLayout Device::addDescriptorSetLayout(const DescriptorSetInfo& dsInfo)
     {
         VkDescriptorSetLayout descriptorSetLayout;
 
@@ -89,7 +89,7 @@ namespace RHI::Vulkan
         layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
         layoutInfo.pBindings = bindings.size() > 0 ? bindings.data() : nullptr;
 
-        if (vkCreateDescriptorSetLayout(ctx_.vkDev.device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
+        if (vkCreateDescriptorSetLayout(m_Context.device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
         {
             printf("Failed to create descriptor set layout\n");
             exit(EXIT_FAILURE);
@@ -99,7 +99,7 @@ namespace RHI::Vulkan
         return descriptorSetLayout;
     }
 
-    VkDescriptorSet VulkanDevice::addDescriptorSet(VkDescriptorPool descriptorPool, VkDescriptorSetLayout dsLayout)
+    VkDescriptorSet Device::addDescriptorSet(VkDescriptorPool descriptorPool, VkDescriptorSetLayout dsLayout)
     {
         VkDescriptorSet descriptorSet;
 
@@ -110,7 +110,7 @@ namespace RHI::Vulkan
         allocInfo.descriptorSetCount = 1;
         allocInfo.pSetLayouts = &dsLayout;
 
-        if (vkAllocateDescriptorSets(ctx_.vkDev.device, &allocInfo, &descriptorSet) != VK_SUCCESS)
+        if (vkAllocateDescriptorSets(m_Context.device, &allocInfo, &descriptorSet) != VK_SUCCESS)
         {
             printf("Cannot allocate descriptor set\n");
             exit(EXIT_FAILURE);
@@ -124,7 +124,7 @@ namespace RHI::Vulkan
         creates a list of DescriptorWrite operations with required buffer/image info structures
         and calls the vkUpdateDescriptorSets()
     */
-    void VulkanDevice::updateDescriptorSet(VkDescriptorSet ds, const DescriptorSetInfo& dsInfo)
+    void Device::updateDescriptorSet(VkDescriptorSet ds, const DescriptorSetInfo& dsInfo)
     {
         uint32_t bindingIdx = 0;
         std::vector<VkWriteDescriptorSet> descriptorWrites;
@@ -196,6 +196,6 @@ namespace RHI::Vulkan
             descriptorWrites.push_back(writeSet);
         }
 
-        vkUpdateDescriptorSets(ctx_.vkDev.device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+        vkUpdateDescriptorSets(m_Context.device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
 }

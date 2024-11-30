@@ -2,7 +2,7 @@
 
 namespace RHI::Vulkan
 {
-    VkResult VulkanDevice::createComputePipeline(VkShaderModule computeShader, VkPipelineLayout pipelineLayout, VkPipeline* pipeline)
+    VkResult Device::createComputePipeline(VkShaderModule computeShader, VkPipelineLayout pipelineLayout, VkPipeline* pipeline)
     {
         // ShaderStageInfo, just like in graphics pipeline, but with a single COMPUTE stage
         VkPipelineShaderStageCreateInfo shaderStageCreateInfo{};
@@ -25,6 +25,6 @@ namespace RHI::Vulkan
         computePipelineCreateInfo.basePipelineIndex = 0;
 
         /* no caching, single pipeline creation*/
-        return vkCreateComputePipelines(ctx_.vkDev.device, 0, 1, &computePipelineCreateInfo, nullptr, pipeline);
+        return vkCreateComputePipelines(m_Context.device, 0, 1, &computePipelineCreateInfo, nullptr, pipeline);
     }
 }

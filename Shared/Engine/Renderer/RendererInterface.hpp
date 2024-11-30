@@ -9,10 +9,10 @@ namespace mythSystem
 		RendererInterface() {};
 		virtual ~RendererInterface() {};
 
-		virtual void RenderScene() = 0;
-		virtual void InitializeRender() = 0;
+		virtual void renderScene() = 0;
+		virtual void initializeRender() = 0;
 
 	protected:
-		RHI::IDevice* device_;
+		RHI::IDevice* m_Device;
 	};
 }
