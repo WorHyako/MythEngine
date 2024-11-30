@@ -19,6 +19,7 @@ namespace mythSystem
         virtual ~WindowInterface();
 
         virtual bool Initialize();
+        virtual bool IsClosed();
 
         virtual int Run();
 

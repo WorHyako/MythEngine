@@ -3,16 +3,7 @@
 
 VulkanSceneRenderer::VulkanSceneRenderer()
 {
-	rhiModule_ = RHI::InitializeModuleRHI(RHI::GraphicsAPI::VULKAN);
-	if(rhiModule_)
-	{
-		dynamicRHI_ = rhiModule_->createRHI();
-		if(dynamicRHI_)
-		{
-			device_ = dynamicRHI_->getDevice();
-		}
-
-	}
+	
 }
 
 VulkanSceneRenderer::~VulkanSceneRenderer()
@@ -21,7 +12,7 @@ VulkanSceneRenderer::~VulkanSceneRenderer()
 	dynamicRHI_ = nullptr;
 }
 
-void VulkanSceneRenderer::initializeResources()
+void VulkanSceneRenderer::InitializeRender()
 {
 	if(device_)
 	{
@@ -29,7 +20,7 @@ void VulkanSceneRenderer::initializeResources()
 	}
 }
 
-void VulkanSceneRenderer::draw()
+void VulkanSceneRenderer::RenderScene()
 {
 	
 }

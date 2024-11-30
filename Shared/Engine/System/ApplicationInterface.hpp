@@ -6,6 +6,7 @@
 
 namespace mythSystem
 {
+    class RendererInterface;
 
     class ApplicationInterface
     {
@@ -15,9 +16,11 @@ namespace mythSystem
 
         virtual void OnApplicationStarted() = 0;
         virtual void Exit(int ExitCode = 0) = 0;
+        virtual void mainLoop() = 0;
 
     protected:
-        virtual UniquePtr<WindowInterface> CreateWindow() = 0;
+        virtual UniquePtr<WindowInterface> createWindow() = 0;
+        virtual UniquePtr<RendererInterface> createRenderer() = 0;
     };
 
 };// namespace mythSystem

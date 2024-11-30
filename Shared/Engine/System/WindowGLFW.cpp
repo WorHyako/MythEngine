@@ -27,21 +27,21 @@ namespace mythSystem
     GLFWWindow::GLFWWindow(Resolution resolution)
 	    : WindowInterface(resolution)
     {
-        window_ = glfwCreateWindow(resolution.width, resolution.height, "VulkanApp", nullptr, nullptr);
+        m_Window = glfwCreateWindow(resolution.width, resolution.height, "VulkanApp", nullptr, nullptr);
     }
 
     void GLFWWindow::setWindowUserPointer(void* pointer)
     {
-        if (window_)
+        if (m_Window)
         {
-            glfwSetWindowUserPointer(window_, pointer);
+            glfwSetWindowUserPointer(m_Window, pointer);
         }
     }
 
     void GLFWWindow::assignCallbacks()
     {
         glfwSetCursorPosCallback(
-            window_,
+            m_Window,
             [](GLFWwindow* window, double x, double y)
             {
                 ImGui::GetIO().MousePos = ImVec2((float)x, (float)y);
@@ -59,7 +59,7 @@ namespace mythSystem
         );
 
         glfwSetMouseButtonCallback(
-            window_,
+            m_Window,
             [](GLFWwindow* window, int button, int action, int mods)
             {
                 auto& io = ImGui::GetIO();
@@ -74,7 +74,7 @@ namespace mythSystem
         );
 
         glfwSetKeyCallback(
-            window_,
+            m_Window,
             [](GLFWwindow* window, int key, int scancode, int action, int mods)
             {
                 const bool pressed = action != GLFW_RELEASE;
@@ -87,6 +87,11 @@ namespace mythSystem
                 }
             }
         );
+    }
+
+    bool GLFWWindow::IsClosed()
+    {
+        return glfwWindowShouldClose(m_Window);
     }
 
     void GLFWWindow::handleMouseMove(float mx, float my)

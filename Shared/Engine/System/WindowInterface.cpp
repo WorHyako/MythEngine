@@ -26,6 +26,11 @@ namespace mythSystem
         return true;
     }
 
+    bool WindowInterface::IsClosed()
+    {
+        return true;
+    }
+
     int WindowInterface::Run()
     {
         return 1;

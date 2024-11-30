@@ -10,14 +10,16 @@ namespace mythSystem
 	{
 		GLFWWindow(Resolution resolution);
 
-		~GLFWWindow() override
+		virtual ~GLFWWindow() override
 		{
-			window_ = nullptr;
+			m_Window = nullptr;
 		}
+
+		virtual bool IsClosed() override;
 
 		GLFWwindow* getWindow()
 		{
-			return window_;
+			return m_Window;
 		}
 
 		virtual void setWindowUserPointer(void* pointer) override;
@@ -28,6 +30,6 @@ namespace mythSystem
 		virtual void handleMouseMove(float mx, float my);
 
 	private:
-		GLFWwindow* window_;
+		GLFWwindow* m_Window;
 	};
 }

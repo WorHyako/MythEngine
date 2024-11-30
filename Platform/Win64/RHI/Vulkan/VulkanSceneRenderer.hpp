@@ -1,18 +1,18 @@
 #pragma once
-#include "VulkanResources.hpp"
-#include <RHI/RHICommon/RHICommon.hpp>
+#include <Renderer/RendererInterface.hpp>
 
-class VulkanSceneRenderer
+#include "VulkanResources.hpp"
+
+class VulkanSceneRenderer : public mythSystem::RendererInterface
 {
 public:
 	VulkanSceneRenderer();
-	~VulkanSceneRenderer();
+	virtual ~VulkanSceneRenderer();
 
-	void initializeResources();
-	void draw();
+	virtual void RenderScene() override;
+	virtual void InitializeRender() override;
 
 private:
 	RHI::IRHIModule* rhiModule_;
 	RHI::IDynamicRHI* dynamicRHI_;
-	RHI::IDevice* device_;
 };
