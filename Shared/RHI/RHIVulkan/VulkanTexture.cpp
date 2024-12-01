@@ -74,9 +74,9 @@ namespace RHI::Vulkan
         return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
     }
 
-    VulkanTexture Device::addRGBATexture(int texWidth, int texHeight, void* data)
+    Texture Device::addRGBATexture(int texWidth, int texHeight, void* data)
     {
-        VulkanTexture tex;
+        Texture tex;
         tex.width = texWidth;
         tex.height = texHeight;
         tex.depth = 1;
@@ -88,7 +88,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        transitionImageLayout(m_Context.vkDev, tex.image.image, tex.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        transitionImageLayout(tex.image.image, tex.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         if (!createImageView(tex.image.image, tex.format, VK_IMAGE_ASPECT_COLOR_BIT, &tex.image.imageView))
         {
@@ -101,9 +101,9 @@ namespace RHI::Vulkan
         return tex;
     }
 
-    VulkanTexture Device::addSolidRGBATexture(uint32_t color)
+    Texture Device::addSolidRGBATexture(uint32_t color)
     {
-        VulkanTexture tex;
+        Texture tex;
         tex.width = 1;
         tex.height = 1;
         tex.depth = 1;
@@ -115,7 +115,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        transitionImageLayout(vkDev, tex.image.image, tex.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        transitionImageLayout(tex.image.image, tex.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         if (!createImageView(tex.image.image, tex.format, VK_IMAGE_ASPECT_COLOR_BIT, &tex.image.imageView))
         {
@@ -129,12 +129,12 @@ namespace RHI::Vulkan
         return tex;
     }
 
-    VulkanTexture Device::addColorTexture(int texWidth, int texHeight, VkFormat colorFormat, VkFilter minFilter, VkFilter maxFilter, VkSamplerAddressMode addressMode)
+    Texture Device::addColorTexture(int texWidth, int texHeight, VkFormat colorFormat, VkFilter minFilter, VkFilter maxFilter, VkSamplerAddressMode addressMode)
     {
         const uint32_t w = (texWidth > 0) ? texWidth : m_DeviceDesc.framebufferWidth;
         const uint32_t h = (texHeight > 0) ? texHeight : m_DeviceDesc.framebufferHeight;
 
-        VulkanTexture res{};
+        Texture res{};
         res.width = w;
         res.height = h;
         res.depth = 1;
@@ -151,20 +151,20 @@ namespace RHI::Vulkan
         createImageView(res.image.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, &res.image.imageView);
         createTextureSampler(&res.sampler, minFilter, maxFilter, addressMode);
 
-        transitionImageLayout(vkDev, res.image.image, colorFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        transitionImageLayout(res.image.image, colorFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         m_Resources.allTextures.push_back(res);
         return res;
     }
 
-    VulkanTexture Device::addDepthTexture(int texWidth, int texHeight, VkImageLayout layout)
+    Texture Device::addDepthTexture(int texWidth, int texHeight, VkImageLayout layout)
     {
         const uint32_t w = (texWidth > 0) ? texWidth : m_DeviceDesc.framebufferWidth;
         const uint32_t h = (texHeight > 0) ? texHeight : m_DeviceDesc.framebufferHeight;
 
         const VkFormat depthFormat = findDepthFormat();
 
-        VulkanTexture depth{};
+        Texture depth{};
         depth.width = w;
         depth.height = h;
         depth.depth = 1;
@@ -179,7 +179,7 @@ namespace RHI::Vulkan
         }
 
         createImageView(depth.image.image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, &depth.image.imageView);
-        transitionImageLayout(vkDev, depth.image.image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, layout/*VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL*/);
+        transitionImageLayout(depth.image.image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, layout/*VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL*/);
 
         if (!createDepthSampler(&depth.sampler))
         {
@@ -302,7 +302,7 @@ namespace RHI::Vulkan
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory, flags);
     }
 
-    void Device::destroyVulkanTexture(VulkanTexture& texture)
+    void Device::destroyVulkanTexture(Texture& texture)
     {
         destroyVulkanImage(texture.image);
         vkDestroySampler(m_Context.device, texture.sampler, nullptr);
@@ -548,9 +548,9 @@ namespace RHI::Vulkan
 
         uploadBufferData(stagingBufferMemory, 0, mipData, imageSize);
 
-        transitionImageLayout(vkDev, textureImage, texFormat, VK_IMAGE_LAYOUT_UNDEFINED/*sourceImageLayout*/, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layerCount, mipLevels);
-        copyMIPBufferToImage(vkDev, stagingBuffer, textureImage, mipLevels, texWidth, texHeight, bytesPerPixel, layerCount);
-        transitionImageLayout(vkDev, textureImage, texFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layerCount, mipLevels);
+        transitionImageLayout(textureImage, texFormat, VK_IMAGE_LAYOUT_UNDEFINED/*sourceImageLayout*/, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layerCount, mipLevels);
+        copyMIPBufferToImage(stagingBuffer, textureImage, mipLevels, texWidth, texHeight, bytesPerPixel, layerCount);
+        transitionImageLayout(textureImage, texFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layerCount, mipLevels);
 
         vkDestroyBuffer(m_Context.device, stagingBuffer, nullptr);
         vkFreeMemory(m_Context.device, stagingBufferMemory, nullptr);
@@ -571,9 +571,9 @@ namespace RHI::Vulkan
 
         uploadBufferData(stagingBufferMemory, 0, imageData, imageSize);
 
-        transitionImageLayout(vkDev, textureImage, texFormat, sourceImageLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layerCount);
-        copyBufferToImage(vkDev, stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), layerCount);
-        transitionImageLayout(vkDev, textureImage, texFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layerCount);
+        transitionImageLayout(textureImage, texFormat, sourceImageLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layerCount);
+        copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), layerCount);
+        transitionImageLayout(textureImage, texFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layerCount);
 
         vkDestroyBuffer(m_Context.device, stagingBuffer, nullptr);
         vkFreeMemory(m_Context.device, stagingBufferMemory, nullptr);
@@ -582,9 +582,9 @@ namespace RHI::Vulkan
     }
 
 
-    VulkanTexture Device::loadCubemap(const char* fileName, uint32_t mipLevels)
+    Texture Device::loadCubemap(const char* fileName, uint32_t mipLevels)
     {
-        VulkanTexture cubemap;
+        Texture cubemap;
 
         uint32_t w = 0, h = 0;
 
@@ -606,12 +606,12 @@ namespace RHI::Vulkan
         return cubemap;
     }
 
-    VulkanTexture Device::loadKTX(const char* fileName)
+    Texture Device::loadKTX(const char* fileName)
     {
         gli::texture gliTex = gli::load_ktx(fileName);
         gli::tvec3<uint32_t> extent(gliTex.extent(0));
 
-        VulkanTexture ktx{};
+        Texture ktx{};
         ktx.width = extent.x;
         ktx.height = extent.y;
         ktx.depth = 4;
@@ -631,9 +631,9 @@ namespace RHI::Vulkan
         return ktx;
     }
 
-    VulkanTexture Device::loadTexture2D(const char* fileName)
+    Texture Device::loadTexture2D(const char* fileName)
     {
-        VulkanTexture tex;
+        Texture tex;
         if (!createTextureImage(fileName, tex.image.image, tex.image.imageMemory, &tex.width, &tex.height))
         {
             printf("Cannot load %s 2D texture file\n", fileName);
@@ -641,7 +641,7 @@ namespace RHI::Vulkan
         }
 
         VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
-        transitionImageLayout(vkDev, tex.image.image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        transitionImageLayout(tex.image.image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         if (!createImageView(tex.image.image, format, VK_IMAGE_ASPECT_COLOR_BIT, &tex.image.imageView))
         {
@@ -655,12 +655,12 @@ namespace RHI::Vulkan
     }
 
 
-    VulkanTexture Device::createFontTexture(const char* fontFile)
+    Texture Device::createFontTexture(const char* fontFile)
     {
         ImGuiIO& io = ImGui::GetIO();
         VulkanImage img{};
         img.image = VK_NULL_HANDLE;
-        VulkanTexture res{};
+        Texture res{};
         res.image = img;
 
         // Build texture atlas

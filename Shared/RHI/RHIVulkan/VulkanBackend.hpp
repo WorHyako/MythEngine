@@ -27,6 +27,7 @@ namespace RHI::Vulkan
 {
 	class Device;
 	class CommandList;
+	class Texture;
 
 	// Features we need for our Vulkan context
 	struct VulkanContextFeatures
@@ -89,7 +90,7 @@ namespace RHI::Vulkan
 		void composeFrame(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 		// For Chapter 8 & 9
-		inline PipelineInfo pipelineParametersForOutputs(const std::vector<VulkanTexture>& outputs) const
+		inline PipelineInfo pipelineParametersForOutputs(const std::vector<Texture>& outputs) const
 		{
 			PipelineInfo pInfo{};
 			pInfo.width = outputs.empty() ? vkDev.framebufferWidth : outputs[0].width;
@@ -186,18 +187,8 @@ namespace RHI::Vulkan
 		VkQueue computeQueue;
 		bool useComputeQueue = false;
 
-		VkSwapchainKHR swapchain;
-		VkSemaphore semaphore;
-		VkSemaphore renderSemaphore;
-
-		std::vector<VkImage> swapchainImages;
-		std::vector<VkImageView> swapchainImageViews;
-
-		VkCommandPool commandPool;
-		std::vector<VkCommandBuffer> commandBuffers;
-
-		VkCommandBuffer computeCommandBuffer;
-		VkCommandPool computeCommandPool;
+		//VkSemaphore semaphore;
+		//VkSemaphore renderSemaphore;
 	};
 
 	/* A structure with pipeline parameters */
@@ -246,7 +237,7 @@ namespace RHI::Vulkan
 		VkShaderModule shaderModule = nullptr;
 	};
 
-	struct VulkanBuffer : public IBuffer
+	struct Buffer : public IBuffer
 	{
 		VkBuffer		buffer;
 		VkDeviceSize	size;
@@ -264,11 +255,9 @@ namespace RHI::Vulkan
 	};
 
 	// Aggregate structure for passing around the texture data
-	struct VulkanTexture final : public ITexture
+	class Texture : public ITexture
 	{
-		uint32_t width;
-		uint32_t height;
-		uint32_t depth;
+	public:
 		VkFormat format;
 
 		VulkanImage image;
@@ -288,7 +277,7 @@ namespace RHI::Vulkan
 	{
 		DescriptorInfo  dInfo;
 
-		VulkanBuffer    buffer;
+		Buffer*         buffer;
 		uint32_t        offset;
 		uint32_t        size;
 	};
@@ -297,17 +286,17 @@ namespace RHI::Vulkan
 	{
 		DescriptorInfo  dInfo;
 
-		VulkanTexture   texture;
+		Texture*      texture;
 	};
 
 	struct TextureArrayAttachment
 	{
 		DescriptorInfo  dInfo;
 
-		std::vector<VulkanTexture>  textures;
+		std::vector<Texture*>  textures;
 	};
 
-	inline TextureAttachment makeTextureAttachment(VulkanTexture tex, VkShaderStageFlags shaderStageFlags)
+	inline TextureAttachment makeTextureAttachment(Texture* tex, VkShaderStageFlags shaderStageFlags)
 	{
 		TextureAttachment textureAttachment{};
 		textureAttachment.dInfo.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -317,12 +306,12 @@ namespace RHI::Vulkan
 		return textureAttachment;
 	}
 
-	inline TextureAttachment fsTextureAttachment(VulkanTexture tex)
+	inline TextureAttachment fsTextureAttachment(Texture* tex)
 	{
 		return makeTextureAttachment(tex, VK_SHADER_STAGE_FRAGMENT_BIT);
 	}
 
-	inline TextureArrayAttachment fsTextureArrayAttachment(const std::vector<VulkanTexture>& textures)
+	inline TextureArrayAttachment fsTextureArrayAttachment(const std::vector<Texture*>& textures)
 	{
 		TextureArrayAttachment textureArrayAttachment{};
 		textureArrayAttachment.dInfo.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -332,22 +321,22 @@ namespace RHI::Vulkan
 		return textureArrayAttachment;
 	}
 
-	inline BufferAttachment makeBufferAttachment(VulkanBuffer buffer, uint32_t offset, uint32_t size, VkDescriptorType type, VkShaderStageFlags shaderStageFlags)
+	inline BufferAttachment makeBufferAttachment(Buffer* buffer, uint32_t offset, uint32_t size, VkDescriptorType type, VkShaderStageFlags shaderStageFlags)
 	{
 		BufferAttachment bufferAttachment{};
 		bufferAttachment.dInfo = { type, shaderStageFlags };
-		bufferAttachment.buffer = { buffer.buffer, buffer.size, buffer.memory, buffer.memory };
+		bufferAttachment.buffer = buffer;//{ buffer.buffer, buffer.size, buffer.memory, buffer.memory };
 		bufferAttachment.offset = offset;
 		bufferAttachment.size = size;
 		return bufferAttachment;
 	}
 
-	inline BufferAttachment uniformBufferAttachment(VulkanBuffer buffer, uint32_t offset, uint32_t size, VkShaderStageFlags shaderStageFlags)
+	inline BufferAttachment uniformBufferAttachment(Buffer* buffer, uint32_t offset, uint32_t size, VkShaderStageFlags shaderStageFlags)
 	{
 		return makeBufferAttachment(buffer, offset, size, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, shaderStageFlags);
 	}
 
-	inline BufferAttachment storageBufferAttachment(VulkanBuffer buffer, uint32_t offset, uint32_t size, VkShaderStageFlags shaderStageFlags)
+	inline BufferAttachment storageBufferAttachment(Buffer* buffer, uint32_t offset, uint32_t size, VkShaderStageFlags shaderStageFlags)
 	{
 		return makeBufferAttachment(buffer, offset, size, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, shaderStageFlags);
 	}
@@ -520,7 +509,7 @@ namespace RHI::Vulkan
 	}
 
 	/* This routine updates one texture discriptor in one descriptor set */
-	void updateTextureInDescriptorSetArray(Device& vkDev, VkDescriptorSet ds, VulkanTexture t, uint32_t textureIndex, uint32_t bindingIdx);
+	void updateTextureInDescriptorSetArray(Device& vkDev, VkDescriptorSet ds, Texture t, uint32_t textureIndex, uint32_t bindingIdx);
 
 	VkShaderStageFlagBits glslangShaderStageToVulkan(glslang_stage_t sh);
 	glslang_stage_t glslangShaderStageFromFileName(const char* fileName);
@@ -534,8 +523,8 @@ namespace RHI::Vulkan
 		{}
 		~VulkanResources();
 
-		std::vector<VulkanTexture> allTextures;
-		std::vector<VulkanBuffer> allBuffers;
+		std::vector<Texture> allTextures;
+		std::vector<Buffer> allBuffers;
 
 		std::vector<VkFramebuffer> allFramebuffers;
 		std::vector<VkRenderPass> allRenderPasses;
@@ -549,17 +538,29 @@ namespace RHI::Vulkan
 		std::vector<ShaderModule> shaderModules;
 		std::map<std::string, uint32_t> shaderMap;
 
+		VkSwapchainKHR swapchain;
+
+		std::vector<VkImage> swapchainImages;
+		std::vector<VkImageView> swapchainImageViews;
+
+		VkCommandPool commandPool;
+		std::vector<VkCommandBuffer> commandBuffers;
+
+		VkCommandBuffer computeCommandBuffer;
+		VkCommandPool computeCommandPool;
+
 	private:
 		Device* m_Device;
 	};
 
-	class Device final : public IDevice
+	class Device : public IDevice
 	{
 	public:
 		Device(DeviceDesc& desc);
-		virtual ~Device();
+		virtual ~Device() override;
 
 		Queue* getQueue(CommandQueue queue) const { return m_Queues[int(queue)].get(); }
+		VulkanResources* getResources() { return &m_Resources; }
 
 		VkPhysicalDeviceFeatures initVulkanRenderDeviceFeatures(const VulkanContextFeatures& ctxFeatures, VkPhysicalDeviceFeatures2& deviceFeatures2);
 		bool initVulkanRenderDevice(
@@ -572,24 +573,24 @@ namespace RHI::Vulkan
 		void destroyVulkanRenderDevice();
 
 		/* Resource Management*/
-		VulkanTexture loadTexture2D(const char* filename);
+		Texture loadTexture2D(const char* filename);
 
-		VulkanTexture loadCubemap(const char* fileName, uint32_t mipLevels = 1);
+		Texture loadCubemap(const char* fileName, uint32_t mipLevels = 1);
 
-		VulkanTexture loadKTX(const char* fileName);
+		Texture loadKTX(const char* fileName);
 
-		VulkanTexture createFontTexture(const char* fontFile);
+		Texture createFontTexture(const char* fontFile);
 
-		VulkanTexture addColorTexture(int texWidth = 0, int texHeight = 0,
+		Texture addColorTexture(int texWidth = 0, int texHeight = 0,
 			VkFormat colorFormat = VK_FORMAT_R8G8B8A8_UNORM,
 			VkFilter minFilter = VK_FILTER_LINEAR, VkFilter maxFilter = VK_FILTER_LINEAR,
 			VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
-		VulkanTexture addDepthTexture(int texWidth = 0, int texHeight = 0, VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		Texture addDepthTexture(int texWidth = 0, int texHeight = 0, VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-		VulkanTexture addSolidRGBATexture(uint32_t color = 0xFFFFFFFF);
+		Texture addSolidRGBATexture(uint32_t color = 0xFFFFFFFF);
 
-		VulkanTexture addRGBATexture(int texWidth, int texHeight, void* data);
+		Texture addRGBATexture(int texWidth, int texHeight, void* data);
 
 		bool createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory, VkImageCreateFlags flags = 0, uint32_t mipLevels = 1);
 
@@ -606,7 +607,7 @@ namespace RHI::Vulkan
 			uint32_t layerCount, VkImageCreateFlags flags);
 
 		void destroyVulkanImage(VulkanImage& image);
-		void destroyVulkanTexture(VulkanTexture& texture);
+		void destroyVulkanTexture(Texture& texture);
 
 		bool createTextureImage(const char* filename, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* outTexWidth = nullptr, uint32_t* outTexHeight = nullptr);
 
@@ -644,33 +645,33 @@ namespace RHI::Vulkan
 
 		bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
-		VulkanBuffer addBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool createMapping = false);
+		Buffer addBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool createMapping = false);
 
-		inline VulkanBuffer addUniformBuffer(VkDeviceSize bufferSize, bool createMapping = false)
+		inline Buffer addUniformBuffer(VkDeviceSize bufferSize, bool createMapping = false)
 		{
 			return addBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, createMapping); /* for debugging we make it host-visible */
 		}
 
-		inline VulkanBuffer addIndirectBuffer(VkDeviceSize bufferSize, bool createMapping = false) {
+		inline Buffer addIndirectBuffer(VkDeviceSize bufferSize, bool createMapping = false) {
 			return addBuffer(bufferSize, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, // | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, createMapping); /* for debugging we make it host-visible */
 		}
 
-		inline VulkanBuffer addStorageBuffer(VkDeviceSize bufferSize, bool createMapping = false)
+		inline Buffer addStorageBuffer(VkDeviceSize bufferSize, bool createMapping = false)
 		{
 			return addBuffer(bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, createMapping); /* for debugging we make it host-visible */
 		}
 
-		inline VulkanBuffer addLocalDeviceStorageBuffer(VkDeviceSize bufferSize, bool createMapping = false)
+		inline Buffer addLocalDeviceStorageBuffer(VkDeviceSize bufferSize, bool createMapping = false)
 		{
 			return addBuffer(bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, createMapping); /* for debugging we make it host-visible */
 		}
 
 		/* Allocate and upload vertex & index buffer pair */
-		VulkanBuffer addVertexBuffer(uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData);
+		Buffer addVertexBuffer(uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData);
 
 		size_t allocateVertexBuffer(VkBuffer* storageBuffer, VkDeviceMemory* storageBufferMemory, size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData);
 
@@ -693,10 +694,10 @@ namespace RHI::Vulkan
 
 		RenderPass addFullScreenPass(bool useDepth = true, const RenderPassCreateInfo ci = RenderPassCreateInfo());
 
-		RenderPass addRenderPass(const std::vector<VulkanTexture>& outputs, const RenderPassCreateInfo& ci = {
+		RenderPass addRenderPass(const std::vector<Texture>& outputs, const RenderPassCreateInfo& ci = {
 			true, true, eRenderPassBit_Offscreen | eRenderPassBit_First }, bool useDepth = true);
 
-		RenderPass addDepthRenderPass(const std::vector<VulkanTexture>& outputs, const RenderPassCreateInfo ci = {
+		RenderPass addDepthRenderPass(const std::vector<Texture>& outputs, const RenderPassCreateInfo ci = {
 			false, true, eRenderPassBit_Offscreen | eRenderPassBit_First });
 
 		bool createPipelineLayout(VkDescriptorSetLayout dsLayout, VkPipelineLayout* pipelineLayout);
@@ -724,7 +725,7 @@ namespace RHI::Vulkan
 
 		bool createColorAndDepthFramebuffers(VkRenderPass renderPass, VkImageView depthImageView, std::vector<VkFramebuffer>& swapchainFramebuffers);
 
-		VkFramebuffer addFramebuffer(RenderPass renderPass, const std::vector<VulkanTexture>& images);
+		VkFramebuffer addFramebuffer(RenderPass renderPass, const std::vector<Texture>& images);
 
 		std::vector<VkFramebuffer> addFramebuffers(VkRenderPass renderPass, VkImageView depthView = VK_NULL_HANDLE);
 
@@ -744,7 +745,6 @@ namespace RHI::Vulkan
 		VulkanContext m_Context;
 		DeviceDesc m_DeviceDesc;
 		VulkanResources m_Resources;
-		CommandList m_CommandList;
 
 		// array of submission queues
 		std::array<std::unique_ptr<Queue>, uint32_t(CommandQueue::Count)> m_Queues;
@@ -765,11 +765,11 @@ namespace RHI::Vulkan
 			uint32_t numPatchControlPoints);
 	};
 
-	class CommandList final : public IRHICommandList
+	class CommandList : public IRHICommandList
 	{
 	public:
-		CommandList(VulkanContext& ctx);
-		virtual ~CommandList();
+		CommandList(Device* device, VulkanContext& context);
+		virtual ~CommandList() override;
 
 		VkCommandBuffer beginSingleTimeCommands();
 		void endSingleTimeCommands(VkCommandBuffer commandBuffer);
@@ -785,6 +785,6 @@ namespace RHI::Vulkan
 
 	private:
 		Device* m_Device;
-		VulkanContext m_Context;
+		const VulkanContext& m_Context;
 	};
 }

@@ -2,6 +2,7 @@
 
 #include <EasyProfilerWrapper.hpp>
 
+#include <assimp/scene.h>
 #include <assimp/cimport.h>
 #include <assimp/mesh.h>
 #include <assimp/postprocess.h>
@@ -101,9 +102,9 @@ namespace RHI::Vulkan
         vkUnmapMemory(m_Context.device, bufferMemory);
     }
 
-    VulkanBuffer Device::addBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool createMapping)
+    Buffer Device::addBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool createMapping)
     {
-        VulkanBuffer buffer{};
+        Buffer buffer{};
         buffer.buffer = VK_NULL_HANDLE;
         buffer.size = 0;
         buffer.memory = VK_NULL_HANDLE;
@@ -126,9 +127,9 @@ namespace RHI::Vulkan
         return buffer;
     }
 
-    VulkanBuffer Device::addVertexBuffer(uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData)
+    Buffer Device::addVertexBuffer(uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData)
     {
-        VulkanBuffer result;
+        Buffer result;
         result.size = allocateVertexBuffer(&result.buffer, &result.memory, vertexBufferSize, vertexData, indexBufferSize, indexData);
         m_Resources.allBuffers.push_back(result);
         return result;
@@ -168,7 +169,7 @@ namespace RHI::Vulkan
         const uint32_t indexBufferSize = uint32_t(indices.size() * sizeof(int));
         const uint32_t vertexBufferSize = uint32_t(vertices.size() * sizeof(float));
 
-        VulkanBuffer storageBuffer = addVertexBuffer(indexBufferSize, indices.data(), vertexBufferSize, vertices.data());
+        Buffer storageBuffer = addVertexBuffer(indexBufferSize, indices.data(), vertexBufferSize, vertices.data());
 
         BufferAttachment vertexBufferAttachment{};
         vertexBufferAttachment.dInfo = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT };
@@ -196,7 +197,7 @@ namespace RHI::Vulkan
         if (!scene || !scene->HasMeshes())
         {
             printf("Unable to load %s\n", filename);
-            VulkanBuffer nullBuffer{ VK_NULL_HANDLE, 0, VK_NULL_HANDLE };
+            Buffer nullBuffer{ VK_NULL_HANDLE, 0, VK_NULL_HANDLE };
 
             return std::pair{ BufferAttachment { DescriptorInfo {} , nullBuffer } , BufferAttachment { DescriptorInfo {}, nullBuffer } };
         }

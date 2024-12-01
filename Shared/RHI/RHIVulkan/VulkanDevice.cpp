@@ -105,28 +105,28 @@ namespace RHI::Vulkan
         if (!presentSupported)
             exit(EXIT_FAILURE);
 
-        VK_CHECK(createSwapchain(m_Context.device, m_Context.physicalDevice, m_Context.vulkanInstance.surface, m_DeviceDesc.graphicsFamily, desc.framebufferWidth, desc.framebufferHeight, &m_Context.vkDev.swapchain, m_Context.ctxFeatures.supportsScreenshots_));
-        const size_t imageCount = createSwapchainImages(m_Context.device, m_Context.vkDev.swapchain, m_Context.vkDev.swapchainImages, m_Context.vkDev.swapchainImageViews);
-        m_Context.vkDev.commandBuffers.resize(imageCount);
+        VK_CHECK(createSwapchain(m_Context.device, m_Context.physicalDevice, m_Context.vulkanInstance.surface, m_DeviceDesc.graphicsFamily, desc.framebufferWidth, desc.framebufferHeight, &m_Resources.swapchain, m_Context.ctxFeatures.supportsScreenshots_));
+        const size_t imageCount = createSwapchainImages(m_Context.device, m_Resources.swapchain, m_Resources.swapchainImages, m_Resources.swapchainImageViews);
+        m_Resources.commandBuffers.resize(imageCount);
 
-        VK_CHECK(createSemaphore(m_Context.device, &m_Queues[uint32_t(CommandQueue::Graphics)]->semaphore));
-        VK_CHECK(createSemaphore(m_Context.device, &m_Queues[uint32_t(CommandQueue::Graphics)]->renderSemaphore));
+        VK_CHECK(createSemaphore(m_Context.device, &getQueue(CommandQueue::Graphics)->semaphore));
+        VK_CHECK(createSemaphore(m_Context.device, &getQueue(CommandQueue::Graphics)->renderSemaphore));
 
         VkCommandPoolCreateInfo cpi{};
         cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         cpi.flags = 0;
         cpi.queueFamilyIndex = m_DeviceDesc.graphicsFamily;
 
-        VK_CHECK(vkCreateCommandPool(m_Context.device, &cpi, nullptr, &m_Context.vkDev.commandPool));
+        VK_CHECK(vkCreateCommandPool(m_Context.device, &cpi, nullptr, &m_Resources.commandPool));
 
         VkCommandBufferAllocateInfo ai{};
         ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         ai.pNext = nullptr;
-        ai.commandPool = m_Context.vkDev.commandPool;
+        ai.commandPool = m_Resources.commandPool;
         ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        ai.commandBufferCount = static_cast<uint32_t>(m_Context.vkDev.swapchainImages.size());
+        ai.commandBufferCount = static_cast<uint32_t>(m_Resources.swapchainImages.size());
 
-        VK_CHECK(vkAllocateCommandBuffers(m_Context.device, &ai, &m_Context.vkDev.commandBuffers[0]));
+        VK_CHECK(vkAllocateCommandBuffers(m_Context.device, &ai, &m_Resources.commandBuffers[0]));
 
         if(desc.useComputeQueue)
         {
@@ -137,16 +137,16 @@ namespace RHI::Vulkan
             cpi1.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; /* Allow command from this pool buffers to be reset*/
             cpi1.queueFamilyIndex = static_cast<uint32_t>(m_Queues[uint32_t(CommandQueue::Compute)]->getQueueFamilyIndex());
 
-            VK_CHECK(vkCreateCommandPool(m_Context.device, &cpi1, nullptr, &m_Context.vkDev.computeCommandPool));
+            VK_CHECK(vkCreateCommandPool(m_Context.device, &cpi1, nullptr, &m_Resources.computeCommandPool));
 
             VkCommandBufferAllocateInfo ai1{};
             ai1.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
             ai1.pNext = nullptr;
-            ai1.commandPool = m_Context.vkDev.computeCommandPool;
+            ai1.commandPool = m_Resources.computeCommandPool;
             ai1.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
             ai1.commandBufferCount = 1;
 
-            VK_CHECK(vkAllocateCommandBuffers(m_Context.device, &ai1, &m_Context.vkDev.computeCommandBuffer));
+            VK_CHECK(vkAllocateCommandBuffers(m_Context.device, &ai1, &m_Resources.computeCommandBuffer));
         }
 
         return true;
@@ -227,19 +227,19 @@ namespace RHI::Vulkan
 
     void Device::destroyVulkanRenderDevice()
     {
-        for (size_t i = 0; i < m_Context.vkDev.swapchainImages.size(); i++)
-            vkDestroyImageView(m_Context.device, m_Context.vkDev.swapchainImageViews[i], nullptr);
+        for (size_t i = 0; i < m_Resources.swapchainImages.size(); i++)
+            vkDestroyImageView(m_Context.device, m_Resources.swapchainImageViews[i], nullptr);
 
-        vkDestroySwapchainKHR(m_Context.device, m_Context.vkDev.swapchain, nullptr);
+        vkDestroySwapchainKHR(m_Context.device, m_Resources.swapchain, nullptr);
 
-        vkDestroyCommandPool(m_Context.device, m_Context.vkDev.commandPool, nullptr);
+        vkDestroyCommandPool(m_Context.device, m_Resources.commandPool, nullptr);
 
-        vkDestroySemaphore(m_Context.device, m_Context.vkDev.semaphore, nullptr);
-        vkDestroySemaphore(m_Context.device, m_Context.vkDev.renderSemaphore, nullptr);
+        vkDestroySemaphore(m_Context.device, getQueue(CommandQueue::Graphics)->semaphore, nullptr);
+        vkDestroySemaphore(m_Context.device, getQueue(CommandQueue::Graphics)->renderSemaphore, nullptr);
 
         if (m_DeviceDesc.useComputeQueue)
         {
-            vkDestroyCommandPool(m_Context.device, m_Context.vkDev.computeCommandPool, nullptr);
+            vkDestroyCommandPool(m_Context.device, m_Resources.computeCommandPool, nullptr);
         }
 
         vkDestroyDevice(m_Context.device, nullptr);

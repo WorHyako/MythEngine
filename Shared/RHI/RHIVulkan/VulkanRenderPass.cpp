@@ -11,7 +11,7 @@ namespace RHI::Vulkan
         return result;
     }
 
-    RenderPass Device::addRenderPass(const std::vector<VulkanTexture>& outputs, const RenderPassCreateInfo& ci, bool useDepth)
+    RenderPass Device::addRenderPass(const std::vector<Texture>& outputs, const RenderPassCreateInfo& ci, bool useDepth)
     {
         VkRenderPass renderPass;
 
@@ -48,7 +48,7 @@ namespace RHI::Vulkan
         return rp;
     }
 
-    RenderPass Device::addDepthRenderPass(const std::vector<VulkanTexture>& outputs, const RenderPassCreateInfo ci)
+    RenderPass Device::addDepthRenderPass(const std::vector<Texture>& outputs, const RenderPassCreateInfo ci)
     {
         VkRenderPass renderPass;
 

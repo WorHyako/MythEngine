@@ -138,7 +138,7 @@ namespace RHI::Vulkan
             BufferAttachment b = dsInfo.buffers[i];
 
             bufferDescriptors[i] = VkDescriptorBufferInfo{
-                b.buffer.buffer,
+                b.buffer->buffer,
                 b.offset,
                 (b.size > 0) ? b.size : VK_WHOLE_SIZE
             };
@@ -148,11 +148,11 @@ namespace RHI::Vulkan
 
         for (size_t i = 0; i < dsInfo.textures.size(); i++)
         {
-            VulkanTexture t = dsInfo.textures[i].texture;
+            Texture* t = dsInfo.textures[i].texture;
 
             imageDescriptors[i] = VkDescriptorImageInfo{
-                t.sampler,
-                t.image.imageView,
+                t->sampler,
+                t->image.imageView,
                 /* t.texture.layout */ VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
             };
 
@@ -167,11 +167,11 @@ namespace RHI::Vulkan
 
             for (size_t j = 0; j < dsInfo.textureArrays[ta].textures.size(); j++)
             {
-                VulkanTexture t = dsInfo.textureArrays[ta].textures[j];
+                Texture* t = dsInfo.textureArrays[ta].textures[j];
 
                 VkDescriptorImageInfo imageInfo = {
-                    t.sampler,
-                    t.image.imageView,
+                    t->sampler,
+                    t->image.imageView,
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                 };
 

@@ -2,8 +2,9 @@
 
 namespace RHI::Vulkan
 {
-	CommandList::CommandList(VulkanContext& ctx)
-		: m_Context(ctx)
+	CommandList::CommandList(Device* device, VulkanContext& context)
+		: m_Device(device)
+		, m_Context(context)
 	{
 		
 	}
@@ -21,7 +22,7 @@ namespace RHI::Vulkan
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.pNext = nullptr;
-        allocInfo.commandPool = ctx_.vkDev.commandPool;
+        allocInfo.commandPool = m_Device->getResources()->commandPool;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocInfo.commandBufferCount = 1;
 
@@ -56,7 +57,7 @@ namespace RHI::Vulkan
         vkQueueSubmit(m_Device->getQueue(CommandQueue::Graphics)->getVkQueue(), 1, &submitInfo, VK_NULL_HANDLE);
         vkQueueWaitIdle(m_Device->getQueue(CommandQueue::Graphics)->getVkQueue());
 
-        vkFreeCommandBuffers(m_Context.device, ctx_.vkDev.commandPool, 1, &commandBuffer);
+        vkFreeCommandBuffers(m_Context.device, m_Device->getResources()->commandPool, 1, &commandBuffer);
     }
 
 
@@ -319,14 +320,14 @@ namespace RHI::Vulkan
         const std::function<void(VkCommandBuffer, uint32_t)>& composeFrameFunc)
     {
         uint32_t imageIndex = 0;
-        VkResult result = vkAcquireNextImageKHR(m_Context.device, ctx_.vkDev.swapchain, 0, m_Device->getQueue(CommandQueue::Graphics)->semaphore, VK_NULL_HANDLE, &imageIndex);
-        VK_CHECK(vkResetCommandPool(m_Context.device, ctx_.vkDev.commandPool, 0));
+        VkResult result = vkAcquireNextImageKHR(m_Context.device, m_Device->getResources()->swapchain, 0, m_Device->getQueue(CommandQueue::Graphics)->semaphore, VK_NULL_HANDLE, &imageIndex);
+        VK_CHECK(vkResetCommandPool(m_Context.device, m_Device->getResources()->commandPool, 0));
 
         if (result != VK_SUCCESS) return false;
 
         updateBuffersFunc(imageIndex);
 
-        VkCommandBuffer commandBuffer = ctx_.vkDev.commandBuffers[imageIndex];
+        VkCommandBuffer commandBuffer = m_Device->getResources()->commandBuffers[imageIndex];
 
         VkCommandBufferBeginInfo bi{};
         bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -349,7 +350,7 @@ namespace RHI::Vulkan
         si.pWaitSemaphores = &m_Device->getQueue(CommandQueue::Graphics)->semaphore;
         si.pWaitDstStageMask = waitStages;
         si.commandBufferCount = 1;
-        si.pCommandBuffers = &ctx_.vkDev.commandBuffers[imageIndex];
+        si.pCommandBuffers = &m_Device->getResources()->commandBuffers[imageIndex];
         si.signalSemaphoreCount = 1;
         si.pSignalSemaphores = &m_Device->getQueue(CommandQueue::Graphics)->renderSemaphore;
 
@@ -361,7 +362,7 @@ namespace RHI::Vulkan
         pi.waitSemaphoreCount = 1;
         pi.pWaitSemaphores = &m_Device->getQueue(CommandQueue::Graphics)->renderSemaphore;
         pi.swapchainCount = 1;
-        pi.pSwapchains = &ctx_.vkDev.swapchain;
+        pi.pSwapchains = &m_Device->getResources()->swapchain;
         pi.pImageIndices = &imageIndex;
 
         VK_CHECK(vkQueuePresentKHR(m_Device->getQueue(CommandQueue::Graphics)->getVkQueue(), &pi));

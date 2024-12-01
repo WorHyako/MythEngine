@@ -5,12 +5,12 @@ namespace RHI::Vulkan
 {
 	bool Device::createColorAndDepthFramebuffers(VkRenderPass renderPass, VkImageView depthImageView, std::vector<VkFramebuffer>& swapchainFramebuffers)
     {
-        swapchainFramebuffers.resize( m_Context.vkDev.swapchainImageViews.size());
+        swapchainFramebuffers.resize(m_Resources.swapchainImageViews.size());
 
-        for (size_t i = 0; i < m_Context.vkDev.swapchainImages.size(); i++)
+        for (size_t i = 0; i < m_Resources.swapchainImageViews.size(); i++)
         {
             std::array<VkImageView, 2> attachments = {
-                    m_Context.vkDev.swapchainImageViews[i],
+                    m_Resources.swapchainImageViews[i],
                     depthImageView
             };
 
@@ -31,7 +31,7 @@ namespace RHI::Vulkan
         return true;
     }
 
-    VkFramebuffer Device::addFramebuffer(RenderPass renderPass, const std::vector<VulkanTexture>& images)
+    VkFramebuffer Device::addFramebuffer(RenderPass renderPass, const std::vector<Texture>& images)
     {
         VkFramebuffer framebuffer;
 
