@@ -26,18 +26,18 @@ namespace RHI::Vulkan
         {
             const char* file = shaderFiles[i];
 
-            auto idx = resources_.shaderMap.find(file);
+            auto idx = m_Resources.shaderMap.find(file);
 
-            if (idx != resources_.shaderMap.end())
+            if (idx != m_Resources.shaderMap.end())
             {
                 // printf("Already compiled file (%s)\n", file);
-                localShaderModules[i] = resources_.shaderModules[idx->second];
+                localShaderModules[i] = m_Resources.shaderModules[idx->second];
             }
             else
             {
                 VK_CHECK(createShaderModule(&localShaderModules[i], file));
-                resources_.shaderModules.push_back(localShaderModules[i]);
-                resources_.shaderMap[std::string(file)] = (int)resources_.shaderModules.size() - 1;
+                m_Resources.shaderModules.push_back(localShaderModules[i]);
+                m_Resources.shaderMap[std::string(file)] = (int)m_Resources.shaderModules.size() - 1;
             }
 
             VkShaderStageFlagBits stage = glslangShaderStageToVulkan(glslangShaderStageFromFileName(file));
@@ -57,14 +57,14 @@ namespace RHI::Vulkan
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
-        viewport.width = static_cast<float>(customWidth > 0 ? customWidth : m_Context.vkDev.framebufferWidth);
-        viewport.height = static_cast<float>(customHeight > 0 ? customHeight : m_Context.vkDev.framebufferHeight);
+        viewport.width = static_cast<float>(customWidth > 0 ? customWidth : m_DeviceDesc.framebufferWidth);
+        viewport.height = static_cast<float>(customHeight > 0 ? customHeight : m_DeviceDesc.framebufferHeight);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
 
         VkRect2D scissor{};
         scissor.offset = { 0, 0 };
-        scissor.extent = { customWidth > 0 ? customWidth : m_Context.vkDev.framebufferWidth, customHeight > 0 ? customHeight : m_Context.vkDev.framebufferHeight };
+        scissor.extent = { customWidth > 0 ? customWidth : m_DeviceDesc.framebufferWidth, customHeight > 0 ? customHeight : m_DeviceDesc.framebufferHeight };
 
         VkPipelineViewportStateCreateInfo viewportState{};
         viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -168,7 +168,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        resources_.allPipelines.push_back(pipeline);
+        m_Resources.allPipelines.push_back(pipeline);
         return pipeline;
     }
 
@@ -228,7 +228,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        resources_.allPipelineLayouts.push_back(pipelineLayout);
+        m_Resources.allPipelineLayouts.push_back(pipelineLayout);
         return pipelineLayout;
     }
 }

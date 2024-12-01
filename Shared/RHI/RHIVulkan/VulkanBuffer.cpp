@@ -2,6 +2,10 @@
 
 #include <EasyProfilerWrapper.hpp>
 
+#include <assimp/cimport.h>
+#include <assimp/mesh.h>
+#include <assimp/postprocess.h>
+
 namespace RHI::Vulkan
 {
     bool Device::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
@@ -36,7 +40,7 @@ namespace RHI::Vulkan
 
     bool Device::createSharedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
     {
-        uint32_t familyCount = static_cast<uint32_t>(m_Context.m_DeviceQueueIndices.size());
+        uint32_t familyCount = static_cast<uint32_t>(m_DeviceQueueIndices.size());
 
         if (familyCount < 2)
             return createBuffer(size, usage, properties, buffer, bufferMemory);
@@ -48,8 +52,8 @@ namespace RHI::Vulkan
         bufferInfo.size = size;
         bufferInfo.usage = usage;
         bufferInfo.sharingMode = (familyCount > 1) ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE;
-        bufferInfo.queueFamilyIndexCount = static_cast<uint32_t>(m_Context.m_DeviceQueueIndices.size());
-        bufferInfo.pQueueFamilyIndices = (familyCount > 1) ? m_Context.m_DeviceQueueIndices.data() : nullptr;
+        bufferInfo.queueFamilyIndexCount = static_cast<uint32_t>(m_DeviceQueueIndices.size());
+        bufferInfo.pQueueFamilyIndices = (familyCount > 1) ? m_DeviceQueueIndices.data() : nullptr;
 
         VK_CHECK(vkCreateBuffer(m_Context.device, &bufferInfo, nullptr, &buffer));
 
@@ -113,7 +117,7 @@ namespace RHI::Vulkan
         else
         {
             buffer.size = size;
-            resources_.allBuffers.push_back(buffer);
+            m_Resources.allBuffers.push_back(buffer);
         }
 
         if (createMapping)
@@ -126,7 +130,7 @@ namespace RHI::Vulkan
     {
         VulkanBuffer result;
         result.size = allocateVertexBuffer(&result.buffer, &result.memory, vertexBufferSize, vertexData, indexBufferSize, indexData);
-        resources_.allBuffers.push_back(result);
+        m_Resources.allBuffers.push_back(result);
         return result;
     }
 

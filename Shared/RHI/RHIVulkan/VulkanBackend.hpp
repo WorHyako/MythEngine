@@ -8,6 +8,8 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <map>
+#include <array>
+#include <memory>
 #include <string>
 
 #include <glslang/Include/glslang_c_interface.h>
@@ -24,6 +26,7 @@
 namespace RHI::Vulkan
 {
 	class Device;
+	class CommandList;
 
 	// Features we need for our Vulkan context
 	struct VulkanContextFeatures
@@ -118,10 +121,32 @@ namespace RHI::Vulkan
 		VkDevice device;
 		VkQueue graphicsQueue;
 
-		VulkanInstance vk;
+		VulkanInstance vulkanInstance;
 		//Device vkDev;
 		VulkanContextExtensions ctxExtensions;
 		VulkanContextFeatures ctxFeatures;
+	};
+
+	class Queue
+	{
+	public:
+		Queue(const VulkanContext& context, CommandQueue queueID, VkQueue queue, uint32_t queueFamilyIndex);
+		~Queue();
+
+		VkSemaphore semaphore;
+		VkSemaphore renderSemaphore;
+
+		CommandQueue getQueueID() const { return m_QueueID; }
+		uint32_t getQueueFamilyIndex() const { return m_QueueFamilyIndex; }
+		VkQueue getVkQueue() const { return m_Queue; }
+
+	private:
+		const VulkanContext& m_Context;
+
+		VkQueue m_Queue;
+		CommandQueue m_QueueID;
+		uint32_t m_QueueFamilyIndex = uint32_t(-1);
+
 	};
 
 	class VulkanRHIModule : public IRHIModule
@@ -155,10 +180,11 @@ namespace RHI::Vulkan
 
 		uint32_t graphicsFamily;
 		VkQueue graphicsQueue;
+		bool useGraphicsQueue = false;
 
 		uint32_t computeFamily;
 		VkQueue computeQueue;
-		bool useCompute = false;
+		bool useComputeQueue = false;
 
 		VkSwapchainKHR swapchain;
 		VkSemaphore semaphore;
@@ -450,7 +476,7 @@ namespace RHI::Vulkan
 	struct RenderPass
 	{
 		RenderPass() = default;
-		explicit RenderPass(Device& vkDev, bool useDepth = true, const RenderPassCreateInfo& ci = RenderPassCreateInfo());
+		explicit RenderPass(bool useDepth = true, const RenderPassCreateInfo& ci = RenderPassCreateInfo());
 
 		RenderPassCreateInfo info;
 		VkRenderPass handle = VK_NULL_HANDLE;
@@ -503,8 +529,8 @@ namespace RHI::Vulkan
 
 	struct VulkanResources
 	{
-		VulkanResources(Device& vkDev)
-			: m_Device(vkDev)
+		VulkanResources(Device* device)
+			: m_Device(device)
 		{}
 		~VulkanResources();
 
@@ -524,7 +550,7 @@ namespace RHI::Vulkan
 		std::map<std::string, uint32_t> shaderMap;
 
 	private:
-		Device m_Device;
+		Device* m_Device;
 	};
 
 	class Device final : public IDevice
@@ -532,6 +558,8 @@ namespace RHI::Vulkan
 	public:
 		Device(DeviceDesc& desc);
 		virtual ~Device();
+
+		Queue* getQueue(CommandQueue queue) const { return m_Queues[int(queue)].get(); }
 
 		VkPhysicalDeviceFeatures initVulkanRenderDeviceFeatures(const VulkanContextFeatures& ctxFeatures, VkPhysicalDeviceFeatures2& deviceFeatures2);
 		bool initVulkanRenderDevice(
@@ -714,12 +742,15 @@ namespace RHI::Vulkan
 
 	private:
 		VulkanContext m_Context;
-		DeviceDesc* m_DeviceDesc;
-		VulkanResources resources_;
+		DeviceDesc m_DeviceDesc;
+		VulkanResources m_Resources;
+		CommandList m_CommandList;
 
-		// a list of all queues (for shared buffer allocations)
-		std::vector<uint32_t> deviceQueueIndices;
-		std::vector<VkQueue> deviceQueues;
+		// array of submission queues
+		std::array<std::unique_ptr<Queue>, uint32_t(CommandQueue::Count)> m_Queues;
+
+		// a list of all queues indices (for shared buffer allocations)
+		std::vector<uint32_t> m_DeviceQueueIndices;
 
 		bool createGraphicsPipeline(
 			VkRenderPass renderPass, VkPipelineLayout pipelineLayout,
@@ -734,11 +765,11 @@ namespace RHI::Vulkan
 			uint32_t numPatchControlPoints);
 	};
 
-	class VulkanCommandList final : public IRHICommandList
+	class CommandList final : public IRHICommandList
 	{
 	public:
-		VulkanCommandList(VulkanContext& ctx);
-		virtual ~VulkanCommandList();
+		CommandList(VulkanContext& ctx);
+		virtual ~CommandList();
 
 		VkCommandBuffer beginSingleTimeCommands();
 		void endSingleTimeCommands(VkCommandBuffer commandBuffer);
@@ -750,9 +781,10 @@ namespace RHI::Vulkan
 		void copyMIPBufferToImage(VkBuffer buffer, VkImage image, uint32_t mipLevels, uint32_t width, uint32_t height, uint32_t bytesPP, uint32_t layerCount = 1);
 		void copyImageToBuffer(VkImage image, VkBuffer buffer, uint32_t width, uint32_t height, uint32_t layerCount = 1);
 
-		bool drawFrame(const std::function<void(uint32_t)>& updateBuffersFunc, const std::function<void(VkCommandBuffer, uint32_t)>& composeFrameFunc);
+		bool draw(const std::function<void(uint32_t)>& updateBuffersFunc, const std::function<void(VkCommandBuffer, uint32_t)>& composeFrameFunc);
 
 	private:
+		Device* m_Device;
 		VulkanContext m_Context;
 	};
 }

@@ -4,8 +4,8 @@ namespace RHI::Vulkan
 {
     Device::Device(DeviceDesc& desc)
         : m_Context(desc.instance, desc.physicalDevice, desc.device, *desc.ctxExtensions, *desc.ctxFeatures)
-		, m_DeviceDesc(&desc)
-		, resources_(vkDev)
+		, m_DeviceDesc(desc)
+		, m_Resources(this)
     {
         VkPhysicalDeviceFeatures2 deviceFeatures2{};
         VkPhysicalDeviceFeatures deviceFeatures = initVulkanRenderDeviceFeatures(m_Context.ctxFeatures, deviceFeatures2);
@@ -61,38 +61,56 @@ namespace RHI::Vulkan
         //m_Context.vkDev.framebufferWidth = width;
         //m_Context.vkDev.framebufferHeight = height;
 
-        VK_CHECK(findSuitablePhysicalDevice(m_Context.vk.instance, selector, &m_Context.physicalDevice));
-        m_DeviceDesc.graphicsFamily = findQueueFamilies(m_Context.physicalDevice, VK_QUEUE_GRAPHICS_BIT);
+        VK_CHECK(findSuitablePhysicalDevice(m_Context.vulkanInstance.instance, selector, &m_Context.physicalDevice));
+        if(desc.useGraphicsQueue)
+        {
+	        m_DeviceDesc.graphicsFamily = findQueueFamilies(m_Context.physicalDevice, VK_QUEUE_GRAPHICS_BIT);
+            m_DeviceQueueIndices.push_back(m_DeviceDesc.graphicsFamily);
+        }
         //	VK_CHECK(createDevice2(m_Context.m_PhysicalDevice, deviceFeatures2, vkDev.graphicsFamily, &m_Context.m_Device));
         //	VK_CHECK(vkGetBestComputeQueue(m_Context.m_PhysicalDevice, &vkDev.computeFamily));
-        if(desc.useCompute)
+        if(desc.useComputeQueue)
         {
-            m_Context.vkDev.computeFamily = findQueueFamilies(m_Context.physicalDevice, VK_QUEUE_COMPUTE_BIT);
+            m_DeviceDesc.computeFamily = findQueueFamilies(m_Context.physicalDevice, VK_QUEUE_COMPUTE_BIT);
+            m_DeviceQueueIndices.push_back(m_DeviceDesc.computeFamily);
         }
         VK_CHECK(createDevice(deviceFeatures ,deviceFeatures2));
 
-        vkGetDeviceQueue(m_Context.device, m_DeviceDesc.graphicsFamily, 0, &m_Context.vkDev.graphicsQueue);
-        if (m_Context.vkDev.graphicsQueue == nullptr)
-            exit(EXIT_FAILURE);
-
-        if(desc.useCompute)
+        if(desc.useGraphicsQueue)
         {
-            vkGetDeviceQueue(m_Context.device, m_Context.vkDev.computeFamily, 0, &m_Context.vkDev.computeQueue);
-            if (m_Context.vkDev.computeQueue == nullptr)
+            VkQueue graphicsQueue;
+        	vkGetDeviceQueue(m_Context.device, m_DeviceDesc.graphicsFamily, 0, &graphicsQueue);
+            m_Queues[uint32_t(CommandQueue::Graphics)] = std::make_unique<Queue>(m_Context,
+                CommandQueue::Graphics, graphicsQueue, m_DeviceDesc.graphicsFamily);
+        }
+        if (m_Queues[uint32_t(CommandQueue::Graphics)].get() == nullptr)
+        {
+            exit(EXIT_FAILURE);
+        }
+
+        if(desc.useComputeQueue)
+        {
+            VkQueue computeQueue;
+            vkGetDeviceQueue(m_Context.device, m_DeviceDesc.computeFamily, 0, &computeQueue);
+            m_Queues[uint32_t(CommandQueue::Compute)] = std::make_unique<Queue>(m_Context,
+                CommandQueue::Compute, computeQueue, m_DeviceDesc.computeFamily);
+            if (m_Queues[uint32_t(CommandQueue::Compute)].get() == nullptr)
+            {
                 exit(EXIT_FAILURE);
+            }
         }
 
         VkBool32 presentSupported = 0;
-        vkGetPhysicalDeviceSurfaceSupportKHR(m_Context.physicalDevice, m_DeviceDesc.graphicsFamily, m_Context.vk.surface, &presentSupported);
+        vkGetPhysicalDeviceSurfaceSupportKHR(m_Context.physicalDevice, m_DeviceDesc.graphicsFamily, m_Context.vulkanInstance.surface, &presentSupported);
         if (!presentSupported)
             exit(EXIT_FAILURE);
 
-        VK_CHECK(createSwapchain(m_Context.device, m_Context.physicalDevice, m_Context.vk.surface, m_DeviceDesc.graphicsFamily, width, height, &m_Context.vkDev.swapchain, m_Context.ctxFeatures.supportsScreenshots_));
+        VK_CHECK(createSwapchain(m_Context.device, m_Context.physicalDevice, m_Context.vulkanInstance.surface, m_DeviceDesc.graphicsFamily, desc.framebufferWidth, desc.framebufferHeight, &m_Context.vkDev.swapchain, m_Context.ctxFeatures.supportsScreenshots_));
         const size_t imageCount = createSwapchainImages(m_Context.device, m_Context.vkDev.swapchain, m_Context.vkDev.swapchainImages, m_Context.vkDev.swapchainImageViews);
         m_Context.vkDev.commandBuffers.resize(imageCount);
 
-        VK_CHECK(createSemaphore(m_Context.device, &m_Context.vkDev.semaphore));
-        VK_CHECK(createSemaphore(m_Context.device, &m_Context.vkDev.renderSemaphore));
+        VK_CHECK(createSemaphore(m_Context.device, &m_Queues[uint32_t(CommandQueue::Graphics)]->semaphore));
+        VK_CHECK(createSemaphore(m_Context.device, &m_Queues[uint32_t(CommandQueue::Graphics)]->renderSemaphore));
 
         VkCommandPoolCreateInfo cpi{};
         cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -110,14 +128,14 @@ namespace RHI::Vulkan
 
         VK_CHECK(vkAllocateCommandBuffers(m_Context.device, &ai, &m_Context.vkDev.commandBuffers[0]));
 
-        if(desc.useCompute)
+        if(desc.useComputeQueue)
         {
             // Create compute command pool
             VkCommandPoolCreateInfo cpi1;
             cpi1.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
             cpi1.pNext = nullptr;
             cpi1.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; /* Allow command from this pool buffers to be reset*/
-            cpi1.queueFamilyIndex = m_Context.vkDev.computeFamily;
+            cpi1.queueFamilyIndex = static_cast<uint32_t>(m_Queues[uint32_t(CommandQueue::Compute)]->getQueueFamilyIndex());
 
             VK_CHECK(vkCreateCommandPool(m_Context.device, &cpi1, nullptr, &m_Context.vkDev.computeCommandPool));
 
@@ -162,9 +180,9 @@ namespace RHI::Vulkan
         }
 #endif
 
-        if (m_Context.vkDev.graphicsFamily == m_Context.vkDev.computeFamily)
+        if (m_DeviceDesc.graphicsFamily == m_DeviceDesc.computeFamily)
         {
-            desc.useCompute = false;
+            m_DeviceDesc.useComputeQueue = false;
         }
 
         const float queuePriorities[2] = { 0.f, 0.f };
@@ -180,13 +198,13 @@ namespace RHI::Vulkan
         qciGfx.pQueuePriorities = &queuePriorities[0];
         qci.push_back(qciGfx);
 
-        if(desc.useCompute)
+        if(m_DeviceDesc.useComputeQueue)
         {
             VkDeviceQueueCreateInfo qciComp{};
             qciComp.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
             qciComp.pNext = nullptr;
             qciComp.flags = 0;
-            qciComp.queueFamilyIndex = m_Context.vkDev.computeFamily;
+            qciComp.queueFamilyIndex = static_cast<uint32_t>(m_Queues[uint32_t(CommandQueue::Compute)]->getQueueFamilyIndex());
             qciComp.queueCount = 1;
             qciComp.pQueuePriorities = &queuePriorities[1];
             qci.push_back(qciComp);
@@ -219,7 +237,7 @@ namespace RHI::Vulkan
         vkDestroySemaphore(m_Context.device, m_Context.vkDev.semaphore, nullptr);
         vkDestroySemaphore(m_Context.device, m_Context.vkDev.renderSemaphore, nullptr);
 
-        if (desc.useCompute)
+        if (m_DeviceDesc.useComputeQueue)
         {
             vkDestroyCommandPool(m_Context.device, m_Context.vkDev.computeCommandPool, nullptr);
         }

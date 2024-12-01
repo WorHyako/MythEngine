@@ -90,6 +90,15 @@ namespace RHI
         COUNT,
     };
 
+    enum class CommandQueue : uint8_t
+    {
+        Graphics = 0,
+        Compute,
+        Copy,
+
+        Count
+    };
+
     class IRHICommandList : public IResource
     {
 	    

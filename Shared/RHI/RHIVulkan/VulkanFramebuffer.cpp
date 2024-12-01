@@ -21,8 +21,8 @@ namespace RHI::Vulkan
             framebufferInfo.renderPass = renderPass;
             framebufferInfo.attachmentCount = static_cast<uint32_t>((depthImageView == VK_NULL_HANDLE) ? 1 : 2);
             framebufferInfo.pAttachments = attachments.data();
-            framebufferInfo.width = m_Context.vkDev.framebufferWidth;
-            framebufferInfo.height = m_Context.vkDev.framebufferHeight;
+            framebufferInfo.width = m_DeviceDesc.framebufferWidth;
+            framebufferInfo.height = m_DeviceDesc.framebufferHeight;
             framebufferInfo.layers = 1;
 
             VK_CHECK(vkCreateFramebuffer(m_Context.device, &framebufferInfo, nullptr, &swapchainFramebuffers[i]));
@@ -56,7 +56,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        resources_.allFramebuffers.push_back(framebuffer);
+        m_Resources.allFramebuffers.push_back(framebuffer);
         return framebuffer;
     }
 
@@ -65,7 +65,7 @@ namespace RHI::Vulkan
         std::vector<VkFramebuffer> framebuffers;
         createColorAndDepthFramebuffers(renderPass, depthView, framebuffers);
         for (auto f : framebuffers)
-            resources_.allFramebuffers.push_back(f);
+            m_Resources.allFramebuffers.push_back(f);
         return framebuffers;
     }
 }

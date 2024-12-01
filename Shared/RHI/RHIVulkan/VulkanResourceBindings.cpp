@@ -48,7 +48,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        resources_.allDPools.push_back(descriptorPool);
+        m_Resources.allDPools.push_back(descriptorPool);
         return descriptorPool;
     }
 
@@ -95,7 +95,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        resources_.allDSLayouts.push_back(descriptorSetLayout);
+        m_Resources.allDSLayouts.push_back(descriptorSetLayout);
         return descriptorSetLayout;
     }
 

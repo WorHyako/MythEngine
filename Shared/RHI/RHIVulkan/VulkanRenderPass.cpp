@@ -6,8 +6,8 @@ namespace RHI::Vulkan
 
     RenderPass Device::addFullScreenPass(bool useDepth, const RenderPassCreateInfo ci)
     {
-        RenderPass result(m_Context.vkDev, useDepth, ci);
-        resources_.allRenderPasses.push_back(result.handle);
+        RenderPass result(useDepth, ci);
+        m_Resources.allRenderPasses.push_back(result.handle);
         return result;
     }
 
@@ -41,7 +41,7 @@ namespace RHI::Vulkan
             }
         }
 
-        resources_.allRenderPasses.push_back(renderPass);
+        m_Resources.allRenderPasses.push_back(renderPass);
         RenderPass rp;
         rp.info = ci;
         rp.handle = renderPass;
@@ -58,7 +58,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        resources_.allRenderPasses.push_back(renderPass);
+        m_Resources.allRenderPasses.push_back(renderPass);
         RenderPass rp;
         rp.info = ci;
         rp.handle = renderPass;

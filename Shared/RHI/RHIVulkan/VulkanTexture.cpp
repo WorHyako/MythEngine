@@ -3,8 +3,26 @@
 #include <UtilsCubemap.hpp>
 #include <imgui.h>
 
+#include "stb_image.h"
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include <stb_image_resize.h>
+
+#include <gli/load_ktx.hpp>
+
 namespace RHI::Vulkan
 {
+    static void float24to32(int w, int h, const float* img24, float* img32)
+    {
+        const int numPixels = w * h;
+        for (int i = 0; i != numPixels; i++)
+        {
+            *img32++ = *img24++;
+            *img32++ = *img24++;
+            *img32++ = *img24++;
+            *img32++ = 1.0f;
+        }
+    }
+
     VkFormat Device::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
     {
         for (VkFormat format : candidates)
@@ -79,7 +97,7 @@ namespace RHI::Vulkan
         }
 
         createTextureSampler(&tex.sampler);
-        resources_.allTextures.push_back(tex);
+        m_Resources.allTextures.push_back(tex);
         return tex;
     }
 
@@ -106,15 +124,15 @@ namespace RHI::Vulkan
         }
 
         createTextureSampler(&tex.sampler);
-        resources_.allTextures.push_back(tex);
+        m_Resources.allTextures.push_back(tex);
 
         return tex;
     }
 
     VulkanTexture Device::addColorTexture(int texWidth, int texHeight, VkFormat colorFormat, VkFilter minFilter, VkFilter maxFilter, VkSamplerAddressMode addressMode)
     {
-        const uint32_t w = (texWidth > 0) ? texWidth : m_Context.vkDev.framebufferWidth;
-        const uint32_t h = (texHeight > 0) ? texHeight : m_Context.vkDev.framebufferHeight;
+        const uint32_t w = (texWidth > 0) ? texWidth : m_DeviceDesc.framebufferWidth;
+        const uint32_t h = (texHeight > 0) ? texHeight : m_DeviceDesc.framebufferHeight;
 
         VulkanTexture res{};
         res.width = w;
@@ -135,14 +153,14 @@ namespace RHI::Vulkan
 
         transitionImageLayout(vkDev, res.image.image, colorFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        resources_.allTextures.push_back(res);
+        m_Resources.allTextures.push_back(res);
         return res;
     }
 
     VulkanTexture Device::addDepthTexture(int texWidth, int texHeight, VkImageLayout layout)
     {
-        const uint32_t w = (texWidth > 0) ? texWidth : m_Context.vkDev.framebufferWidth;
-        const uint32_t h = (texHeight > 0) ? texHeight : m_Context.vkDev.framebufferHeight;
+        const uint32_t w = (texWidth > 0) ? texWidth : m_DeviceDesc.framebufferWidth;
+        const uint32_t h = (texHeight > 0) ? texHeight : m_DeviceDesc.framebufferHeight;
 
         const VkFormat depthFormat = findDepthFormat();
 
@@ -169,7 +187,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        resources_.allTextures.push_back(depth);
+        m_Resources.allTextures.push_back(depth);
         return depth;
     }
 
@@ -353,7 +371,7 @@ namespace RHI::Vulkan
             src = dst;
         }
 
-        bool result = createMIPTextureImageFromData(m_Context.vkDev, textureImage, textureImageMemory,
+        bool result = createMIPTextureImageFromData(textureImage, textureImageMemory,
             mipData.data(), mipLevels, texWidth, texHeight,
             VK_FORMAT_R8G8B8A8_UNORM);
 
@@ -540,18 +558,6 @@ namespace RHI::Vulkan
         return true;
     }
 
-    static void float24to32(int w, int h, const float* img24, float* img32)
-    {
-        const int numPixels = w * h;
-        for (int i = 0; i != numPixels; i++)
-        {
-            *img32++ = *img24++;
-            *img32++ = *img24++;
-            *img32++ = *img24++;
-            *img32++ = 1.0f;
-        }
-    }
-
     bool Device::updateTextureImage(VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t texWidth, uint32_t texHeight, VkFormat texFormat, uint32_t layerCount, const void* imageData, VkImageLayout sourceImageLayout)
     {
         uint32_t bytesPerPixel = bytesPerTexFormat(texFormat);
@@ -596,7 +602,7 @@ namespace RHI::Vulkan
         cubemap.height = h;
         cubemap.depth = 1;
 
-        resources_.allTextures.push_back(cubemap);
+        m_Resources.allTextures.push_back(cubemap);
         return cubemap;
     }
 
@@ -610,7 +616,7 @@ namespace RHI::Vulkan
         ktx.height = extent.y;
         ktx.depth = 4;
 
-        if (!createTextureImageFromData(m_Context.vkDev, ktx.image.image, ktx.image.imageMemory,
+        if (!createTextureImageFromData(ktx.image.image, ktx.image.imageMemory,
             (uint8_t*)gliTex.data(0, 0, 0), ktx.width, ktx.height, VK_FORMAT_R16G16_SFLOAT))
         {
             printf("ModelRenderer: failed to load BRDF LUT texture \n");
@@ -620,7 +626,7 @@ namespace RHI::Vulkan
         createImageView(ktx.image.image, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, &ktx.image.imageView);
         createTextureSampler(&ktx.sampler, VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
-        resources_.allTextures.push_back(ktx);
+        m_Resources.allTextures.push_back(ktx);
 
         return ktx;
     }
@@ -644,7 +650,7 @@ namespace RHI::Vulkan
         }
 
         createTextureSampler(&tex.sampler);
-        resources_.allTextures.push_back(tex);
+        m_Resources.allTextures.push_back(tex);
         return tex;
     }
 
@@ -686,7 +692,7 @@ namespace RHI::Vulkan
         io.FontDefault = Font;
         io.DisplayFramebufferScale = ImVec2(1, 1);
 
-        resources_.allTextures.push_back(res);
+        m_Resources.allTextures.push_back(res);
         return res;
     }
 }

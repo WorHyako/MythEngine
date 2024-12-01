@@ -2,19 +2,19 @@
 
 namespace RHI::Vulkan
 {
-	VulkanCommandList::VulkanCommandList(VulkanContext& ctx)
-		: ctx_(ctx)
+	CommandList::CommandList(VulkanContext& ctx)
+		: m_Context(ctx)
 	{
 		
 	}
 
-	VulkanCommandList::~VulkanCommandList()
+	CommandList::~CommandList()
 	{
 		
 	}
 
 
-    VkCommandBuffer VulkanCommandList::beginSingleTimeCommands()
+    VkCommandBuffer CommandList::beginSingleTimeCommands()
     {
         VkCommandBuffer commandBuffer;
 
@@ -25,7 +25,7 @@ namespace RHI::Vulkan
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocInfo.commandBufferCount = 1;
 
-        vkAllocateCommandBuffers(ctx_.m_Device, &allocInfo, &commandBuffer);
+        vkAllocateCommandBuffers(m_Context.device, &allocInfo, &commandBuffer);
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -38,7 +38,7 @@ namespace RHI::Vulkan
         return commandBuffer;
     }
 
-    void VulkanCommandList::endSingleTimeCommands(VkCommandBuffer commandBuffer)
+    void CommandList::endSingleTimeCommands(VkCommandBuffer commandBuffer)
     {
         vkEndCommandBuffer(commandBuffer);
 
@@ -53,14 +53,14 @@ namespace RHI::Vulkan
         submitInfo.signalSemaphoreCount = 0;
         submitInfo.pSignalSemaphores = nullptr;
 
-        vkQueueSubmit(ctx_.vkDev.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(ctx_.vkDev.graphicsQueue);
+        vkQueueSubmit(m_Device->getQueue(CommandQueue::Graphics)->getVkQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(m_Device->getQueue(CommandQueue::Graphics)->getVkQueue());
 
-        vkFreeCommandBuffers(ctx_.m_Device, ctx_.vkDev.commandPool, 1, &commandBuffer);
+        vkFreeCommandBuffers(m_Context.device, ctx_.vkDev.commandPool, 1, &commandBuffer);
     }
 
 
-    void VulkanCommandList::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+    void CommandList::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
         VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
@@ -74,7 +74,7 @@ namespace RHI::Vulkan
         endSingleTimeCommands(commandBuffer);
     }
 
-    void VulkanCommandList::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount, uint32_t mipLevels)
+    void CommandList::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount, uint32_t mipLevels)
     {
         VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
@@ -83,7 +83,7 @@ namespace RHI::Vulkan
         endSingleTimeCommands(commandBuffer);
     }
 
-    void VulkanCommandList::transitionImageLayoutCmd(VkCommandBuffer commandBuffer, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount, uint32_t mipLevels)
+    void CommandList::transitionImageLayoutCmd(VkCommandBuffer commandBuffer, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount, uint32_t mipLevels)
     {
         VkImageMemoryBarrier barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -235,7 +235,7 @@ namespace RHI::Vulkan
             1, &barrier);
     }
 
-    void VulkanCommandList::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount)
+    void CommandList::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount)
     {
         VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
@@ -255,7 +255,7 @@ namespace RHI::Vulkan
         endSingleTimeCommands(commandBuffer);
     }
 
-    void VulkanCommandList::copyMIPBufferToImage(VkBuffer buffer, VkImage image, uint32_t mipLevels, uint32_t width, uint32_t height, uint32_t bytesPP, uint32_t layerCount)
+    void CommandList::copyMIPBufferToImage(VkBuffer buffer, VkImage image, uint32_t mipLevels, uint32_t width, uint32_t height, uint32_t bytesPP, uint32_t layerCount)
     {
         VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
@@ -291,7 +291,7 @@ namespace RHI::Vulkan
         endSingleTimeCommands(commandBuffer);
     }
 
-    void VulkanCommandList::copyImageToBuffer(VkImage image, VkBuffer buffer, uint32_t width, uint32_t height, uint32_t layerCount)
+    void CommandList::copyImageToBuffer(VkImage image, VkBuffer buffer, uint32_t width, uint32_t height, uint32_t layerCount)
     {
         VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
@@ -314,13 +314,13 @@ namespace RHI::Vulkan
         endSingleTimeCommands(commandBuffer);
     }
 
-    bool VulkanCommandList::drawFrame(
+    bool CommandList::draw(
         const std::function<void(uint32_t)>& updateBuffersFunc,
         const std::function<void(VkCommandBuffer, uint32_t)>& composeFrameFunc)
     {
         uint32_t imageIndex = 0;
-        VkResult result = vkAcquireNextImageKHR(ctx_.m_Device, ctx_.vkDev.swapchain, 0, ctx_.vkDev.semaphore, VK_NULL_HANDLE, &imageIndex);
-        VK_CHECK(vkResetCommandPool(ctx_.m_Device, ctx_.vkDev.commandPool, 0));
+        VkResult result = vkAcquireNextImageKHR(m_Context.device, ctx_.vkDev.swapchain, 0, m_Device->getQueue(CommandQueue::Graphics)->semaphore, VK_NULL_HANDLE, &imageIndex);
+        VK_CHECK(vkResetCommandPool(m_Context.device, ctx_.vkDev.commandPool, 0));
 
         if (result != VK_SUCCESS) return false;
 
@@ -346,26 +346,26 @@ namespace RHI::Vulkan
         si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         si.pNext = nullptr;
         si.waitSemaphoreCount = 1;
-        si.pWaitSemaphores = &ctx_.vkDev.semaphore;
+        si.pWaitSemaphores = &m_Device->getQueue(CommandQueue::Graphics)->semaphore;
         si.pWaitDstStageMask = waitStages;
         si.commandBufferCount = 1;
         si.pCommandBuffers = &ctx_.vkDev.commandBuffers[imageIndex];
         si.signalSemaphoreCount = 1;
-        si.pSignalSemaphores = &ctx_.vkDev.renderSemaphore;
+        si.pSignalSemaphores = &m_Device->getQueue(CommandQueue::Graphics)->renderSemaphore;
 
-        VK_CHECK(vkQueueSubmit(ctx_.vkDev.graphicsQueue, 1, &si, nullptr));
+        VK_CHECK(vkQueueSubmit(m_Device->getQueue(CommandQueue::Graphics)->getVkQueue(), 1, &si, nullptr));
 
         VkPresentInfoKHR pi{};
         pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         pi.pNext = nullptr;
         pi.waitSemaphoreCount = 1;
-        pi.pWaitSemaphores = &ctx_.vkDev.renderSemaphore;
+        pi.pWaitSemaphores = &m_Device->getQueue(CommandQueue::Graphics)->renderSemaphore;
         pi.swapchainCount = 1;
         pi.pSwapchains = &ctx_.vkDev.swapchain;
         pi.pImageIndices = &imageIndex;
 
-        VK_CHECK(vkQueuePresentKHR(ctx_.vkDev.graphicsQueue, &pi));
-        VK_CHECK(vkDeviceWaitIdle(ctx_.m_Device));
+        VK_CHECK(vkQueuePresentKHR(m_Device->getQueue(CommandQueue::Graphics)->getVkQueue(), &pi));
+        VK_CHECK(vkDeviceWaitIdle(m_Context.device));
 
         return true;
     }
