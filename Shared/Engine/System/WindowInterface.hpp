@@ -25,8 +25,10 @@ namespace mythSystem
 
         virtual Resolution& getResolution()
         {
-            return resolution_;
+            return resolution;
         }
+
+        virtual void getFramebufferResolution(Resolution& resolution) = 0;
 
         virtual void setWindowUserPointer(void* pointer) = 0;
         virtual void assignCallbacks() = 0;
@@ -37,7 +39,7 @@ namespace mythSystem
 
     protected:
         WindowParameters WindowParams;
-        Resolution resolution_;
+        Resolution resolution;
     };
 
 };// namespace mythSystem

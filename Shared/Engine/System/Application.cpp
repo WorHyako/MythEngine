@@ -6,6 +6,7 @@
 #include <glm/ext.hpp>
 
 #include "GLFW/glfw3.h"
+#include "RHI/Vulkan/VulkanSceneRenderer.hpp"
 using glm::mat4;
 using glm::vec2;
 using glm::vec3;
@@ -20,16 +21,32 @@ namespace mythSystem
         : m_Positioner(glm::vec3(0.0f, 5.0f, 10.0f), vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, -1.0f, 0.0f))
         , m_Camera(m_Positioner)
     {
-        m_RhiModule = RHI::InitializeModuleRHI(RHI::GraphicsAPI::VULKAN);
+        m_GraphicsApi = RHI::GraphicsAPI::VULKAN;
+        m_RhiModule = RHI::InitializeModuleRHI(m_GraphicsApi);
         m_Window = createWindow();
         m_Window->setWindowUserPointer(this);
         m_Window->assignCallbacks();
+
         if (m_RhiModule)
         {
             m_DynamicRHI = m_RhiModule->createRHI();
-            if (m_DynamicRHI)
+
+            if(m_GraphicsApi == RHI::GraphicsAPI::VULKAN)
             {
-                m_Device = m_DynamicRHI->getDevice();
+                if (RHI::Vulkan::VulkanDynamicRHI* VulkanDynamicRHI = dynamic_cast<RHI::Vulkan::VulkanDynamicRHI*>(m_DynamicRHI))
+                {
+                    if (GLFWWindow* windowGLFW = dynamic_cast<GLFWWindow*>(m_Window.get()))
+                    {
+                        VulkanDynamicRHI->createWindowSurface(windowGLFW->getWindow());
+                    }
+
+                    RHI::Vulkan::DeviceDesc desc = {};
+                    desc.useGraphicsQueue = true;
+                    desc.useComputeQueue = true;
+                    desc.ctxExtensions = &RHI::Vulkan::VulkanDynamicRHI::initializeContextExtensions();
+                    desc.ctxFeatures = &RHI::Vulkan::VulkanDynamicRHI::initializeContextFeatures();
+                    m_Device = VulkanDynamicRHI->createDevice(desc);
+                }
             }
         }
 
@@ -51,7 +68,7 @@ namespace mythSystem
 
     UniquePtr<RendererInterface> Application::createRenderer()
     {
-        
+        m_Renderer = std::make_unique<VulkanSceneRenderer>();
     }
 
     UniquePtr<WindowInterface> Application::createWindowGLFW()
@@ -82,6 +99,7 @@ namespace mythSystem
 
             m_FpsCounter.tick(deltaSeconds);
 
+            m_Renderer->renderScene();
             bool frameRendered = drawFrame(ctx_.vkDev,
                 [this](uint32_t img) {this->updateBuffers(img); },
                 [this](auto cmd, auto img) {ctx_.composeFrame(cmd, img); }

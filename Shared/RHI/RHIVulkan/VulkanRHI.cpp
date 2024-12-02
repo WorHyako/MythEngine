@@ -20,37 +20,39 @@ namespace RHI::Vulkan
         volkInitialize();
 
         if (!glfwInit())
+        {
             exit(EXIT_FAILURE);
+        }
 
         if (!glfwVulkanSupported())
+        {
             exit(EXIT_FAILURE);
+        }
     }
 
 	IDynamicRHI* VulkanRHIModule::createRHI()
 	{
-		VulkanDynamicRHI* VulkanRHI = new VulkanDynamicRHI(getWindowInterface());
+		VulkanDynamicRHI* VulkanRHI = new VulkanDynamicRHI();
 		return VulkanRHI;
 	}
 
-	VulkanDynamicRHI::VulkanDynamicRHI(GLFWwindow* window)
-		: window_(window)
+	VulkanDynamicRHI::VulkanDynamicRHI()
 	{
 		createInstance();
 
         if (!setupDebugCallbacks(vk.instance, &vk.messenger, &vk.reportCallback))
+        {
             exit(EXIT_FAILURE);
-
-        if (glfwCreateWindowSurface(vk.instance, window_, nullptr, &vk.surface) != VK_SUCCESS)
-            exit(EXIT_FAILURE);
-
-        int width, height;
-        glfwGetFramebufferSize(window_, &width, &height);
-
-        DeviceDesc desc = {};
-        desc.ctxExtensions = &initializeContextExtensions();
-        desc.ctxFeatures = &initializeContextFeatures();
-        m_Device = new Device(desc);
+        }
 	}
+
+    void VulkanDynamicRHI::createWindowSurface(GLFWwindow* window)
+    {
+        if (glfwCreateWindowSurface(vk.instance, window, nullptr, &vk.surface) != VK_SUCCESS)
+        {
+            exit(EXIT_FAILURE);
+        }
+    }
 
 	VulkanDynamicRHI::~VulkanDynamicRHI()
 	{
@@ -96,6 +98,12 @@ namespace RHI::Vulkan
             .deviceDescriptorIndexing = true
         };
         return contextFeatures;
+    }
+
+    IDevice* VulkanDynamicRHI::createDevice(DeviceDesc& desc)
+    {
+        m_Device = new Device(desc);
+        return m_Device;
     }
 
 	void VulkanDynamicRHI::createInstance()

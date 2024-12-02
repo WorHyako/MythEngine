@@ -186,9 +186,6 @@ namespace RHI::Vulkan
 		uint32_t computeFamily;
 		VkQueue computeQueue;
 		bool useComputeQueue = false;
-
-		//VkSemaphore semaphore;
-		//VkSemaphore renderSemaphore;
 	};
 
 	/* A structure with pipeline parameters */
@@ -210,18 +207,21 @@ namespace RHI::Vulkan
 
 	struct VulkanDynamicRHI : public IDynamicRHI
 	{
-		VulkanDynamicRHI(GLFWwindow* window);
+		VulkanDynamicRHI();
 		~VulkanDynamicRHI();
 
-		void createInstance();
-		void destroyVulkanInstance(VulkanInstance& vk);
+		void createWindowSurface(GLFWwindow* window);
+		IDevice* createDevice(DeviceDesc& desc);
 
 		static VulkanContextFeatures& initializeContextFeatures();
 		static VulkanContextExtensions& initializeContextExtensions();
 
+	protected:
+		void createInstance();
+		void destroyVulkanInstance(VulkanInstance& vk);
+
+	protected:
 		VulkanInstance vk;
-	private:
-		GLFWwindow* window_;
 	};
 
 	struct SwapchainSupportDetails final
@@ -556,21 +556,21 @@ namespace RHI::Vulkan
 	class Device : public IDevice
 	{
 	public:
-		Device(DeviceDesc& desc);
+		Device(const DeviceDesc& desc);
 		virtual ~Device() override;
 
 		Queue* getQueue(CommandQueue queue) const { return m_Queues[int(queue)].get(); }
 		VulkanResources* getResources() { return &m_Resources; }
 
 		VkPhysicalDeviceFeatures initVulkanRenderDeviceFeatures(const VulkanContextFeatures& ctxFeatures, VkPhysicalDeviceFeatures2& deviceFeatures2);
-		bool initVulkanRenderDevice(
+		bool initDevice(
 			DeviceDesc& desc,
 			std::function<bool(VkPhysicalDevice)> selector,
 			VkPhysicalDeviceFeatures deviceFeatures,
 			VkPhysicalDeviceFeatures2 deviceFeatures2);
 		VkResult createDevice(VkPhysicalDeviceFeatures deviceFeatures, VkPhysicalDeviceFeatures2 deviceFeatures2);
 
-		void destroyVulkanRenderDevice();
+		void destroyDevice();
 
 		/* Resource Management*/
 		Texture loadTexture2D(const char* filename);
@@ -741,6 +741,8 @@ namespace RHI::Vulkan
 
 		VkResult createShaderModule(ShaderModule* shader, const char* fileName);
 
+		virtual IRHICommandList* createCommandList(const CommandListParameters& params) override;
+
 	private:
 		VulkanContext m_Context;
 		DeviceDesc m_DeviceDesc;
@@ -768,7 +770,7 @@ namespace RHI::Vulkan
 	class CommandList : public IRHICommandList
 	{
 	public:
-		CommandList(Device* device, VulkanContext& context);
+		CommandList(Device* device, VulkanContext& context, const CommandListParameters& parameters);
 		virtual ~CommandList() override;
 
 		VkCommandBuffer beginSingleTimeCommands();
@@ -781,10 +783,11 @@ namespace RHI::Vulkan
 		void copyMIPBufferToImage(VkBuffer buffer, VkImage image, uint32_t mipLevels, uint32_t width, uint32_t height, uint32_t bytesPP, uint32_t layerCount = 1);
 		void copyImageToBuffer(VkImage image, VkBuffer buffer, uint32_t width, uint32_t height, uint32_t layerCount = 1);
 
-		bool draw(const std::function<void(uint32_t)>& updateBuffersFunc, const std::function<void(VkCommandBuffer, uint32_t)>& composeFrameFunc);
+		bool draw(const std::function<void(uint32_t)>& updateBuffersFunc, const std::function<void(uint32_t)>& composeFrameFunc);
 
 	private:
 		Device* m_Device;
 		const VulkanContext& m_Context;
+		CommandListParameters m_CommandListParameters;
 	};
 }

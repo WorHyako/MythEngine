@@ -2,9 +2,10 @@
 
 namespace RHI::Vulkan
 {
-	CommandList::CommandList(Device* device, VulkanContext& context)
+	CommandList::CommandList(Device* device, VulkanContext& context, const CommandListParameters& parameters)
 		: m_Device(device)
 		, m_Context(context)
+		, m_CommandListParameters(parameters)
 	{
 		
 	}
@@ -317,7 +318,7 @@ namespace RHI::Vulkan
 
     bool CommandList::draw(
         const std::function<void(uint32_t)>& updateBuffersFunc,
-        const std::function<void(VkCommandBuffer, uint32_t)>& composeFrameFunc)
+        const std::function<void(uint32_t)>& composeFrameFunc)
     {
         uint32_t imageIndex = 0;
         VkResult result = vkAcquireNextImageKHR(m_Context.device, m_Device->getResources()->swapchain, 0, m_Device->getQueue(CommandQueue::Graphics)->semaphore, VK_NULL_HANDLE, &imageIndex);
@@ -337,7 +338,7 @@ namespace RHI::Vulkan
 
         VK_CHECK(vkBeginCommandBuffer(commandBuffer, &bi));
 
-        composeFrameFunc(commandBuffer, imageIndex);
+        composeFrameFunc(imageIndex);
 
         VK_CHECK(vkEndCommandBuffer(commandBuffer));
 

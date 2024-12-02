@@ -3,6 +3,7 @@
 #include <RHI/RHICommon/Common/Resources.hpp>
 
 #include <cstdint>
+#include <functional>
 
 namespace RHI
 {
@@ -99,9 +100,18 @@ namespace RHI
         Count
     };
 
+    struct CommandListParameters
+    {
+    	// Type of the queue that this command list is to be executed on.
+        // COPY and COMPUTE queues have limited subsets of methods available.
+        CommandQueue queueType = CommandQueue::Graphics;
+    };
+
     class IRHICommandList : public IResource
     {
-	    
+        virtual void draw(
+            const std::function<void(uint32_t)>& updateBuffersFunc,
+            const std::function<void(uint32_t)>& composeFrameFunc) = 0;
     };
 
     class IInstance : public IResource
@@ -111,7 +121,8 @@ namespace RHI
 
     class IDevice : public IResource
     {
-	    
+    public:
+        virtual IRHICommandList* createCommandList(const CommandListParameters& params = CommandListParameters()) = 0;
     };
 
     struct Resolution

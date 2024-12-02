@@ -6,7 +6,11 @@ namespace mythSystem
 	class RendererInterface
 	{
 	public:
-		RendererInterface() {};
+		RendererInterface(RHI::IDevice* device)
+			: m_Device(device)
+		{
+
+		}
 		virtual ~RendererInterface() {};
 
 		virtual void renderScene() = 0;
@@ -14,5 +18,6 @@ namespace mythSystem
 
 	protected:
 		RHI::IDevice* m_Device;
+		RHI::IRHICommandList* m_CommandList;
 	};
 }

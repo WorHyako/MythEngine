@@ -6,8 +6,9 @@ namespace mythSystem
 {
 	Resolution detectResolution(int width, int height);
 
-	struct GLFWWindow : public WindowInterface
+	class GLFWWindow : public WindowInterface
 	{
+	public:
 		GLFWWindow(Resolution resolution);
 
 		virtual ~GLFWWindow() override
@@ -24,6 +25,7 @@ namespace mythSystem
 
 		virtual void setWindowUserPointer(void* pointer) override;
 		virtual void assignCallbacks() override;
+		virtual void getFramebufferResolution(Resolution& resolution) override;
 
 		virtual void handleKey(int key, bool pressed);
 		virtual void handleMouseClick(int button, bool pressed);

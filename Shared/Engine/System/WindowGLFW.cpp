@@ -89,6 +89,14 @@ namespace mythSystem
         );
     }
 
+    void GLFWWindow::getFramebufferResolution(Resolution& resolution)
+    {
+        int width, height;
+        glfwGetFramebufferSize(m_Window, &width, &height);
+        resolution.width = width;
+        resolution.height = height;
+    }
+
     bool GLFWWindow::IsClosed()
     {
         return glfwWindowShouldClose(m_Window);

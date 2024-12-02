@@ -2,7 +2,7 @@
 
 namespace RHI::Vulkan
 {
-    Device::Device(DeviceDesc& desc)
+    Device::Device(const DeviceDesc& desc)
         : m_Context(desc.instance, desc.physicalDevice, desc.device, *desc.ctxExtensions, *desc.ctxFeatures)
 		, m_DeviceDesc(desc)
 		, m_Resources(this)
@@ -10,12 +10,12 @@ namespace RHI::Vulkan
         VkPhysicalDeviceFeatures2 deviceFeatures2{};
         VkPhysicalDeviceFeatures deviceFeatures = initVulkanRenderDeviceFeatures(m_Context.ctxFeatures, deviceFeatures2);
 
-        initVulkanRenderDevice(desc, isDeviceSuitable, deviceFeatures, deviceFeatures2);
+        initDevice(m_DeviceDesc, isDeviceSuitable, deviceFeatures, deviceFeatures2);
     }
 
     Device::~Device()
     {
-        destroyVulkanRenderDevice();
+        destroyDevice();
     }
 
     VkPhysicalDeviceFeatures Device::initVulkanRenderDeviceFeatures(const VulkanContextFeatures& ctxFeatures, VkPhysicalDeviceFeatures2& deviceFeatures2)
@@ -52,7 +52,7 @@ namespace RHI::Vulkan
         //return initVulkanRenderDeviceWithCompute(vk, vkDev, width, height, ctxExtensions, isDeviceSuitable, deviceFeatures, deviceFeatures2, ctxFeatures.supportsScreenshots_);
     }
 
-    bool Device::initVulkanRenderDevice(
+    bool Device::initDevice(
         DeviceDesc& desc,
         std::function<bool(VkPhysicalDevice)> selector,
         VkPhysicalDeviceFeatures deviceFeatures,
@@ -225,7 +225,7 @@ namespace RHI::Vulkan
         return vkCreateDevice(m_Context.physicalDevice, &ci, nullptr, &m_Context.device);
     }
 
-    void Device::destroyVulkanRenderDevice()
+    void Device::destroyDevice()
     {
         for (size_t i = 0; i < m_Resources.swapchainImages.size(); i++)
             vkDestroyImageView(m_Context.device, m_Resources.swapchainImageViews[i], nullptr);
@@ -243,5 +243,15 @@ namespace RHI::Vulkan
         }
 
         vkDestroyDevice(m_Context.device, nullptr);
+    }
+
+    IRHICommandList* Device::createCommandList(const CommandListParameters& params)
+    {
+        if (!m_Queues[uint32_t(params.queueType)])
+            return nullptr;
+
+        CommandList* cmdList = new CommandList(this, m_Context, params);
+
+        return cmdList;
     }
 }

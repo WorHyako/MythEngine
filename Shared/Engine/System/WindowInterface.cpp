@@ -7,7 +7,7 @@
 namespace mythSystem
 {
     WindowInterface::WindowInterface(Resolution resolution)
-        : resolution_(resolution)
+        : resolution(resolution)
     {
         Config Config(FilesystemUtilities::GetPlatformDir() + "/Config.ini");
 
