@@ -13,7 +13,9 @@ namespace mythSystem
 		}
 		virtual ~RendererInterface() {};
 
-		virtual void renderScene() = 0;
+		virtual void updateBuffers() = 0;
+		virtual void composeFrame() = 0;
+		virtual bool renderScene() = 0;
 		virtual void initializeRender() = 0;
 
 	protected:

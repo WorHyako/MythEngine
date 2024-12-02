@@ -109,9 +109,7 @@ namespace RHI
 
     class IRHICommandList : public IResource
     {
-        virtual void draw(
-            const std::function<void(uint32_t)>& updateBuffersFunc,
-            const std::function<void(uint32_t)>& composeFrameFunc) = 0;
+        virtual void draw() = 0;
     };
 
     class IInstance : public IResource

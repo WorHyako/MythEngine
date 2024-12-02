@@ -9,8 +9,10 @@ public:
 	VulkanSceneRenderer(RHI::IDevice* device);
 	virtual ~VulkanSceneRenderer();
 
-	virtual void renderScene() override;
+	virtual bool renderScene() override;
 	virtual void initializeRender() override;
+	virtual void updateBuffers() override;
+	virtual void composeFrame() override;
 
 private:
 

@@ -17,6 +17,7 @@ namespace mythSystem
         virtual void OnApplicationStarted() = 0;
         virtual void Exit(int ExitCode = 0) = 0;
         virtual void mainLoop() = 0;
+        virtual void update(float deltaSeconds) = 0;
 
     protected:
         virtual UniquePtr<WindowInterface> createWindow() = 0;

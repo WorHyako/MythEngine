@@ -68,7 +68,7 @@ namespace mythSystem
 
     UniquePtr<RendererInterface> Application::createRenderer()
     {
-        m_Renderer = std::make_unique<VulkanSceneRenderer>();
+        m_Renderer = std::make_unique<VulkanSceneRenderer>(m_Device);
     }
 
     UniquePtr<WindowInterface> Application::createWindowGLFW()
@@ -82,6 +82,11 @@ namespace mythSystem
             glfwTerminate();
             exit(EXIT_FAILURE);
         }
+    }
+
+    void Application::update(float deltaSeconds)
+    {
+	    
     }
 
     void Application::mainLoop()
@@ -99,11 +104,7 @@ namespace mythSystem
 
             m_FpsCounter.tick(deltaSeconds);
 
-            m_Renderer->renderScene();
-            bool frameRendered = drawFrame(ctx_.vkDev,
-                [this](uint32_t img) {this->updateBuffers(img); },
-                [this](auto cmd, auto img) {ctx_.composeFrame(cmd, img); }
-            );
+            bool frameRendered = m_Renderer->renderScene();
 
             m_FpsCounter.tick(deltaSeconds, frameRendered);
 

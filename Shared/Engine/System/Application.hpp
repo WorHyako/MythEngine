@@ -22,6 +22,7 @@ namespace mythSystem
 		virtual ~Application();
 
 		virtual void mainLoop() override;
+		virtual void update(float deltaSeconds) override;
 		virtual UniquePtr<WindowInterface> createWindow() override;
 		virtual UniquePtr<RendererInterface> createRenderer() override;
 

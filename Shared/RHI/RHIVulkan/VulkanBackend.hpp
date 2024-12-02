@@ -783,11 +783,14 @@ namespace RHI::Vulkan
 		void copyMIPBufferToImage(VkBuffer buffer, VkImage image, uint32_t mipLevels, uint32_t width, uint32_t height, uint32_t bytesPP, uint32_t layerCount = 1);
 		void copyImageToBuffer(VkImage image, VkBuffer buffer, uint32_t width, uint32_t height, uint32_t layerCount = 1);
 
-		bool draw(const std::function<void(uint32_t)>& updateBuffersFunc, const std::function<void(uint32_t)>& composeFrameFunc);
+		void draw() override;
 
 	private:
 		Device* m_Device;
 		const VulkanContext& m_Context;
 		CommandListParameters m_CommandListParameters;
+
+		VkCommandPool m_CommandPool;
+		VkCommandBuffer m_CommandBuffer;
 	};
 }
