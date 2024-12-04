@@ -1,10 +1,9 @@
 #pragma once
 
+#include <Vulkan.hpp>
+
 #include <vector>
 #include <functional>
-
-#define VK_NO_PROTOTYPES
-#include "volk.h"
 
 #define GLFW_INCLUDE_VULKAN
 #include <map>
@@ -16,8 +15,6 @@
 #include <glslang/Public/resource_limits_c.h>
 
 #include <GLFW/glfw3.h>
-
-#include "RHICommon.hpp"
 
 #define VK_CHECK(value) CHECK(value == VK_SUCCESS, __FILE__, __LINE__);
 #define VK_CHECK_RET(value) if(value != VK_SUCCESS) { CHECK(false, __FILE__, __LINE__); return value; }
@@ -210,18 +207,54 @@ namespace RHI::Vulkan
 		VulkanDynamicRHI();
 		~VulkanDynamicRHI();
 
-		void createWindowSurface(GLFWwindow* window);
-		IDevice* createDevice(DeviceDesc& desc);
+		void createWindowSurface();
+		GraphicsAPI getGraphicsAPI() const override;
+		IDevice* CreateDevice();
+		VkResult createDevice(VkPhysicalDeviceFeatures deviceFeatures, VkPhysicalDeviceFeatures2 deviceFeatures2);
+		bool CreateSwapchain();
 
 		static VulkanContextFeatures& initializeContextFeatures();
 		static VulkanContextExtensions& initializeContextExtensions();
 
-	protected:
+	private:
 		void createInstance();
-		void destroyVulkanInstance(VulkanInstance& vk);
+		void destroyVulkanInstance();
+		bool createSwapchain();
+		void destroySwapChain();
+		void resizeSwapchain();
+		size_t createSwapchainImages();
+		VkPhysicalDeviceFeatures initVulkanRenderDeviceFeatures(const VulkanContextFeatures& ctxFeatures, VkPhysicalDeviceFeatures2& deviceFeatures2);
 
 	protected:
-		VulkanInstance vk;
+		VulkanInstance m_VulkanInstance;
+
+		VkPhysicalDevice m_VulkanPhysicalDevice;
+		uint32_t m_GraphicsQueueFamily = -1;
+		uint32_t m_ComputeQueueFamily = -1;
+		uint32_t m_TransferQueueFamily = -1;
+		uint32_t m_PresentQueueFamily = -1;
+
+		VkDevice m_VulkanDevice;
+		VkQueue m_GraphicsQueue;
+		VkQueue m_ComputeQueue;
+		VkQueue m_TransferQueue;
+		VkQueue m_PresetnQueue;
+		VkSwapchainKHR m_Swapchain;
+
+		std::vector<VkImage> m_SwapchainImages;
+		std::vector<VkImageView> m_SwapchainImageViews;
+
+		std::vector<VkSemaphore> m_AcquireSemaphores;
+		std::vector<VkSemaphore> m_PresentSemaphores;
+		uint32_t m_AcquireSemaphoreIndex = 0;
+		uint32_t m_PresentSemaphoreIndex = 0;
+
+		VkSurfaceKHR m_WindowSurface;
+
+		VkSurfaceFormatKHR m_SwapChainFormat;
+		VkSwapchainKHR m_SwapChain;
+
+		GLFWwindow* m_Window;
 	};
 
 	struct SwapchainSupportDetails final
@@ -410,10 +443,6 @@ namespace RHI::Vulkan
 		descriptorSet.pTexelBufferView = nullptr;
 		return descriptorSet;
 	}
-
-	VkResult createSwapchain(VkDevice device, VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, uint32_t graphicsFamily, uint32_t width, uint32_t height, VkSwapchainKHR* swapchain, bool supportScreenshots = false);
-
-	size_t createSwapchainImages(VkDevice device, VkSwapchainKHR swapchain, std::vector<VkImage>& swapchainImages, std::vector<VkImageView>& swapchainImageViews);
 
 	VkResult createSemaphore(VkDevice device, VkSemaphore* outSemaphore);
 

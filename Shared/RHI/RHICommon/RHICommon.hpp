@@ -129,6 +129,19 @@ namespace RHI
         uint32_t height = 0;
     };
 
+    struct DeviceParams
+    {
+        bool useGraphicsQueue = true;
+        bool useComputeQueue = false;
+        bool useTransferQueue = false;
+
+        uint32_t backBufferWidth = -1;
+        uint32_t backBufferHeight = -1;
+        uint32_t maxFramesInFlight = -1;
+
+        bool supportScreenshots = false;
+    };
+
     class IDynamicRHI
     {
     public:
@@ -136,9 +149,11 @@ namespace RHI
         virtual ~IDynamicRHI() = default;
 
         virtual IDevice* getDevice() { return m_Device; }
+        virtual GraphicsAPI getGraphicsAPI() const = 0;
 
     protected:
         IDevice* m_Device;
+        DeviceParams m_DeviceParams;
     };
 
     class IRHIModule
