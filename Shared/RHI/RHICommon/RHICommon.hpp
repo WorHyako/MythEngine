@@ -3,7 +3,6 @@
 #include <RHI/RHICommon/Common/Resources.hpp>
 
 #include <cstdint>
-#include <functional>
 
 namespace RHI
 {
@@ -121,6 +120,7 @@ namespace RHI
     {
     public:
         virtual IRHICommandList* createCommandList(const CommandListParameters& params = CommandListParameters()) = 0;
+        virtual GraphicsAPI getGraphicsAPI() const = 0;
     };
 
     struct Resolution
@@ -148,6 +148,8 @@ namespace RHI
         IDynamicRHI() = default;
         virtual ~IDynamicRHI() = default;
 
+        virtual bool BeginFrame() = 0;
+        virtual bool Present() = 0;
         virtual IDevice* getDevice() { return m_Device; }
         virtual GraphicsAPI getGraphicsAPI() const = 0;
 

@@ -1,4 +1,5 @@
 #include <unordered_set>
+#include <glm/ext/scalar_common.hpp>
 #include <RHI/RHIVulkan/VulkanBackend.hpp>
 
 #ifdef NDEBUG
@@ -127,7 +128,7 @@ namespace RHI::Vulkan
     IDevice* VulkanDynamicRHI::CreateDevice()
     {
         VkPhysicalDeviceFeatures2 deviceFeatures2{};
-        VkPhysicalDeviceFeatures deviceFeatures = initVulkanRenderDeviceFeatures(m_Context.ctxFeatures, deviceFeatures2);
+        VkPhysicalDeviceFeatures deviceFeatures = initVulkanRenderDeviceFeatures(m_VulkanFeatures, deviceFeatures2);
 
         VK_CHECK(findSuitablePhysicalDevice(m_VulkanInstance.instance, isDeviceSuitable, &m_VulkanPhysicalDevice));
 
@@ -145,7 +146,33 @@ namespace RHI::Vulkan
             uniqueQueueFamilies.insert(m_ComputeQueueFamily);
         }
 
+        if (m_DeviceParams.useTransferQueue)
+        {
+            m_TransferQueueFamily = findQueueFamilies(m_VulkanPhysicalDevice, VK_QUEUE_TRANSFER_BIT);
+            uniqueQueueFamilies.insert(m_TransferQueueFamily);
+        }
+
     	VK_CHECK(createDevice(deviceFeatures, deviceFeatures2));
+
+        RHI::Vulkan::DeviceDesc DeviceDesc = {
+            .framebufferWidth = m_DeviceParams.backBufferWidth,
+            .framebufferHeight = m_DeviceParams.backBufferHeight,
+            .instance = m_VulkanInstance.instance,
+            .physicalDevice = m_VulkanPhysicalDevice,
+            .device = m_VulkanDevice,
+            .ctxExtensions = &m_VulkanExtensions,
+            .ctxFeatures = &m_VulkanFeatures,
+            .graphicsFamily = m_GraphicsQueueFamily,
+            .graphicsQueue = m_GraphicsQueue,
+            .useGraphicsQueue = m_DeviceParams.useGraphicsQueue,
+            .computeFamily = m_ComputeQueueFamily,
+            .computeQueue = m_ComputeQueue,
+            .useComputeQueue = m_DeviceParams.useComputeQueue,
+            .transferFamily = m_TransferQueueFamily,
+            .transferQueue = m_TransferQueue,
+            .useTransferQueue = m_DeviceParams.useTransferQueue };
+
+        m_Device = new RHI::Vulkan::Device(DeviceDesc);
 
         if (m_DeviceParams.useGraphicsQueue)
         {
@@ -174,6 +201,7 @@ namespace RHI::Vulkan
 
         VK_CHECK(createSwapchain());
         const size_t imageCount = createSwapchainImages();
+        m_SwapChainIndex = 0;
 
         m_PresentSemaphores.reserve(m_DeviceParams.maxFramesInFlight + 1);
         m_AcquireSemaphores.reserve(m_DeviceParams.maxFramesInFlight + 1);
@@ -190,19 +218,19 @@ namespace RHI::Vulkan
     VkResult VulkanDynamicRHI::createDevice(VkPhysicalDeviceFeatures deviceFeatures, VkPhysicalDeviceFeatures2 deviceFeatures2)
     {
         std::vector<const char*> extensions{};
-        if (m_Context.ctxExtensions.KHR_swapchain)
+        if (m_VulkanExtensions.KHR_swapchain)
         {
             extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
         }
-        if (m_Context.ctxExtensions.KHR_maintenance3)
+        if (m_VulkanExtensions.KHR_maintenance3)
         {
             extensions.push_back(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
         }
-        if (m_Context.ctxExtensions.EXT_discriptor_indexing)
+        if (m_VulkanExtensions.EXT_discriptor_indexing)
         {
             extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
         }
-        if (m_Context.ctxExtensions.EXT_draw_indirect_count)
+        if (m_VulkanExtensions.EXT_draw_indirect_count)
         {
             // for legacy drivers Vulkan 1.1
             extensions.push_back(VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME);
@@ -239,7 +267,7 @@ namespace RHI::Vulkan
             qciComp.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
             qciComp.pNext = nullptr;
             qciComp.flags = 0;
-            qciComp.queueFamilyIndex = static_cast<uint32_t>(m_Queues[uint32_t(CommandQueue::Compute)]->getQueueFamilyIndex());
+            qciComp.queueFamilyIndex = m_ComputeQueueFamily;
             qciComp.queueCount = 1;
             qciComp.pQueuePriorities = &queuePriorities[1];
             qci.push_back(qciComp);
@@ -247,7 +275,7 @@ namespace RHI::Vulkan
 
         VkDeviceCreateInfo ci{};
         ci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        ci.pNext = m_Context.ctxFeatures.deviceDescriptorIndexing ? &deviceFeatures2 : nullptr;
+        ci.pNext = m_VulkanFeatures.deviceDescriptorIndexing ? &deviceFeatures2 : nullptr;
         ci.flags = 0;
         ci.queueCreateInfoCount = static_cast<uint32_t>(qci.size());
         ci.pQueueCreateInfos = qci.data();
@@ -255,7 +283,7 @@ namespace RHI::Vulkan
         ci.ppEnabledLayerNames = nullptr;
         ci.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
         ci.ppEnabledExtensionNames = extensions.data();
-        ci.pEnabledFeatures = m_Context.ctxFeatures.deviceDescriptorIndexing ? nullptr : &deviceFeatures;
+        ci.pEnabledFeatures = m_VulkanFeatures.deviceDescriptorIndexing ? nullptr : &deviceFeatures;
 
         return vkCreateDevice(m_VulkanPhysicalDevice, &ci, nullptr, &m_VulkanDevice);
     }
@@ -313,7 +341,7 @@ namespace RHI::Vulkan
         return vkCreateSwapchainKHR(m_VulkanDevice, &ci, nullptr, &m_SwapChain);
     }
 
-    size_t VulkanDynamicRHI::   Images()
+    size_t VulkanDynamicRHI::createSwapchainImages()
     {
         uint32_t imageCount = 0;
         VK_CHECK(vkGetSwapchainImagesKHR(m_VulkanDevice, m_SwapChain, &imageCount, nullptr));
@@ -501,15 +529,107 @@ namespace RHI::Vulkan
         volkLoadInstance(m_VulkanInstance.instance);
     }
 
-    void VulkanDynamicRHI::destroyVulkanInstance()
+    void VulkanDynamicRHI::destroyDevice()
     {
         destroySwapChain();
 
+        //vkDestroyCommandPool(m_VulkanDevice, m_C, nullptr);
+
+        for(VkSemaphore& semaphore : m_PresentSemaphores)
+        {
+	        if(semaphore)
+	        {
+                vkDestroySemaphore(m_VulkanDevice, semaphore, nullptr);
+                semaphore = nullptr;
+	        }
+        }
+
+        for (VkSemaphore& semaphore : m_AcquireSemaphores)
+        {
+            if (semaphore)
+            {
+                vkDestroySemaphore(m_VulkanDevice, semaphore, nullptr);
+                semaphore = nullptr;
+            }
+        }
+
+        /*if (m_DeviceParams.useComputeQueue)
+        {
+            vkDestroyCommandPool(m_VulkanDevice, m_Resources.computeCommandPool, nullptr);
+        }*/
+
+        m_Device = nullptr;
+
+        vkDestroyDevice(m_VulkanDevice, nullptr);
+    }
+
+    void VulkanDynamicRHI::destroyVulkanInstance()
+    {
         vkDestroySurfaceKHR(m_VulkanInstance.instance, m_VulkanInstance.surface, nullptr);
 
         vkDestroyDebugReportCallbackEXT(m_VulkanInstance.instance, m_VulkanInstance.reportCallback, nullptr);
         vkDestroyDebugUtilsMessengerEXT(m_VulkanInstance.instance, m_VulkanInstance.messenger, nullptr);
 
         vkDestroyInstance(m_VulkanInstance.instance, nullptr);
+    }
+
+    bool VulkanDynamicRHI::BeginFrame()
+    {
+        const auto& semaphore = m_AcquireSemaphores[m_AcquireSemaphoreIndex];
+
+        VkResult result;
+
+        int const maxAttempts = 3;
+        for(int attempt = 0; attempt < maxAttempts; ++attempt)
+        {
+            result = vkAcquireNextImageKHR(m_VulkanDevice, m_SwapChain, 0, semaphore, VK_NULL_HANDLE, &m_SwapChainIndex);
+
+            if (result == VkResult::VK_ERROR_OUT_OF_DATE_KHR && attempt < maxAttempts)
+            {
+                //BackBufferResizing();
+                VkSurfaceCapabilitiesKHR surfaceCaps;
+                vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_VulkanPhysicalDevice, m_VulkanInstance.surface, &surfaceCaps);
+
+                m_DeviceParams.backBufferWidth = surfaceCaps.currentExtent.width;
+                m_DeviceParams.backBufferHeight = surfaceCaps.currentExtent.height;
+
+                resizeSwapchain();
+                //BackBufferResized();
+            }
+            else
+                break;
+        }
+
+        m_AcquireSemaphoreIndex = (m_AcquireSemaphoreIndex + 1) % m_AcquireSemaphores.size();
+
+        if (result == VkResult::VK_SUCCESS)
+        {
+            // Schedule the wait. The actual wait operation will be submitted when the app executes any command list.
+            m_Device->queueWaitForSemaphore(RHI::CommandQueue::Graphics, semaphore, 0);
+            return true;
+        }
+
+        return false;
+    }
+
+    bool VulkanDynamicRHI::Present()
+    {
+        const auto& semaphore = m_PresentSemaphores[m_PresentSemaphoreIndex];
+
+        VkPresentInfoKHR pi{};
+        pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        pi.pNext = nullptr;
+        pi.waitSemaphoreCount = 1;
+        pi.pWaitSemaphores = &semaphore;
+        pi.swapchainCount = 1;
+        pi.pSwapchains = &m_SwapChain;
+        pi.pImageIndices = &m_SwapChainIndex;
+
+        m_PresentSemaphoreIndex = (m_PresentSemaphoreIndex + 1) % m_PresentSemaphores.size();
+
+        VK_CHECK(vkQueuePresentKHR(m_PresetnQueue, &pi));
+        VK_CHECK(vkDeviceWaitIdle(m_VulkanDevice));
+
+        return true;
     }
 }

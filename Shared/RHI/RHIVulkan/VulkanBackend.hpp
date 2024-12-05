@@ -138,6 +138,9 @@ namespace RHI::Vulkan
 		uint32_t getQueueFamilyIndex() const { return m_QueueFamilyIndex; }
 		VkQueue getVkQueue() const { return m_Queue; }
 
+		void addWaitSemaphore(VkSemaphore semaphore, uint64_t value);
+		void addSignalSemaphore(VkSemaphore semaphore, uint64_t value);
+
 	private:
 		const VulkanContext& m_Context;
 
@@ -145,6 +148,10 @@ namespace RHI::Vulkan
 		CommandQueue m_QueueID;
 		uint32_t m_QueueFamilyIndex = uint32_t(-1);
 
+		std::vector<VkSemaphore> m_WaitSemaphores;
+		std::vector<uint64_t> m_WaitSemaphoreValues;
+		std::vector<VkSemaphore> m_SignalSemaphores;
+		std::vector<uint64_t> m_SignalSemaphoreValues;
 	};
 
 	class VulkanRHIModule : public IRHIModule
@@ -155,13 +162,7 @@ namespace RHI::Vulkan
 
 		virtual IDynamicRHI* createRHI() override;
 
-		GLFWwindow* getWindowInterface() override
-		{
-			return window_;
-		}
-
 	private:
-		GLFWwindow* window_;
 	};
 
 	struct DeviceDesc
@@ -183,6 +184,10 @@ namespace RHI::Vulkan
 		uint32_t computeFamily;
 		VkQueue computeQueue;
 		bool useComputeQueue = false;
+
+		uint32_t transferFamily;
+		VkQueue transferQueue;
+		bool useTransferQueue;
 	};
 
 	/* A structure with pipeline parameters */
@@ -213,11 +218,15 @@ namespace RHI::Vulkan
 		VkResult createDevice(VkPhysicalDeviceFeatures deviceFeatures, VkPhysicalDeviceFeatures2 deviceFeatures2);
 		bool CreateSwapchain();
 
+		virtual bool BeginFrame() override;
+		virtual bool Present() override;
+
 		static VulkanContextFeatures& initializeContextFeatures();
 		static VulkanContextExtensions& initializeContextExtensions();
 
 	private:
 		void createInstance();
+		void destroyDevice();
 		void destroyVulkanInstance();
 		bool createSwapchain();
 		void destroySwapChain();
@@ -225,7 +234,7 @@ namespace RHI::Vulkan
 		size_t createSwapchainImages();
 		VkPhysicalDeviceFeatures initVulkanRenderDeviceFeatures(const VulkanContextFeatures& ctxFeatures, VkPhysicalDeviceFeatures2& deviceFeatures2);
 
-	protected:
+	private:
 		VulkanInstance m_VulkanInstance;
 
 		VkPhysicalDevice m_VulkanPhysicalDevice;
@@ -239,10 +248,10 @@ namespace RHI::Vulkan
 		VkQueue m_ComputeQueue;
 		VkQueue m_TransferQueue;
 		VkQueue m_PresetnQueue;
-		VkSwapchainKHR m_Swapchain;
 
 		std::vector<VkImage> m_SwapchainImages;
 		std::vector<VkImageView> m_SwapchainImageViews;
+		uint32_t m_SwapChainIndex = uint32_t(-1);
 
 		std::vector<VkSemaphore> m_AcquireSemaphores;
 		std::vector<VkSemaphore> m_PresentSemaphores;
@@ -255,6 +264,9 @@ namespace RHI::Vulkan
 		VkSwapchainKHR m_SwapChain;
 
 		GLFWwindow* m_Window;
+
+		VulkanContextExtensions m_VulkanExtensions;
+		VulkanContextFeatures m_VulkanFeatures;
 	};
 
 	struct SwapchainSupportDetails final
@@ -591,15 +603,7 @@ namespace RHI::Vulkan
 		Queue* getQueue(CommandQueue queue) const { return m_Queues[int(queue)].get(); }
 		VulkanResources* getResources() { return &m_Resources; }
 
-		VkPhysicalDeviceFeatures initVulkanRenderDeviceFeatures(const VulkanContextFeatures& ctxFeatures, VkPhysicalDeviceFeatures2& deviceFeatures2);
-		bool initDevice(
-			DeviceDesc& desc,
-			std::function<bool(VkPhysicalDevice)> selector,
-			VkPhysicalDeviceFeatures deviceFeatures,
-			VkPhysicalDeviceFeatures2 deviceFeatures2);
-		VkResult createDevice(VkPhysicalDeviceFeatures deviceFeatures, VkPhysicalDeviceFeatures2 deviceFeatures2);
-
-		void destroyDevice();
+		virtual GraphicsAPI getGraphicsAPI() const override;
 
 		/* Resource Management*/
 		Texture loadTexture2D(const char* filename);
@@ -771,6 +775,11 @@ namespace RHI::Vulkan
 		VkResult createShaderModule(ShaderModule* shader, const char* fileName);
 
 		virtual IRHICommandList* createCommandList(const CommandListParameters& params) override;
+
+		// vulkan::IDevice implementation
+		VkSemaphore getQueueSemaphore(CommandQueue queueID) override;
+		void queueWaitForSemaphore(CommandQueue waitQueueID, VkSemaphore semaphore, uint64_t value) override;
+		void queueSignalSemaphore(CommandQueue executionQueueID, VkSemaphore semaphore, uint64_t value) override;
 
 	private:
 		VulkanContext m_Context;

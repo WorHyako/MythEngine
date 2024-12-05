@@ -16,4 +16,29 @@ namespace RHI::Vulkan
 		
 	}
 
+	void Queue::addWaitSemaphore(VkSemaphore semaphore, uint64_t value)
+	{
+		if (!semaphore)
+			return;
+
+		m_WaitSemaphores.push_back(semaphore);
+		m_WaitSemaphoreValues.push_back(value);
+	}
+
+	void Queue::addSignalSemaphore(VkSemaphore semaphore, uint64_t value)
+	{
+		if (!semaphore)
+			return;
+
+		m_SignalSemaphores.push_back(semaphore);
+		m_SignalSemaphoreValues.push_back(value);
+	}
+
+	VkSemaphore Device::getQueueSemaphore(CommandQueue queueID)
+	{
+		Queue& queue = *m_Queues[uint32_t(queueID)];
+
+		return queue.
+	}
+
 }

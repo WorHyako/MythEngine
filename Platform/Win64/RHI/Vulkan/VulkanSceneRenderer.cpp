@@ -33,12 +33,6 @@ void VulkanSceneRenderer::composeFrame()
 
 bool VulkanSceneRenderer::renderScene()
 {
-    uint32_t imageIndex = 0;
-    VkResult result = vkAcquireNextImageKHR(m_Context.device, m_Device->getResources()->swapchain, 0, m_Device->getQueue(RHI::CommandQueue::Graphics)->semaphore, VK_NULL_HANDLE, &imageIndex);
-    VK_CHECK(vkResetCommandPool(m_Context.device, m_Device->getResources()->commandPool, 0));
-
-    if (result != VK_SUCCESS) return false;
-
     updateBuffers(imageIndex);
 
     VkCommandBuffer commandBuffer = m_Device->getResources()->commandBuffers[imageIndex];
@@ -69,18 +63,4 @@ bool VulkanSceneRenderer::renderScene()
     si.pSignalSemaphores = &m_Device->getQueue(RHI::CommandQueue::Graphics)->renderSemaphore;
 
     VK_CHECK(vkQueueSubmit(m_Device->getQueue(RHI::CommandQueue::Graphics)->getVkQueue(), 1, &si, nullptr));
-
-    VkPresentInfoKHR pi{};
-    pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    pi.pNext = nullptr;
-    pi.waitSemaphoreCount = 1;
-    pi.pWaitSemaphores = &m_Device->getQueue(RHI::CommandQueue::Graphics)->renderSemaphore;
-    pi.swapchainCount = 1;
-    pi.pSwapchains = &m_Device->getResources()->swapchain;
-    pi.pImageIndices = &imageIndex;
-
-    VK_CHECK(vkQueuePresentKHR(m_Device->getQueue(RHI::CommandQueue::Graphics)->getVkQueue(), &pi));
-    VK_CHECK(vkDeviceWaitIdle(m_Context.device));
-
-    return true;
 }
