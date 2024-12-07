@@ -6,7 +6,6 @@ namespace RHI
 	{
 		m_DeviceParams = params;
 
-		if(gra)
 		CreateDevice();
 	}
 }

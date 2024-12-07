@@ -1,8 +1,8 @@
 #include "VulkanSceneRenderer.hpp"
 #include <RHI/RHICommon/RHIModuleWrapper.hpp>
 
-VulkanSceneRenderer::VulkanSceneRenderer(RHI::IDevice* device)
-	: RendererInterface(device)
+VulkanSceneRenderer::VulkanSceneRenderer(RHI::IDynamicRHI* dynamicRHI)
+	: RendererInterface(dynamicRHI)
 {
 	
 }

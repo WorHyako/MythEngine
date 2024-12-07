@@ -23,20 +23,44 @@ namespace mythSystem
     {
         m_GraphicsAPI = RHI::GraphicsAPI::VULKAN;
         m_RhiModule = RHI::InitializeModuleRHI(m_GraphicsAPI);
-        m_Window = createWindow();
+        createWindow();
         m_Window->setWindowUserPointer(this);
         m_Window->assignCallbacks();
+        createDynamicRHI();
+        createRenderer();
+    }
 
+    Application::~Application()
+    {
+        delete m_RhiModule;
+        delete m_DynamicRHI;
+        delete m_Device;
+        delete m_Window;
+    }
+
+    void Application::createWindow()
+    {
+        createWindowGLFW();
+    }
+
+    void Application::createRenderer()
+    {
+        m_Renderer = std::make_unique<VulkanSceneRenderer>(m_DynamicRHI);
+    }
+
+    void Application::createDynamicRHI()
+    {
         if (m_RhiModule)
         {
             m_DynamicRHI = m_RhiModule->createRHI();
 
-            if(m_GraphicsAPI == RHI::GraphicsAPI::VULKAN)
+            if (m_GraphicsAPI == RHI::GraphicsAPI::VULKAN)
             {
                 if (RHI::Vulkan::VulkanDynamicRHI* VulkanDynamicRHI = dynamic_cast<RHI::Vulkan::VulkanDynamicRHI*>(m_DynamicRHI))
                 {
                     if (GLFWWindow* windowGLFW = dynamic_cast<GLFWWindow*>(m_Window.get()))
                     {
+                        VulkanDynamicRHI->setWindow(windowGLFW->getWindow());
                         VulkanDynamicRHI->createWindowSurface();
                     }
 
@@ -52,35 +76,15 @@ namespace mythSystem
                 }
             }
         }
-
-
     }
 
-    Application::~Application()
-    {
-        delete m_RhiModule;
-        delete m_DynamicRHI;
-        delete m_Device;
-        delete m_Window;
-    }
-
-    UniquePtr<WindowInterface> Application::createWindow()
-    {
-        return createWindowGLFW();
-    }
-
-    UniquePtr<RendererInterface> Application::createRenderer()
-    {
-        m_Renderer = std::make_unique<VulkanSceneRenderer>(m_Device);
-    }
-
-    UniquePtr<WindowInterface> Application::createWindowGLFW()
+    void Application::createWindowGLFW()
     {
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-        GLFWWindow* vulkanWindow = new GLFWWindow(detectResolution(SCREEN_WIDTH, SCREEN_HEIGHT));
-        if (!vulkanWindow->getWindow())
+        m_Window = std::make_unique<GLFWWindow>(GLFWWindow(detectResolution(SCREEN_WIDTH, SCREEN_HEIGHT)));
+        if (!m_Window.get())
         {
             glfwTerminate();
             exit(EXIT_FAILURE);
@@ -107,7 +111,9 @@ namespace mythSystem
 
             m_FpsCounter.tick(deltaSeconds);
 
+            m_DynamicRHI->BeginFrame();
             bool frameRendered = m_Renderer->renderScene();
+            m_DynamicRHI->Present();
 
             m_FpsCounter.tick(deltaSeconds, frameRendered);
 

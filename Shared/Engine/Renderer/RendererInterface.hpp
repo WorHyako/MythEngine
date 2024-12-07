@@ -6,8 +6,9 @@ namespace mythSystem
 	class RendererInterface
 	{
 	public:
-		RendererInterface(RHI::IDevice* device)
-			: m_Device(device)
+		RendererInterface(RHI::IDynamicRHI* dynamicRHI)
+			: m_DynamicRHI(dynamicRHI)
+			, m_Device(dynamicRHI->getDevice())
 		{
 
 		}
@@ -19,6 +20,7 @@ namespace mythSystem
 		virtual void initializeRender() = 0;
 
 	protected:
+		RHI::IDynamicRHI* m_DynamicRHI;
 		RHI::IDevice* m_Device;
 		RHI::IRHICommandList* m_CommandList;
 	};

@@ -51,6 +51,16 @@ namespace RHI::Vulkan
         CreateDevice();
 	}
 
+    RHI::IDevice* VulkanDynamicRHI::getDevice() const
+    {
+        return m_Device;
+    }
+
+    void VulkanDynamicRHI::setWindow(GLFWwindow* window)
+    {
+        m_Window = window;
+    }
+
     void VulkanDynamicRHI::createWindowSurface()
     {
         if (glfwCreateWindowSurface(m_VulkanInstance.instance, m_Window, nullptr, &m_VulkanInstance.surface) != VK_SUCCESS)

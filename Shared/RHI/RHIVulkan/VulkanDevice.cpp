@@ -43,44 +43,42 @@ namespace RHI::Vulkan
         m_Context.ctxExtensions = *desc.ctxExtensions;
         m_Context.ctxFeatures = *desc.ctxFeatures;
 
-        VkCommandPoolCreateInfo cpi{};
-        cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        cpi.flags = 0;
-        cpi.queueFamilyIndex = m_DeviceDesc.graphicsFamily;
+        //VkCommandPoolCreateInfo cpi{};
+        //cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        //cpi.flags = 0;
+        //cpi.queueFamilyIndex = m_DeviceDesc.graphicsFamily;
 
-        VK_CHECK(vkCreateCommandPool(m_Context.device, &cpi, nullptr, &m_Resources.commandPool));
+        //VK_CHECK(vkCreateCommandPool(m_Context.device, &cpi, nullptr, &m_Resources.commandPool));
 
-        VkCommandBufferAllocateInfo ai{};
-        ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        ai.pNext = nullptr;
-        ai.commandPool = m_Resources.commandPool;
-        ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        ai.commandBufferCount = static_cast<uint32_t>(m_Resources.swapchainImages.size());
+        //VkCommandBufferAllocateInfo ai{};
+        //ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        //ai.pNext = nullptr;
+        //ai.commandPool = m_Resources.commandPool;
+        //ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        //ai.commandBufferCount = static_cast<uint32_t>(m_Resources.swapchainImages.size());
 
-        VK_CHECK(vkAllocateCommandBuffers(m_Context.device, &ai, &m_Resources.commandBuffers[0]));
+        //VK_CHECK(vkAllocateCommandBuffers(m_Context.device, &ai, &m_Resources.commandBuffers[0]));
 
-        if (desc.useComputeQueue)
-        {
-            // Create compute command pool
-            VkCommandPoolCreateInfo cpi1;
-            cpi1.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            cpi1.pNext = nullptr;
-            cpi1.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; /* Allow command from this pool buffers to be reset*/
-            cpi1.queueFamilyIndex = static_cast<uint32_t>(m_Queues[uint32_t(CommandQueue::Compute)]->getQueueFamilyIndex());
+        //if (desc.useComputeQueue)
+        //{
+        //    // Create compute command pool
+        //    VkCommandPoolCreateInfo cpi1;
+        //    cpi1.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        //    cpi1.pNext = nullptr;
+        //    cpi1.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; /* Allow command from this pool buffers to be reset*/
+        //    cpi1.queueFamilyIndex = static_cast<uint32_t>(m_Queues[uint32_t(CommandQueue::Compute)]->getQueueFamilyIndex());
 
-            VK_CHECK(vkCreateCommandPool(m_Context.device, &cpi1, nullptr, &m_Resources.computeCommandPool));
+        //    VK_CHECK(vkCreateCommandPool(m_Context.device, &cpi1, nullptr, &m_Resources.computeCommandPool));
 
-            VkCommandBufferAllocateInfo ai1{};
-            ai1.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            ai1.pNext = nullptr;
-            ai1.commandPool = m_Resources.computeCommandPool;
-            ai1.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            ai1.commandBufferCount = 1;
+        //    VkCommandBufferAllocateInfo ai1{};
+        //    ai1.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        //    ai1.pNext = nullptr;
+        //    ai1.commandPool = m_Resources.computeCommandPool;
+        //    ai1.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        //    ai1.commandBufferCount = 1;
 
-            VK_CHECK(vkAllocateCommandBuffers(m_Context.device, &ai1, &m_Resources.computeCommandBuffer));
-        }
-
-        return true;
+        //    VK_CHECK(vkAllocateCommandBuffers(m_Context.device, &ai1, &m_Resources.computeCommandBuffer));
+        //}
     }
 
     GraphicsAPI Device::getGraphicsAPI() const

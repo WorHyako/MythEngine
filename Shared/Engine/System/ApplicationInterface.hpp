@@ -20,8 +20,8 @@ namespace mythSystem
         virtual void update(float deltaSeconds) = 0;
 
     protected:
-        virtual UniquePtr<WindowInterface> createWindow() = 0;
-        virtual UniquePtr<RendererInterface> createRenderer() = 0;
+        virtual void createWindow() = 0;
+        virtual void createRenderer() = 0;
     };
 
 };// namespace mythSystem

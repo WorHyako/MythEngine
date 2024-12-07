@@ -154,11 +154,10 @@ namespace RHI
         virtual void CreateDevice() = 0;
         virtual bool BeginFrame() = 0;
         virtual bool Present() = 0;
-        virtual IDevice* getDevice() { return m_Device; }
+        virtual IDevice* getDevice() const = 0;
         virtual GraphicsAPI getGraphicsAPI() const = 0;
 
     protected:
-        IDevice* m_Device;
         DeviceParams m_DeviceParams;
     };
 
@@ -192,12 +191,27 @@ namespace RHI
 	    
     };
 
+    struct BufferDesc
+    {
+	    
+    };
+
     class IBuffer : public IResource
     {
 
     };
 
+    struct ShaderDesc
+    {
+	    
+    };
+
     class IShader : public IResource
+    {
+	    
+    };
+
+    struct FramebufferDesc
     {
 	    
     };

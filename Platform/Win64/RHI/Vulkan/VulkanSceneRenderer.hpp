@@ -6,7 +6,7 @@
 class VulkanSceneRenderer : public mythSystem::RendererInterface
 {
 public:
-	VulkanSceneRenderer(RHI::IDevice* device);
+	VulkanSceneRenderer(RHI::IDynamicRHI* dynamicRHI);
 	virtual ~VulkanSceneRenderer();
 
 	virtual bool renderScene() override;

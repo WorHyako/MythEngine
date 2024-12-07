@@ -23,10 +23,11 @@ namespace mythSystem
 
 		virtual void mainLoop() override;
 		virtual void update(float deltaSeconds) override;
-		virtual UniquePtr<WindowInterface> createWindow() override;
-		virtual UniquePtr<RendererInterface> createRenderer() override;
+		virtual void createWindow() override;
+		void createDynamicRHI();
+		virtual void createRenderer() override;
 
-		UniquePtr<WindowInterface> createWindowGLFW();
+		void createWindowGLFW();
 
 		virtual void handleKey(int key, bool pressed);
 		virtual void handleMouseClick(int button, bool pressed);

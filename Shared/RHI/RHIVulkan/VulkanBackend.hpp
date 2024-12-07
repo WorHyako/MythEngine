@@ -9,6 +9,7 @@
 #include <map>
 #include <array>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include <glslang/Include/glslang_c_interface.h>
@@ -125,6 +126,34 @@ namespace RHI::Vulkan
 		VulkanContextFeatures ctxFeatures;
 	};
 
+	// command buffer with resource tracking
+	class TrackedCommandBuffer
+	{
+	public:
+
+		// the command buffer itself
+		VkCommandBuffer commandBuffer = VkCommandBuffer();
+		VkCommandPool commandPool = VkCommandPool();
+
+		std::vector<IResource> referencedResources; // to keep them alive
+		std::vector<Buffer> referencedStagingBuffers; // to allow synchronous mapBuffer
+
+		uint64_t recordingID = 0;
+		uint64_t submissionID = 0;
+
+		explicit TrackedCommandBuffer(const VulkanContext& context)
+			: m_Context(context)
+		{
+		}
+
+		~TrackedCommandBuffer();
+
+	private:
+		const VulkanContext& m_Context;
+	};
+
+	typedef std::shared_ptr<TrackedCommandBuffer> TrackedCommandBufferPtr;
+
 	class Queue
 	{
 	public:
@@ -132,6 +161,10 @@ namespace RHI::Vulkan
 		~Queue();
 
 		VkSemaphore trackingSemaphore;
+
+		TrackedCommandBufferPtr createCommandBuffer();
+
+		TrackedCommandBufferPtr getOrCreateCommandBuffer();
 
 		CommandQueue getQueueID() const { return m_QueueID; }
 		uint32_t getQueueFamilyIndex() const { return m_QueueFamilyIndex; }
@@ -147,10 +180,16 @@ namespace RHI::Vulkan
 		CommandQueue m_QueueID;
 		uint32_t m_QueueFamilyIndex = uint32_t(-1);
 
+		std::mutex m_Mutex;
+
 		std::vector<VkSemaphore> m_WaitSemaphores;
 		std::vector<uint64_t> m_WaitSemaphoreValues;
 		std::vector<VkSemaphore> m_SignalSemaphores;
 		std::vector<uint64_t> m_SignalSemaphoreValues;
+
+		// tracks the list of command buffers in flight on this queue
+		std::list<TrackedCommandBufferPtr> m_CommandBuffersInFlight;
+		std::list<TrackedCommandBufferPtr> m_CommandBuffersPool;
 	};
 
 	class VulkanRHIModule : public IRHIModule
@@ -206,8 +245,9 @@ namespace RHI::Vulkan
 		uint32_t patchControlPoints = 0;
 	};
 
-	struct VulkanDynamicRHI : public IDynamicRHI
+	class VulkanDynamicRHI : public IDynamicRHI
 	{
+	public:
 		VulkanDynamicRHI();
 		~VulkanDynamicRHI();
 
@@ -215,10 +255,13 @@ namespace RHI::Vulkan
 		virtual GraphicsAPI getGraphicsAPI() const override;
 		virtual void CreateDevice() override;
 		VkResult createDevice(VkPhysicalDeviceFeatures deviceFeatures, VkPhysicalDeviceFeatures2 deviceFeatures2);
+		virtual RHI::IDevice* getDevice() const override;
 		bool CreateSwapchain();
 
 		virtual bool BeginFrame() override;
 		virtual bool Present() override;
+
+		void setWindow(GLFWwindow* window);
 
 		static VulkanContextFeatures& initializeContextFeatures();
 		static VulkanContextExtensions& initializeContextExtensions();
@@ -266,6 +309,8 @@ namespace RHI::Vulkan
 
 		VulkanContextExtensions m_VulkanExtensions;
 		VulkanContextFeatures m_VulkanFeatures;
+
+		Vulkan::IDevice* m_Device;
 	};
 
 	struct SwapchainSupportDetails final

@@ -18,6 +18,47 @@ namespace RHI::Vulkan
 		trackingSemaphore = VkSemaphore();
 	}
 
+	TrackedCommandBufferPtr Queue::createCommandBuffer()
+	{
+		TrackedCommandBufferPtr commandBuffer = std::make_shared<TrackedCommandBuffer>(m_Context);
+
+		VkCommandPoolCreateInfo cpi{};
+		cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		cpi.flags = 0;
+		cpi.queueFamilyIndex = m_QueueFamilyIndex;
+
+		VK_CHECK(vkCreateCommandPool(m_Context.device, &cpi, nullptr, &commandBuffer->commandPool));
+
+		VkCommandBufferAllocateInfo ai{};
+		ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		ai.pNext = nullptr;
+		ai.commandPool = commandBuffer->commandPool;
+		ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		ai.commandBufferCount = static_cast<uint32_t>(1);
+
+		VK_CHECK(vkAllocateCommandBuffers(m_Context.device, &ai, &commandBuffer->commandBuffer));
+
+		return commandBuffer;
+	}
+
+	TrackedCommandBufferPtr Queue::getOrCreateCommandBuffer()
+	{
+		std::lock_guard lock_guard(m_Mutex); // this is called from CommandList::open, so free-threaded
+
+		TrackedCommandBufferPtr commandBuffer;
+		if(m_CommandBuffersPool.empty())
+		{
+			commandBuffer = createCommandBuffer();
+		}
+		else
+		{
+			commandBuffer = m_CommandBuffersPool.front();
+			m_CommandBuffersPool.pop_front();
+		}
+
+		return commandBuffer;
+	}
+
 	void Queue::addWaitSemaphore(VkSemaphore semaphore, uint64_t value)
 	{
 		if (!semaphore)
