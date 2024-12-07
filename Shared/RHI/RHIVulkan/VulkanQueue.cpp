@@ -8,12 +8,14 @@ namespace RHI::Vulkan
 		, m_QueueID(queueID)
 		, m_QueueFamilyIndex(queueFamilyIndex)
 	{
-		
+		const VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+		vkCreateSemaphore(m_Context.device, &semaphoreCreateInfo, nullptr, &trackingSemaphore);
 	}
 
 	Queue::~Queue()
 	{
-		
+		vkDestroySemaphore(m_Context.device, trackingSemaphore, nullptr);
+		trackingSemaphore = VkSemaphore();
 	}
 
 	void Queue::addWaitSemaphore(VkSemaphore semaphore, uint64_t value)
@@ -38,7 +40,22 @@ namespace RHI::Vulkan
 	{
 		Queue& queue = *m_Queues[uint32_t(queueID)];
 
-		return queue.
+		return queue.trackingSemaphore;
 	}
+
+	void Device::queueWaitForSemaphore(CommandQueue waitQueueID, VkSemaphore semaphore, uint64_t value)
+	{
+		Queue& queue = *m_Queues[uint32_t(waitQueueID)];
+
+		queue.addWaitSemaphore(semaphore, value);
+	}
+
+	void Device::queueSignalSemaphore(CommandQueue executionQueueID, VkSemaphore semaphore, uint64_t value)
+	{
+		Queue& queue = *m_Queues[uint32_t(executionQueueID)];
+
+		queue.addSignalSemaphore(semaphore, value);
+	}
+
 
 }

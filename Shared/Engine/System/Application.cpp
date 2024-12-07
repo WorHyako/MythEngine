@@ -21,8 +21,8 @@ namespace mythSystem
         : m_Positioner(glm::vec3(0.0f, 5.0f, 10.0f), vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, -1.0f, 0.0f))
         , m_Camera(m_Positioner)
     {
-        m_GraphicsApi = RHI::GraphicsAPI::VULKAN;
-        m_RhiModule = RHI::InitializeModuleRHI(m_GraphicsApi);
+        m_GraphicsAPI = RHI::GraphicsAPI::VULKAN;
+        m_RhiModule = RHI::InitializeModuleRHI(m_GraphicsAPI);
         m_Window = createWindow();
         m_Window->setWindowUserPointer(this);
         m_Window->assignCallbacks();
@@ -31,21 +31,24 @@ namespace mythSystem
         {
             m_DynamicRHI = m_RhiModule->createRHI();
 
-            if(m_GraphicsApi == RHI::GraphicsAPI::VULKAN)
+            if(m_GraphicsAPI == RHI::GraphicsAPI::VULKAN)
             {
                 if (RHI::Vulkan::VulkanDynamicRHI* VulkanDynamicRHI = dynamic_cast<RHI::Vulkan::VulkanDynamicRHI*>(m_DynamicRHI))
                 {
                     if (GLFWWindow* windowGLFW = dynamic_cast<GLFWWindow*>(m_Window.get()))
                     {
-                        VulkanDynamicRHI->createWindowSurface(windowGLFW->getWindow());
+                        VulkanDynamicRHI->createWindowSurface();
                     }
 
-                    RHI::Vulkan::DeviceDesc desc = {};
-                    desc.useGraphicsQueue = true;
-                    desc.useComputeQueue = true;
-                    desc.ctxExtensions = &RHI::Vulkan::VulkanDynamicRHI::initializeContextExtensions();
-                    desc.ctxFeatures = &RHI::Vulkan::VulkanDynamicRHI::initializeContextFeatures();
-                    m_Device = VulkanDynamicRHI->createDevice(desc);
+                    RHI::DeviceParams deviceParams = {};
+                    deviceParams.useGraphicsQueue = true;
+                    deviceParams.useComputeQueue = true;
+                    deviceParams.useTransferQueue = true;
+                    Resolution resolution;
+                    m_Window.get()->getFramebufferResolution(resolution);
+                    deviceParams.backBufferWidth = resolution.width;
+                    deviceParams.backBufferHeight = resolution.height;
+                    m_DynamicRHI->CreateDevice(deviceParams);
                 }
             }
         }
@@ -131,17 +134,13 @@ namespace mythSystem
 
     void Application::handleMouseClick(int button, bool pressed)
     {
-        {
-            if (button == GLFW_MOUSE_BUTTON_LEFT)
-                m_MouseState.pressedLeft = pressed;
-        }
+        if (button == GLFW_MOUSE_BUTTON_LEFT)
+            m_MouseState.pressedLeft = pressed;
     }
 
     void Application::handleMouseMove(float mx, float my)
     {
-        {
-            m_MouseState.pos.x = mx;
-            m_MouseState.pos.y = my;
-        }
+        m_MouseState.pos.x = mx;
+        m_MouseState.pos.y = my;
     }
 }

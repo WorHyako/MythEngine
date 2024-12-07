@@ -125,7 +125,7 @@ namespace RHI::Vulkan
         return false;
     }
 
-    IDevice* VulkanDynamicRHI::CreateDevice()
+    void VulkanDynamicRHI::CreateDevice()
     {
         VkPhysicalDeviceFeatures2 deviceFeatures2{};
         VkPhysicalDeviceFeatures deviceFeatures = initVulkanRenderDeviceFeatures(m_VulkanFeatures, deviceFeatures2);

@@ -131,8 +131,7 @@ namespace RHI::Vulkan
 		Queue(const VulkanContext& context, CommandQueue queueID, VkQueue queue, uint32_t queueFamilyIndex);
 		~Queue();
 
-		VkSemaphore semaphore;
-		VkSemaphore renderSemaphore;
+		VkSemaphore trackingSemaphore;
 
 		CommandQueue getQueueID() const { return m_QueueID; }
 		uint32_t getQueueFamilyIndex() const { return m_QueueFamilyIndex; }
@@ -213,8 +212,8 @@ namespace RHI::Vulkan
 		~VulkanDynamicRHI();
 
 		void createWindowSurface();
-		GraphicsAPI getGraphicsAPI() const override;
-		IDevice* CreateDevice();
+		virtual GraphicsAPI getGraphicsAPI() const override;
+		virtual void CreateDevice() override;
 		VkResult createDevice(VkPhysicalDeviceFeatures deviceFeatures, VkPhysicalDeviceFeatures2 deviceFeatures2);
 		bool CreateSwapchain();
 

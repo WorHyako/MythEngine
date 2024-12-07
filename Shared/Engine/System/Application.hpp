@@ -39,7 +39,7 @@ namespace mythSystem
 		RHI::IRHIModule* m_RhiModule;
 		RHI::IDynamicRHI* m_DynamicRHI;
 		RHI::IDevice* m_Device;
-		RHI::GraphicsAPI m_GraphicsApi;
+		RHI::GraphicsAPI m_GraphicsAPI;
 		CameraPositioner_FirstPerson m_Positioner;
 		TestCamera m_Camera;
 		FramesPerSecondCounter m_FpsCounter;

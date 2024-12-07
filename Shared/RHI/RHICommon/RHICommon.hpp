@@ -135,6 +135,8 @@ namespace RHI
         bool useComputeQueue = false;
         bool useTransferQueue = false;
 
+        bool enableDebugRuntime = false;
+
         uint32_t backBufferWidth = -1;
         uint32_t backBufferHeight = -1;
         uint32_t maxFramesInFlight = -1;
@@ -148,6 +150,8 @@ namespace RHI
         IDynamicRHI() = default;
         virtual ~IDynamicRHI() = default;
 
+        bool CreateDevice(DeviceParams& params);
+        virtual void CreateDevice() = 0;
         virtual bool BeginFrame() = 0;
         virtual bool Present() = 0;
         virtual IDevice* getDevice() { return m_Device; }
@@ -168,6 +172,12 @@ namespace RHI
         virtual void* getWindowInterface() = 0;
     };
 
+    struct TextureDesc
+    {
+        uint32_t width = 1;
+        uint32_t height = 1;
+        uint32_t depth = 1;
+    };
 
     class ITexture : public IResource
     {
