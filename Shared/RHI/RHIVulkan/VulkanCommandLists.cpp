@@ -16,18 +16,9 @@ namespace RHI::Vulkan
 	}
 
 
-    VkCommandBuffer CommandList::beginSingleTimeCommands()
+    void CommandList::beginSingleTimeCommands()
     {
-        VkCommandBuffer commandBuffer;
-
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.pNext = nullptr;
-        allocInfo.commandPool = m_Device->getResources()->commandPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = 1;
-
-        vkAllocateCommandBuffers(m_Context.device, &allocInfo, &commandBuffer);
+        m_CurrentCommandBuffer = m_Device->getQueue(m_CommandListParameters.queueType)->getOrCreateCommandBuffer();
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -35,14 +26,12 @@ namespace RHI::Vulkan
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         beginInfo.pInheritanceInfo = nullptr;
 
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-        return commandBuffer;
+        vkBeginCommandBuffer(m_CurrentCommandBuffer->commandBuffer, &beginInfo);
     }
 
-    void CommandList::endSingleTimeCommands(VkCommandBuffer commandBuffer)
+    void CommandList::endSingleTimeCommands()
     {
-        vkEndCommandBuffer(commandBuffer);
+        vkEndCommandBuffer(m_CurrentCommandBuffer->commandBuffer);
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -51,38 +40,30 @@ namespace RHI::Vulkan
         submitInfo.pWaitSemaphores = nullptr;
         submitInfo.pWaitDstStageMask = nullptr;
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
+        submitInfo.pCommandBuffers = &m_CurrentCommandBuffer->commandBuffer;
         submitInfo.signalSemaphoreCount = 0;
         submitInfo.pSignalSemaphores = nullptr;
 
-        vkQueueSubmit(m_Device->getQueue(CommandQueue::Graphics)->getVkQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(m_Device->getQueue(CommandQueue::Graphics)->getVkQueue());
+        vkQueueSubmit(m_Device->getQueue(m_CommandListParameters.queueType)->getVkQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(m_Device->getQueue(m_CommandListParameters.queueType)->getVkQueue());
 
-        vkFreeCommandBuffers(m_Context.device, m_Device->getResources()->commandPool, 1, &commandBuffer);
+        vkFreeCommandBuffers(m_Context.device, m_CurrentCommandBuffer->commandPool, 1, &m_CurrentCommandBuffer->commandBuffer);
     }
 
 
     void CommandList::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
         VkBufferCopy copyRegion{};
         copyRegion.srcOffset = 0;
         copyRegion.dstOffset = 0;
         copyRegion.size = size;
 
-        vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-        endSingleTimeCommands(commandBuffer);
+        vkCmdCopyBuffer(m_CurrentCommandBuffer->commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
     }
 
     void CommandList::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount, uint32_t mipLevels)
     {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
-        transitionImageLayoutCmd(commandBuffer, image, format, oldLayout, newLayout, layerCount, mipLevels);
-
-        endSingleTimeCommands(commandBuffer);
+        transitionImageLayoutCmd(m_CurrentCommandBuffer->commandBuffer, image, format, oldLayout, newLayout, layerCount, mipLevels);
     }
 
     void CommandList::transitionImageLayoutCmd(VkCommandBuffer commandBuffer, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount, uint32_t mipLevels)
@@ -239,8 +220,6 @@ namespace RHI::Vulkan
 
     void CommandList::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount)
     {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
         VkBufferImageCopy region{};
         region.bufferOffset = 0;
         region.bufferRowLength = 0;
@@ -252,15 +231,11 @@ namespace RHI::Vulkan
         region.imageOffset = VkOffset3D{ 0, 0, 0 };
         region.imageExtent = VkExtent3D{ width, height, 1 };
 
-        vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-        endSingleTimeCommands(commandBuffer);
+        vkCmdCopyBufferToImage(m_CurrentCommandBuffer->commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
     }
 
     void CommandList::copyMIPBufferToImage(VkBuffer buffer, VkImage image, uint32_t mipLevels, uint32_t width, uint32_t height, uint32_t bytesPP, uint32_t layerCount)
     {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
         uint32_t w = width, h = height;
         uint32_t offset = 0;
         std::vector<VkBufferImageCopy> regions(mipLevels);
@@ -288,15 +263,11 @@ namespace RHI::Vulkan
             h >>= 1;
         }
 
-        vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, (uint32_t)regions.size(), regions.data());
-
-        endSingleTimeCommands(commandBuffer);
+        vkCmdCopyBufferToImage(m_CurrentCommandBuffer->commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, (uint32_t)regions.size(), regions.data());
     }
 
     void CommandList::copyImageToBuffer(VkImage image, VkBuffer buffer, uint32_t width, uint32_t height, uint32_t layerCount)
     {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
         VkImageSubresourceLayers imageSubresourceLayers{};
         imageSubresourceLayers.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         imageSubresourceLayers.mipLevel = 0;
@@ -311,9 +282,7 @@ namespace RHI::Vulkan
         region.imageOffset = VkOffset3D{ 0, 0, 0 };
         region.imageExtent = VkExtent3D{ width, height, 1 };
 
-        vkCmdCopyImageToBuffer(commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer, 1, &region);
-
-        endSingleTimeCommands(commandBuffer);
+        vkCmdCopyImageToBuffer(m_CurrentCommandBuffer->commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer, 1, &region);
     }
 
     void CommandList::draw()

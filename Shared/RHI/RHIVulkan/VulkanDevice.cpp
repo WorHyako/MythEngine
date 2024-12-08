@@ -43,22 +43,6 @@ namespace RHI::Vulkan
         m_Context.ctxExtensions = *desc.ctxExtensions;
         m_Context.ctxFeatures = *desc.ctxFeatures;
 
-        //VkCommandPoolCreateInfo cpi{};
-        //cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        //cpi.flags = 0;
-        //cpi.queueFamilyIndex = m_DeviceDesc.graphicsFamily;
-
-        //VK_CHECK(vkCreateCommandPool(m_Context.device, &cpi, nullptr, &m_Resources.commandPool));
-
-        //VkCommandBufferAllocateInfo ai{};
-        //ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        //ai.pNext = nullptr;
-        //ai.commandPool = m_Resources.commandPool;
-        //ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        //ai.commandBufferCount = static_cast<uint32_t>(m_Resources.swapchainImages.size());
-
-        //VK_CHECK(vkAllocateCommandBuffers(m_Context.device, &ai, &m_Resources.commandBuffers[0]));
-
         //if (desc.useComputeQueue)
         //{
         //    // Create compute command pool
@@ -100,4 +84,12 @@ namespace RHI::Vulkan
 
         return cmdList;
     }
+
+    uint64_t Device::executeCommandList(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists, CommandQueue executionQueue)
+    {
+        Queue& queue = *m_Queues[uint32_t(executionQueue)];
+
+        queue.submit(commandLists, numCommandLists);
+    }
+
 }

@@ -166,12 +166,15 @@ namespace RHI::Vulkan
 
 		TrackedCommandBufferPtr getOrCreateCommandBuffer();
 
+		void addWaitSemaphore(VkSemaphore semaphore, uint64_t value);
+		void addSignalSemaphore(VkSemaphore semaphore, uint64_t value);
+
+		// submits a command buffer to this queue, returns submissionID
+		uint64_t submit(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists);
+
 		CommandQueue getQueueID() const { return m_QueueID; }
 		uint32_t getQueueFamilyIndex() const { return m_QueueFamilyIndex; }
 		VkQueue getVkQueue() const { return m_Queue; }
-
-		void addWaitSemaphore(VkSemaphore semaphore, uint64_t value);
-		void addSignalSemaphore(VkSemaphore semaphore, uint64_t value);
 
 	private:
 		const VulkanContext& m_Context;
@@ -183,9 +186,7 @@ namespace RHI::Vulkan
 		std::mutex m_Mutex;
 
 		std::vector<VkSemaphore> m_WaitSemaphores;
-		std::vector<uint64_t> m_WaitSemaphoreValues;
 		std::vector<VkSemaphore> m_SignalSemaphores;
-		std::vector<uint64_t> m_SignalSemaphoreValues;
 
 		// tracks the list of command buffers in flight on this queue
 		std::list<TrackedCommandBufferPtr> m_CommandBuffersInFlight;
@@ -819,6 +820,7 @@ namespace RHI::Vulkan
 		VkResult createShaderModule(ShaderModule* shader, const char* fileName);
 
 		virtual IRHICommandList* createCommandList(const CommandListParameters& params) override;
+		virtual uint64_t executeCommandList(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists, CommandQueue executionQueue) override;
 
 		// vulkan::IDevice implementation
 		VkSemaphore getQueueSemaphore(CommandQueue queueID) override;
@@ -855,8 +857,8 @@ namespace RHI::Vulkan
 		CommandList(Device* device, VulkanContext& context, const CommandListParameters& parameters);
 		virtual ~CommandList() override;
 
-		VkCommandBuffer beginSingleTimeCommands();
-		void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+		void beginSingleTimeCommands();
+		void endSingleTimeCommands();
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount = 1, uint32_t mipLevels = 1);
 		void transitionImageLayoutCmd(VkCommandBuffer commandBuffer, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount = 1, uint32_t mipLevels = 1);
@@ -867,10 +869,14 @@ namespace RHI::Vulkan
 
 		void draw() override;
 
+		TrackedCommandBufferPtr getCurrentCommandBuffer() const { return m_CurrentCommandBuffer; }
+
 	private:
 		Device* m_Device;
 		const VulkanContext& m_Context;
 		CommandListParameters m_CommandListParameters;
+
+		TrackedCommandBufferPtr m_CurrentCommandBuffer;
 
 		VkCommandPool m_CommandPool;
 		VkCommandBuffer m_CommandBuffer;

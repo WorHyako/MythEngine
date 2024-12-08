@@ -18,6 +18,40 @@ namespace RHI::Vulkan
 		trackingSemaphore = VkSemaphore();
 	}
 
+	uint64_t Queue::submit(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists)
+	{
+		const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }; // or even VERTEX_SHADER_STAGE
+		std::vector<VkCommandBuffer> commandBuffers(numCommandLists);
+
+		for(size_t i = 0; i < numCommandLists; i++)
+		{
+			if (CommandList* commandList = dynamic_cast<CommandList*>(commandLists[i]))
+			{
+				if (TrackedCommandBufferPtr commandBuffer = commandList->getCurrentCommandBuffer())
+				{
+					commandBuffers[i] = commandBuffer->commandBuffer;
+					m_CommandBuffersInFlight.push_back(commandBuffer);
+				}
+			}
+		}
+
+		VkSubmitInfo si{};
+		si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		si.pNext = nullptr;
+		si.waitSemaphoreCount = uint32_t(m_WaitSemaphores.size());
+		si.pWaitSemaphores = m_WaitSemaphores.data();
+		si.pWaitDstStageMask = waitStages;
+		si.commandBufferCount = commandBuffers.size();
+		si.pCommandBuffers = commandBuffers.data();
+		si.signalSemaphoreCount = m_SignalSemaphores.size();
+		si.pSignalSemaphores = m_SignalSemaphores.data();
+
+		VK_CHECK(vkQueueSubmit(m_Queue, 1, &si, nullptr));
+
+		m_WaitSemaphores.clear();
+		m_SignalSemaphores.clear();
+	}
+
 	TrackedCommandBufferPtr Queue::createCommandBuffer()
 	{
 		TrackedCommandBufferPtr commandBuffer = std::make_shared<TrackedCommandBuffer>(m_Context);
@@ -65,7 +99,7 @@ namespace RHI::Vulkan
 			return;
 
 		m_WaitSemaphores.push_back(semaphore);
-		m_WaitSemaphoreValues.push_back(value);
+		//m_WaitSemaphoreValues.push_back(value);
 	}
 
 	void Queue::addSignalSemaphore(VkSemaphore semaphore, uint64_t value)
@@ -74,7 +108,7 @@ namespace RHI::Vulkan
 			return;
 
 		m_SignalSemaphores.push_back(semaphore);
-		m_SignalSemaphoreValues.push_back(value);
+		//m_SignalSemaphoreValues.push_back(value);
 	}
 
 	VkSemaphore Device::getQueueSemaphore(CommandQueue queueID)

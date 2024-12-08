@@ -3,6 +3,7 @@
 #include <RHI/RHICommon/Common/Resources.hpp>
 
 #include <cstdint>
+#include <vector>
 
 namespace RHI
 {
@@ -120,6 +121,7 @@ namespace RHI
     {
     public:
         virtual IRHICommandList* createCommandList(const CommandListParameters& params = CommandListParameters()) = 0;
+        virtual uint64_t executeCommandList(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists, CommandQueue executionQueue = CommandQueue::Graphics) = 0;
         virtual GraphicsAPI getGraphicsAPI() const = 0;
     };
 
