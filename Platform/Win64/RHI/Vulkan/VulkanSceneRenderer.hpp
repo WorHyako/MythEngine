@@ -10,10 +10,13 @@ public:
 	virtual ~VulkanSceneRenderer();
 
 	virtual bool renderScene() override;
-	virtual void initializeRender() override;
+	virtual bool initializeRender() override;
 	virtual void updateBuffers() override;
 	virtual void composeFrame() override;
 
 private:
-
+	RHI::IShader* m_VertexShader;
+	RHI::IShader* m_PixelShader;
+	RHI::IGraphicsPipeline* m_GraphicsPipeline;
+	RHI::IRHICommandList* m_CommandList;
 };

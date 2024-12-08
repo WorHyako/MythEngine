@@ -88,9 +88,9 @@ namespace RHI::Vulkan
 		void composeFrame(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 		// For Chapter 8 & 9
-		inline PipelineInfo pipelineParametersForOutputs(const std::vector<Texture>& outputs) const
+		inline GraphicsPipelineInfo pipelineParametersForOutputs(const std::vector<Texture>& outputs) const
 		{
-			PipelineInfo pInfo{};
+			GraphicsPipelineInfo pInfo{};
 			pInfo.width = outputs.empty() ? vkDev.framebufferWidth : outputs[0].width;
 			pInfo.height = outputs.empty() ? vkDev.framebufferHeight : outputs[0].height;
 			pInfo.useBlending = false;
@@ -227,23 +227,6 @@ namespace RHI::Vulkan
 		uint32_t transferFamily;
 		VkQueue transferQueue;
 		bool useTransferQueue;
-	};
-
-	/* A structure with pipeline parameters */
-	struct PipelineInfo
-	{
-		uint32_t width = 0;
-		uint32_t height = 0;
-
-		VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; /* defaults to triangles*/
-
-		bool useDepth = true;
-
-		bool useBlending = true;
-
-		bool dynamicScissorState = false;
-
-		uint32_t patchControlPoints = 0;
 	};
 
 	class VulkanDynamicRHI : public IDynamicRHI
@@ -624,19 +607,29 @@ namespace RHI::Vulkan
 		std::vector<ShaderModule> shaderModules;
 		std::map<std::string, uint32_t> shaderMap;
 
-		VkSwapchainKHR swapchain;
-
-		std::vector<VkImage> swapchainImages;
 		std::vector<VkImageView> swapchainImageViews;
-
-		VkCommandPool commandPool;
-		std::vector<VkCommandBuffer> commandBuffers;
 
 		VkCommandBuffer computeCommandBuffer;
 		VkCommandPool computeCommandPool;
 
 	private:
 		Device* m_Device;
+	};
+
+	class GraphicsPipeline : public IGraphicsPipeline
+	{
+	public:
+		GraphicsPipelineDesc desc = {};
+		VkPipeline pipeline;
+
+		explicit GraphicsPipeline(const VulkanContext& context)
+			: m_Context(context)
+		{}
+
+		~GraphicsPipeline() override;
+		const GraphicsPipelineDesc& getDesc() const override { return desc; }
+	private:
+		const VulkanContext& m_Context;
 	};
 
 	class Device : public IDevice
@@ -786,7 +779,7 @@ namespace RHI::Vulkan
 
 		VkPipeline addPipeline(VkRenderPass renderPass, VkPipelineLayout pipelineLayout,
 			const std::vector<const char*>& shaderFiles,
-			const PipelineInfo& pipelineParams = PipelineInfo{
+			const GraphicsPipelineInfo& pipelineParams = GraphicsPipelineInfo{
 			0, 0, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
 			true, false, false });
 
@@ -803,7 +796,7 @@ namespace RHI::Vulkan
 
 		bool createColorAndDepthFramebuffers(VkRenderPass renderPass, VkImageView depthImageView, std::vector<VkFramebuffer>& swapchainFramebuffers);
 
-		VkFramebuffer addFramebuffer(RenderPass renderPass, const std::vector<Texture>& images);
+		VkFramebuffer createFramebuffer(RenderPass renderPass, const std::vector<Texture>& images);
 
 		std::vector<VkFramebuffer> addFramebuffers(VkRenderPass renderPass, VkImageView depthView = VK_NULL_HANDLE);
 
@@ -820,7 +813,7 @@ namespace RHI::Vulkan
 		VkResult createShaderModule(ShaderModule* shader, const char* fileName);
 
 		virtual IRHICommandList* createCommandList(const CommandListParameters& params) override;
-		virtual uint64_t executeCommandList(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists, CommandQueue executionQueue) override;
+		virtual uint64_t executeCommandLists(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists, CommandQueue executionQueue) override;
 
 		// vulkan::IDevice implementation
 		VkSemaphore getQueueSemaphore(CommandQueue queueID) override;
@@ -838,17 +831,7 @@ namespace RHI::Vulkan
 		// a list of all queues indices (for shared buffer allocations)
 		std::vector<uint32_t> m_DeviceQueueIndices;
 
-		bool createGraphicsPipeline(
-			VkRenderPass renderPass, VkPipelineLayout pipelineLayout,
-			const std::vector<const char*>& shaderFiles,
-			VkPipeline* pipeline,
-			VkPrimitiveTopology topology,
-			bool useDepth,
-			bool useBlending,
-			bool dynamicScissorState,
-			int32_t customWidth,
-			int32_t customHeight,
-			uint32_t numPatchControlPoints);
+		virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* framebuffer) override;
 	};
 
 	class CommandList : public IRHICommandList
@@ -857,17 +840,17 @@ namespace RHI::Vulkan
 		CommandList(Device* device, VulkanContext& context, const CommandListParameters& parameters);
 		virtual ~CommandList() override;
 
-		void beginSingleTimeCommands();
-		void endSingleTimeCommands();
+		virtual void beginSingleTimeCommands() override;
+		virtual void endSingleTimeCommands() override;
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount = 1, uint32_t mipLevels = 1);
-		void transitionImageLayoutCmd(VkCommandBuffer commandBuffer, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount = 1, uint32_t mipLevels = 1);
+		void transitionImageLayoutCmd(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount = 1, uint32_t mipLevels = 1);
 
 		void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount = 1);
 		void copyMIPBufferToImage(VkBuffer buffer, VkImage image, uint32_t mipLevels, uint32_t width, uint32_t height, uint32_t bytesPP, uint32_t layerCount = 1);
 		void copyImageToBuffer(VkImage image, VkBuffer buffer, uint32_t width, uint32_t height, uint32_t layerCount = 1);
 
-		void draw() override;
+		void draw(const DrawArguments& args) override;
 
 		TrackedCommandBufferPtr getCurrentCommandBuffer() const { return m_CurrentCommandBuffer; }
 

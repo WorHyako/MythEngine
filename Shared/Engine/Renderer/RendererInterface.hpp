@@ -17,11 +17,11 @@ namespace mythSystem
 		virtual void updateBuffers() = 0;
 		virtual void composeFrame() = 0;
 		virtual bool renderScene() = 0;
-		virtual void initializeRender() = 0;
+		virtual bool initializeRender() = 0;
 
 	protected:
 		RHI::IDynamicRHI* m_DynamicRHI;
 		RHI::IDevice* m_Device;
-		RHI::IRHICommandList* m_CommandList;
+		std::vector<RHI::IRHICommandList*> m_CommandLists;
 	};
 }

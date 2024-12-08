@@ -7,7 +7,9 @@
 
 namespace RHI
 {
-    enum class GraphicsAPI : uint8_t
+    class IDevice;
+
+	enum class GraphicsAPI : uint8_t
     {
         OGL,
         D3D12,
@@ -107,22 +109,32 @@ namespace RHI
         CommandQueue queueType = CommandQueue::Graphics;
     };
 
+    struct DrawArguments
+    {
+        uint32_t vertexCount = 0;
+        uint32_t instanceCount = 1;
+        uint32_t startIndexLocation = 0;
+        uint32_t startVertexLocation = 0;
+        uint32_t startInstanceLocation = 0;
+
+        DrawArguments& setVertexCount(uint32_t value) { vertexCount = value; return *this; }
+        DrawArguments& setInstanceCount(uint32_t value) { instanceCount = value; return *this; }
+        DrawArguments& setStartIndexLocation(uint32_t value) { startIndexLocation = value; return *this; }
+        DrawArguments& setStartVertexLocation(uint32_t value) { startVertexLocation = value; return *this; }
+        DrawArguments& setStartInstanceLocation(uint32_t value) { startInstanceLocation = value; return *this; }
+    };
+
     class IRHICommandList : public IResource
     {
-        virtual void draw() = 0;
+    public:
+        virtual void beginSingleTimeCommands() = 0;
+        virtual void endSingleTimeCommands() = 0;
+        virtual void draw(const DrawArguments& args) = 0;
     };
 
     class IInstance : public IResource
     {
 	    
-    };
-
-    class IDevice : public IResource
-    {
-    public:
-        virtual IRHICommandList* createCommandList(const CommandListParameters& params = CommandListParameters()) = 0;
-        virtual uint64_t executeCommandList(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists, CommandQueue executionQueue = CommandQueue::Graphics) = 0;
-        virtual GraphicsAPI getGraphicsAPI() const = 0;
     };
 
     struct Resolution
@@ -221,5 +233,66 @@ namespace RHI
     class IFramebuffer : public IResource
     {
 	    
+    };
+
+    enum class PrimitiveType : uint8_t
+    {
+        PointList,
+        LineList,
+        TriangleList,
+        TriangleStrip,
+        TriangleFan,
+        TriangleListWithAdjacency,
+        TriangleStripWithAdjacency,
+        PatchList
+    };
+
+    /* A structure with pipeline parameters */
+    struct GraphicsPipelineInfo
+    {
+        uint32_t width = 0;
+        uint32_t height = 0;
+        uint32_t topology = 3; /* defaults to triangles*/
+
+        bool useDepth = true;
+        bool useBlending = true;
+        bool dynamicScissorState = false;
+
+        uint32_t patchControlPoints = 0;
+    };
+
+    struct GraphicsPipelineDesc
+    {
+        PrimitiveType primType = PrimitiveType::TriangleList;
+
+        IShader* VS;
+        IShader* HS;
+        IShader* DS;
+        IShader* GS;
+        IShader* PS;
+
+        //VkPipelineLayout pipelineLayout,
+        GraphicsPipelineInfo pipelineInfo;
+
+        GraphicsPipelineDesc& setPrimType(PrimitiveType value) { primType = value; return *this; }
+        GraphicsPipelineDesc& setVertexShader(IShader* value) { VS = value; return *this; }
+        GraphicsPipelineDesc& setTessallationControlShader(IShader* value) { HS = value; return *this; }
+        GraphicsPipelineDesc& setTessallationEvaluationShader(IShader* value) { DS = value; return *this; }
+        GraphicsPipelineDesc& setGeometryShader(IShader* value) { GS = value; return *this; }
+        GraphicsPipelineDesc& setPixelShader(IShader* value) { PS = value; return *this; }
+    };
+
+    class IGraphicsPipeline : public IResource
+    {
+        virtual const GraphicsPipelineDesc& getDesc() const = 0;
+    };
+
+    class IDevice : public IResource
+    {
+    public:
+        virtual IRHICommandList* createCommandList(const CommandListParameters& params = CommandListParameters()) = 0;
+        virtual uint64_t executeCommandLists(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists, CommandQueue executionQueue = CommandQueue::Graphics) = 0;
+        virtual GraphicsAPI getGraphicsAPI() const = 0;
+        virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* framebuffer) = 0;
     };
 }

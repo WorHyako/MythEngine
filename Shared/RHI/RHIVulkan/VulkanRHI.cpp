@@ -221,8 +221,6 @@ namespace RHI::Vulkan
             vkCreateSemaphore(m_VulkanDevice, &semaphoreCreateInfo, nullptr, &m_PresentSemaphores[i]);
             vkCreateSemaphore(m_VulkanDevice, &semaphoreCreateInfo, nullptr, &m_AcquireSemaphores[i]);
         }
-
-        m_Resources.commandBuffers.resize(imageCount);
     }
 
     VkResult VulkanDynamicRHI::createDevice(VkPhysicalDeviceFeatures deviceFeatures, VkPhysicalDeviceFeatures2 deviceFeatures2)

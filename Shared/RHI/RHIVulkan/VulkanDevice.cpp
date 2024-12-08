@@ -85,7 +85,7 @@ namespace RHI::Vulkan
         return cmdList;
     }
 
-    uint64_t Device::executeCommandList(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists, CommandQueue executionQueue)
+    uint64_t Device::executeCommandLists(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists, CommandQueue executionQueue)
     {
         Queue& queue = *m_Queues[uint32_t(executionQueue)];
 

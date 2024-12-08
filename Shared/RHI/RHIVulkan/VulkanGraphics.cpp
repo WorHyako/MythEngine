@@ -4,25 +4,35 @@
 
 namespace RHI::Vulkan
 {
-    bool Device::createGraphicsPipeline(
-        VkRenderPass renderPass, VkPipelineLayout pipelineLayout,
-        const std::vector<const char*>& shaderFiles,
-        VkPipeline* pipeline,
-        VkPrimitiveTopology topology,
-        bool useDepth,
-        bool useBlending,
-        bool dynamicScissorState,
-        int32_t customWidth,
-        int32_t customHeight,
-        uint32_t numPatchControlPoints)
+    void countShaders(IShader* shader, uint32_t& numShaders)
     {
+	    if(!shader)
+	    {
+		    return;
+	    }
+
+        numShaders++;
+    }
+
+    IGraphicsPipeline* Device::createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* framebuffer)
+    {
+        GraphicsPipeline* pso = new GraphicsPipeline(m_Context);
+        const GraphicsPipelineInfo& pipeInfo = desc.pipelineInfo;
+
         std::vector<ShaderModule> localShaderModules;
         std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 
-        shaderStages.resize(shaderFiles.size());
-        localShaderModules.resize(shaderFiles.size());
+        uint32_t numShaders = 0;
+        countShaders(desc.VS, numShaders);
+        countShaders(desc.HS, numShaders);
+        countShaders(desc.DS, numShaders);
+        countShaders(desc.GS, numShaders);
+        countShaders(desc.PS, numShaders);
 
-        for (size_t i = 0; i < shaderFiles.size(); i++)
+        shaderStages.resize(numShaders);
+        localShaderModules.resize(numShaders);
+
+        for (size_t i = 0; i < numShaders; i++)
         {
             const char* file = shaderFiles[i];
 
@@ -51,20 +61,20 @@ namespace RHI::Vulkan
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
         inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         /* The only difference from createGraphicsPipeline() */
-        inputAssembly.topology = topology;
+        inputAssembly.topology = (VkPrimitiveTopology)pipeInfo.topology;
         inputAssembly.primitiveRestartEnable = VK_FALSE;
 
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
-        viewport.width = static_cast<float>(customWidth > 0 ? customWidth : m_DeviceDesc.framebufferWidth);
-        viewport.height = static_cast<float>(customHeight > 0 ? customHeight : m_DeviceDesc.framebufferHeight);
+        viewport.width = static_cast<float>(pipeInfo.width > 0 ? pipeInfo.width : m_DeviceDesc.framebufferWidth);
+        viewport.height = static_cast<float>(pipeInfo.height > 0 ? pipeInfo.height : m_DeviceDesc.framebufferHeight);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
 
         VkRect2D scissor{};
         scissor.offset = { 0, 0 };
-        scissor.extent = { customWidth > 0 ? customWidth : m_DeviceDesc.framebufferWidth, customHeight > 0 ? customHeight : m_DeviceDesc.framebufferHeight };
+        scissor.extent = { pipeInfo.width > 0 ? pipeInfo.width : m_DeviceDesc.framebufferWidth, pipeInfo.height > 0 ? pipeInfo.height : m_DeviceDesc.framebufferHeight };
 
         VkPipelineViewportStateCreateInfo viewportState{};
         viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -91,7 +101,7 @@ namespace RHI::Vulkan
         colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
         colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-        colorBlendAttachment.srcAlphaBlendFactor = useBlending ? VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA : VK_BLEND_FACTOR_ONE;
+        colorBlendAttachment.srcAlphaBlendFactor = pipeInfo.useBlending ? VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA : VK_BLEND_FACTOR_ONE;
         colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
         colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
         colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -109,8 +119,8 @@ namespace RHI::Vulkan
 
         VkPipelineDepthStencilStateCreateInfo depthStencil{};
         depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        depthStencil.depthTestEnable = static_cast<VkBool32>(useDepth ? VK_TRUE : VK_FALSE);
-        depthStencil.depthWriteEnable = static_cast<VkBool32>(useDepth ? VK_TRUE : VK_FALSE);
+        depthStencil.depthTestEnable = static_cast<VkBool32>(pipeInfo.useDepth ? VK_TRUE : VK_FALSE);
+        depthStencil.depthWriteEnable = static_cast<VkBool32>(pipeInfo.useDepth ? VK_TRUE : VK_FALSE);
         depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
         depthStencil.depthBoundsTestEnable = VK_FALSE;
         depthStencil.minDepthBounds = 0.0f;
@@ -129,7 +139,7 @@ namespace RHI::Vulkan
         tessellationState.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
         tessellationState.pNext = nullptr;
         tessellationState.flags = 0;
-        tessellationState.patchControlPoints = numPatchControlPoints;
+        tessellationState.patchControlPoints = pipeInfo.patchControlPoints;
 
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -137,26 +147,26 @@ namespace RHI::Vulkan
         pipelineInfo.pStages = shaderStages.data();
         pipelineInfo.pVertexInputState = &vertexInputInfo;
         pipelineInfo.pInputAssemblyState = &inputAssembly;
-        pipelineInfo.pTessellationState = (topology == VK_PRIMITIVE_TOPOLOGY_PATCH_LIST) ? &tessellationState : nullptr;
+        pipelineInfo.pTessellationState = ((VkPrimitiveTopology)pipeInfo.topology == VK_PRIMITIVE_TOPOLOGY_PATCH_LIST) ? &tessellationState : nullptr;
         pipelineInfo.pViewportState = &viewportState;
         pipelineInfo.pRasterizationState = &rasterizer;
         pipelineInfo.pMultisampleState = &multisampling;
-        pipelineInfo.pDepthStencilState = useDepth ? &depthStencil : nullptr;
+        pipelineInfo.pDepthStencilState = pipeInfo.useDepth ? &depthStencil : nullptr;
         pipelineInfo.pColorBlendState = &colorBlending;
-        pipelineInfo.pDynamicState = dynamicScissorState ? &dynamicState : nullptr;
+        pipelineInfo.pDynamicState = pipeInfo.dynamicScissorState ? &dynamicState : nullptr;
         pipelineInfo.layout = pipelineLayout;
         pipelineInfo.renderPass = renderPass;
         pipelineInfo.subpass = 0;
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
         pipelineInfo.basePipelineIndex = -1;
 
-        VK_CHECK(vkCreateGraphicsPipelines(m_Context.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pipeline));
+        VK_CHECK(vkCreateGraphicsPipelines(m_Context.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pso->pipeline));
 
-        return true;
+        return pso;
     }
 
     VkPipeline Device::addPipeline(VkRenderPass renderPass, VkPipelineLayout pipelineLayout,
-        const std::vector<const char*>& shaderFiles, const PipelineInfo& pipelineParams)
+        const std::vector<const char*>& shaderFiles, const GraphicsPipelineInfo& pipelineParams)
     {
         VkPipeline pipeline;
 

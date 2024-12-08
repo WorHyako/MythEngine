@@ -31,7 +31,7 @@ namespace RHI::Vulkan
         return true;
     }
 
-    VkFramebuffer Device::addFramebuffer(RenderPass renderPass, const std::vector<Texture>& images)
+    VkFramebuffer Device::createFramebuffer(RenderPass renderPass, const std::vector<Texture>& images)
     {
         VkFramebuffer framebuffer;
 

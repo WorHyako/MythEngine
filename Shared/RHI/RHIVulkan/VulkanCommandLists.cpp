@@ -1,3 +1,4 @@
+#include <cassert>
 #include <RHI/RHIVulkan/VulkanBackend.hpp>
 
 namespace RHI::Vulkan
@@ -63,10 +64,10 @@ namespace RHI::Vulkan
 
     void CommandList::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount, uint32_t mipLevels)
     {
-        transitionImageLayoutCmd(m_CurrentCommandBuffer->commandBuffer, image, format, oldLayout, newLayout, layerCount, mipLevels);
+        transitionImageLayoutCmd(image, format, oldLayout, newLayout, layerCount, mipLevels);
     }
 
-    void CommandList::transitionImageLayoutCmd(VkCommandBuffer commandBuffer, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount, uint32_t mipLevels)
+    void CommandList::transitionImageLayoutCmd(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount, uint32_t mipLevels)
     {
         VkImageMemoryBarrier barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -209,7 +210,7 @@ namespace RHI::Vulkan
         }
 
         vkCmdPipelineBarrier(
-            commandBuffer,
+            m_CurrentCommandBuffer->commandBuffer,
             sourceStage,
             destinationStage,
             0,
@@ -285,8 +286,14 @@ namespace RHI::Vulkan
         vkCmdCopyImageToBuffer(m_CurrentCommandBuffer->commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer, 1, &region);
     }
 
-    void CommandList::draw()
+    void CommandList::draw(const DrawArguments& args)
 	{
-		
+        assert(m_CurrentCommandBuffer);
+
+        vkCmdDraw(m_CurrentCommandBuffer->commandBuffer,
+            args.vertexCount,
+            args.instanceCount,
+            args.startVertexLocation,
+            args.startInstanceLocation);
 	}
 }

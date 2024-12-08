@@ -12,13 +12,23 @@ VulkanSceneRenderer::~VulkanSceneRenderer()
 
 }
 
-void VulkanSceneRenderer::initializeRender()
+bool VulkanSceneRenderer::initializeRender()
 {
 	if(m_Device)
 	{
+		if(!m_VertexShader || !m_PixelShader)
+		{
+			return false;
+		}
+
 		RHI::CommandListParameters commandListParams = { RHI::CommandQueue::Graphics };
 		m_CommandList = m_Device->createCommandList(commandListParams);
+		m_CommandLists.push_back(m_CommandList);
+
+		return true;
 	}
+
+	return false;
 }
 
 void VulkanSceneRenderer::updateBuffers()
@@ -33,34 +43,27 @@ void VulkanSceneRenderer::composeFrame()
 
 bool VulkanSceneRenderer::renderScene()
 {
+	if(m_GraphicsPipeline)
+	{
+		RHI::GraphicsPipelineDesc pipelineDesc;
+		pipelineDesc.VS = m_VertexShader;
+		pipelineDesc.PS = m_PixelShader;
+		pipelineDesc.primType = RHI::PrimitiveType::TriangleList;
+		pipelineDesc.pipelineInfo.useDepth = true;
+
+		m_GraphicsPipeline = m_Device->createGraphicsPipeline(pipelineDesc, );
+	}
+
     updateBuffers(imageIndex);
 
-    VkCommandBuffer commandBuffer = m_Device->getResources()->commandBuffers[imageIndex];
-
-    VkCommandBufferBeginInfo bi{};
-    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    bi.pNext = nullptr;
-    bi.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-    bi.pInheritanceInfo = nullptr;
-
-    VK_CHECK(vkBeginCommandBuffer(commandBuffer, &bi));
+	m_CommandList->beginSingleTimeCommands();
 
     composeFrame(imageIndex);
 
-    VK_CHECK(vkEndCommandBuffer(commandBuffer));
+	RHI::DrawArguments drawArgs = {};
+	drawArgs.vertexCount = 3;
+	m_CommandList->draw(drawArgs);
+    m_CommandList->endSingleTimeCommands();
 
-    const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }; // or even VERTEX_SHADER_STAGE
-
-    VkSubmitInfo si{};
-    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.pNext = nullptr;
-    si.waitSemaphoreCount = 1;
-    si.pWaitSemaphores = &m_Device->getQueue(RHI::CommandQueue::Graphics)->semaphore;
-    si.pWaitDstStageMask = waitStages;
-    si.commandBufferCount = 1;
-    si.pCommandBuffers = &m_Device->getResources()->commandBuffers[imageIndex];
-    si.signalSemaphoreCount = 1;
-    si.pSignalSemaphores = &m_Device->getQueue(RHI::CommandQueue::Graphics)->renderSemaphore;
-
-    VK_CHECK(vkQueueSubmit(m_Device->getQueue(RHI::CommandQueue::Graphics)->getVkQueue(), 1, &si, nullptr));
+    m_Device->executeCommandLists(m_CommandLists, m_CommandLists.size(), RHI::CommandQueue::Graphics);
 }
