@@ -7,6 +7,8 @@ namespace RHI
 		m_DeviceParams = params;
 
 		CreateDevice();
+
+		return true;
 	}
 
 	void IDynamicRHI::BackBufferResized()
@@ -16,7 +18,7 @@ namespace RHI
 		for(uint32_t index = 0; index < backBufferCount; index++)
 		{
 			IRenderPass* renderPass = getDevice()->createRenderPass();
-			m_SwapChainFramebuffers[index] = getDevice()->createFramebuffer(renderPass, );
+			m_SwapChainFramebuffers[index] = getDevice()->createFramebuffer(renderPass, { GetBackBuffer(index) });
 		}
 	}
 

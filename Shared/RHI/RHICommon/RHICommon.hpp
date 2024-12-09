@@ -155,7 +155,7 @@ namespace RHI
 
         uint32_t backBufferWidth = -1;
         uint32_t backBufferHeight = -1;
-        uint32_t maxFramesInFlight = -1;
+        uint32_t maxFramesInFlight = 2;
 
         bool supportScreenshots = false;
     };
@@ -171,8 +171,9 @@ namespace RHI
         virtual bool BeginFrame() = 0;
         virtual bool Present() = 0;
         virtual void BackBufferResized();
-        virtual ITexture* GetBackBuffer() = 0;
+        virtual ITexture* GetBackBuffer(uint32_t index) = 0;
         virtual uint32_t GetBackBufferCount() = 0;
+        virtual IFramebuffer* GetFramebuffer(uint32_t index) = 0;
         virtual IDevice* getDevice() const = 0;
         virtual GraphicsAPI getGraphicsAPI() const = 0;
 
@@ -183,6 +184,7 @@ namespace RHI
 
     class IRHIModule
     {
+    public:
         IRHIModule() = default;
         virtual ~IRHIModule() = default;
 
@@ -285,7 +287,7 @@ namespace RHI
         uint32_t topology = 3; /* defaults to triangles*/
 
         bool useDepth = true;
-        bool useBlending = true;
+        bool useBlending = false;
         bool dynamicScissorState = false;
 
         uint32_t patchControlPoints = 0;

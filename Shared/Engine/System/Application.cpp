@@ -35,7 +35,9 @@ namespace mythSystem
         delete m_RhiModule;
         delete m_DynamicRHI;
         delete m_Device;
-        delete m_Window;
+
+    	m_Window.release();
+        m_Window = nullptr;
     }
 
     void Application::createWindow()

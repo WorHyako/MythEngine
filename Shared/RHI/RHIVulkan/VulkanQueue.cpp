@@ -50,6 +50,8 @@ namespace RHI::Vulkan
 
 		m_WaitSemaphores.clear();
 		m_SignalSemaphores.clear();
+
+		return 0;
 	}
 
 	TrackedCommandBufferPtr Queue::createCommandBuffer()

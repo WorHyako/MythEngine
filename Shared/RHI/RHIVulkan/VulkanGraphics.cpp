@@ -32,7 +32,7 @@ namespace RHI::Vulkan
         countShaders(desc.PS, numShaders);
 
         shaderStages.resize(numShaders);
-        localShaderModules.resize(numShaders);
+        /*localShaderModules.resize(numShaders);
 
         for (size_t i = 0; i < numShaders; i++)
         {
@@ -55,9 +55,13 @@ namespace RHI::Vulkan
             VkShaderStageFlagBits stage = glslangShaderStageToVulkan(glslangShaderStageFromFileName(file));
 
             shaderStages[i] = shaderStageInfo(stage, localShaderModules[i], "main");
-        }
+        }*/
 
         if (Shader* shader = dynamic_cast<Shader*>(desc.VS))
+        {
+            shaderStages.push_back(shaderStageInfo(shader->stage, *shader, "main"));
+        }
+        if (Shader* shader = dynamic_cast<Shader*>(desc.PS))
         {
             shaderStages.push_back(shaderStageInfo(shader->stage, *shader, "main"));
         }
@@ -148,6 +152,10 @@ namespace RHI::Vulkan
         tessellationState.flags = 0;
         tessellationState.patchControlPoints = pipeInfo.patchControlPoints;
 
+        VkPipelineLayout pipelineLayout;
+        std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
+        createPipelineLayout(descriptorSetLayouts, &pipelineLayout);
+
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
@@ -172,14 +180,11 @@ namespace RHI::Vulkan
         return pso;
     }
 
-    VkPipeline Device::addPipeline(VkRenderPass renderPass, VkPipelineLayout pipelineLayout,
-        const std::vector<const char*>& shaderFiles, const GraphicsPipelineInfo& pipelineParams)
+    VkPipeline Device::addPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* framebuffer)
     {
         VkPipeline pipeline;
 
-        if (!this->createGraphicsPipeline(renderPass, pipelineLayout, shaderFiles,
-            &pipeline, pipelineParams.topology, pipelineParams.useDepth, pipelineParams.useBlending, pipelineParams.dynamicScissorState,
-            pipelineParams.width, pipelineParams.height, pipelineParams.patchControlPoints))
+        if (!this->createGraphicsPipeline(desc, framebuffer))
         {
             printf("Cannot create graphics pipeline\n");
             exit(EXIT_FAILURE);
@@ -190,14 +195,14 @@ namespace RHI::Vulkan
     }
 
 
-    bool Device::createPipelineLayout(VkDescriptorSetLayout dsLayout, VkPipelineLayout* pipelineLayout)
+    bool Device::createPipelineLayout(std::vector<VkDescriptorSetLayout>& dsLayouts, VkPipelineLayout* pipelineLayout)
     {
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.pNext = nullptr;
         pipelineLayoutInfo.flags = 0;
-        pipelineLayoutInfo.setLayoutCount = 1;
-        pipelineLayoutInfo.pSetLayouts = &dsLayout;
+        pipelineLayoutInfo.setLayoutCount = dsLayouts.size();
+        pipelineLayoutInfo.pSetLayouts = dsLayouts.data();
         pipelineLayoutInfo.pushConstantRangeCount = 0;
         pipelineLayoutInfo.pPushConstantRanges = nullptr;
 

@@ -33,6 +33,8 @@ namespace mythSystem
 		virtual void handleMouseClick(int button, bool pressed);
 		virtual void handleMouseMove(float mx, float my);
 
+		virtual void OnApplicationStarted() override {};
+		virtual void Exit(int ExitCode) override {};
 
 	private:
 		UniquePtr<WindowInterface> m_Window;

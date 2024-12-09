@@ -2,7 +2,9 @@
 
 class IResource
 {
-protected:
+public:
+//TODO: fix access memory
+//protected:
 	IResource() = default;
 	virtual ~IResource() = default;
 

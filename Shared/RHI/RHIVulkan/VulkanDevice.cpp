@@ -1,3 +1,4 @@
+#include <cassert>
 #include <RHI/RHIVulkan/VulkanBackend.hpp>
 
 namespace RHI::Vulkan
@@ -12,7 +13,7 @@ namespace RHI::Vulkan
             m_Queues[uint32_t(CommandQueue::Graphics)] = std::make_unique<Queue>(m_Context,
                 CommandQueue::Graphics, m_DeviceDesc.graphicsQueue, m_DeviceDesc.graphicsFamily);
 
-            if (m_Queues[uint32_t(CommandQueue::Graphics)].get() == nullptr)
+            if (m_Queues[uint32_t(CommandQueue::Graphics)] == nullptr)
             {
                 exit(EXIT_FAILURE);
             }
@@ -23,7 +24,7 @@ namespace RHI::Vulkan
             m_Queues[uint32_t(CommandQueue::Compute)] = std::make_unique<Queue>(m_Context,
                 CommandQueue::Compute, m_DeviceDesc.computeQueue, m_DeviceDesc.computeFamily);
 
-            if (m_Queues[uint32_t(CommandQueue::Compute)].get() == nullptr)
+            if (m_Queues[uint32_t(CommandQueue::Compute)] == nullptr)
             {
                 exit(EXIT_FAILURE);
             }
@@ -34,7 +35,7 @@ namespace RHI::Vulkan
             m_Queues[uint32_t(CommandQueue::Copy)] = std::make_unique<Queue>(m_Context,
                 CommandQueue::Copy, m_DeviceDesc.transferQueue, m_DeviceDesc.transferFamily);
 
-            if(m_Queues[uint32_t(CommandQueue::Copy)].get() == nullptr)
+            if(m_Queues[uint32_t(CommandQueue::Copy)] == nullptr)
             {
                 exit(EXIT_FAILURE);
             }
@@ -90,6 +91,17 @@ namespace RHI::Vulkan
         Queue& queue = *m_Queues[uint32_t(executionQueue)];
 
         queue.submit(commandLists, numCommandLists);
+
+        return 0;
     }
 
+    void CHECK(bool check, const char* fileName, int lineNumber)
+    {
+        if (!check)
+        {
+            printf("CHECK() failed at %s:%i\n", fileName, lineNumber);
+            assert(false);
+            exit(EXIT_FAILURE);
+        }
+    }
 }

@@ -23,6 +23,7 @@
 
 namespace RHI::Vulkan
 {
+	class Buffer;
 	class Device;
 	class CommandList;
 	class Texture;
@@ -56,7 +57,7 @@ namespace RHI::Vulkan
 
 	struct VulkanContextExtensions
 	{
-		bool KHR_swapchain = false;
+		bool KHR_swapchain = true;//false;
 		bool KHR_maintenance3 = false;
 		bool EXT_discriptor_indexing = false;
 		bool EXT_draw_indirect_count = false;
@@ -88,14 +89,15 @@ namespace RHI::Vulkan
 		void composeFrame(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 		// For Chapter 8 & 9
-		inline GraphicsPipelineInfo pipelineParametersForOutputs(const std::vector<Texture>& outputs) const
+		// TODO: fixe pipeline issue
+		/*inline GraphicsPipelineInfo pipelineParametersForOutputs(const std::vector<Texture>& outputs) const
 		{
 			GraphicsPipelineInfo pInfo{};
 			pInfo.width = outputs.empty() ? vkDev.framebufferWidth : outputs[0].width;
 			pInfo.height = outputs.empty() ? vkDev.framebufferHeight : outputs[0].height;
 			pInfo.useBlending = false;
 			return pInfo;
-		}
+		}*/
 
 		std::vector<VkFramebuffer> swapchainFramebuffers;
 		std::vector<VkFramebuffer> swapchainFramebuffers_NoDepth;
@@ -146,7 +148,7 @@ namespace RHI::Vulkan
 		{
 		}
 
-		~TrackedCommandBuffer();
+		~TrackedCommandBuffer() {}
 
 	private:
 		const VulkanContext& m_Context;
@@ -197,9 +199,10 @@ namespace RHI::Vulkan
 	{
 	public:
 		VulkanRHIModule();
-		~VulkanRHIModule() override = default;
+		virtual ~VulkanRHIModule() override;
 
 		virtual IDynamicRHI* createRHI() override;
+		virtual void* getWindowInterface() override { return nullptr; };
 
 	private:
 	};
@@ -247,6 +250,8 @@ namespace RHI::Vulkan
 		void setWindow(GLFWwindow* window);
 
 		virtual uint32_t GetBackBufferCount() override;
+		virtual ITexture* GetBackBuffer(uint32_t index) override;
+		virtual IFramebuffer* GetFramebuffer(uint32_t index) override;
 
 		static VulkanContextFeatures& initializeContextFeatures();
 		static VulkanContextExtensions& initializeContextExtensions();
@@ -278,6 +283,7 @@ namespace RHI::Vulkan
 
 		std::vector<VkImage> m_SwapchainImages;
 		std::vector<VkImageView> m_SwapchainImageViews;
+		std::vector<ITexture*> m_SwapchainTextures;
 		uint32_t m_SwapChainIndex = uint32_t(-1);
 
 		std::vector<VkSemaphore> m_AcquireSemaphores;
@@ -288,7 +294,7 @@ namespace RHI::Vulkan
 		VkSurfaceKHR m_WindowSurface;
 
 		VkSurfaceFormatKHR m_SwapChainFormat;
-		VkSwapchainKHR m_SwapChain;
+		VkSwapchainKHR m_SwapChain = VkSwapchainKHR();
 
 		GLFWwindow* m_Window;
 
@@ -305,16 +311,24 @@ namespace RHI::Vulkan
 		std::vector<VkPresentModeKHR> presentModes;
 	};
 
-	struct Shader final : public IShader
+	class Shader final : public IShader
 	{
+	public:
+		Shader(){}
+		virtual ~Shader() override {}
+
 		std::vector<unsigned int> SPIRV;
 		VkShaderModule shaderModule = nullptr;
 
 		VkShaderStageFlagBits stage{};
 	};
 
-	struct Buffer : public IBuffer
+	class Buffer : public IBuffer
 	{
+	public:
+		Buffer(){}
+		virtual ~Buffer() override {}
+
 		VkBuffer		buffer;
 		VkDeviceSize	size;
 		VkDeviceMemory	memory;
@@ -323,8 +337,12 @@ namespace RHI::Vulkan
 		void* ptr;
 	};
 
-	struct VulkanImage final : public IImage
+	class VulkanImage final : public IImage
 	{
+	public:
+		VulkanImage(){}
+		virtual ~VulkanImage() override {}
+
 		VkImage image = nullptr;
 		VkDeviceMemory imageMemory = nullptr;
 		VkImageView imageView = nullptr;
@@ -334,6 +352,9 @@ namespace RHI::Vulkan
 	class Texture : public ITexture
 	{
 	public:
+		Texture() {}
+		virtual ~Texture() override {}
+
 		VkFormat format;
 
 		VulkanImage image;
@@ -353,7 +374,7 @@ namespace RHI::Vulkan
 	{
 		DescriptorInfo  dInfo;
 
-		Buffer*         buffer;
+		IBuffer*         buffer;
 		uint32_t        offset;
 		uint32_t        size;
 	};
@@ -555,7 +576,7 @@ namespace RHI::Vulkan
 		VulkanResources(Device* device)
 			: m_Device(device)
 		{}
-		~VulkanResources();
+		~VulkanResources() {};
 
 		std::vector<Texture> allTextures;
 		std::vector<Buffer> allBuffers;
@@ -585,7 +606,9 @@ namespace RHI::Vulkan
 	{
 	public:
 		RenderPass() = default;
-		explicit RenderPass(const RenderPassCreateInfo& ci = RenderPassCreateInfo());
+		explicit RenderPass(const RenderPassCreateInfo& ci = RenderPassCreateInfo()) {};
+
+		virtual ~RenderPass() override {}
 
 		RenderPassCreateInfo info;
 		VkRenderPass handle = VK_NULL_HANDLE;
@@ -598,7 +621,7 @@ namespace RHI::Vulkan
 			: m_Context(context)
 		{}
 
-		~Framebuffer() override;
+		virtual ~Framebuffer() override {};
 
 		VkRenderPass renderPass = VkRenderPass();
 		VkFramebuffer framebuffer = VkFramebuffer();
@@ -616,7 +639,7 @@ namespace RHI::Vulkan
 			: m_Context(context)
 		{}
 
-		~GraphicsPipeline() override;
+		virtual ~GraphicsPipeline() override {};
 		const GraphicsPipelineDesc& getDesc() const override { return desc; }
 	private:
 		const VulkanContext& m_Context;
@@ -642,16 +665,16 @@ namespace RHI::Vulkan
 
 		Texture createFontTexture(const char* fontFile);
 
-		Texture addColorTexture(int texWidth = 0, int texHeight = 0,
+		ITexture* addColorTexture(int texWidth = 0, int texHeight = 0,
 			VkFormat colorFormat = VK_FORMAT_R8G8B8A8_UNORM,
 			VkFilter minFilter = VK_FILTER_LINEAR, VkFilter maxFilter = VK_FILTER_LINEAR,
 			VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
-		Texture addDepthTexture(int texWidth = 0, int texHeight = 0, VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		ITexture* addDepthTexture(int texWidth = 0, int texHeight = 0, VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-		Texture addSolidRGBATexture(uint32_t color = 0xFFFFFFFF);
+		ITexture* addSolidRGBATexture(uint32_t color = 0xFFFFFFFF);
 
-		Texture addRGBATexture(int texWidth, int texHeight, void* data);
+		ITexture* addRGBATexture(int texWidth, int texHeight, void* data);
 
 		bool createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory, VkImageCreateFlags flags = 0, uint32_t mipLevels = 1);
 
@@ -706,33 +729,33 @@ namespace RHI::Vulkan
 
 		bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
-		Buffer addBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool createMapping = false);
+		IBuffer* addBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool createMapping = false);
 
-		inline Buffer addUniformBuffer(VkDeviceSize bufferSize, bool createMapping = false)
+		inline IBuffer* addUniformBuffer(VkDeviceSize bufferSize, bool createMapping = false)
 		{
 			return addBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, createMapping); /* for debugging we make it host-visible */
 		}
 
-		inline Buffer addIndirectBuffer(VkDeviceSize bufferSize, bool createMapping = false) {
+		inline IBuffer* addIndirectBuffer(VkDeviceSize bufferSize, bool createMapping = false) {
 			return addBuffer(bufferSize, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, // | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, createMapping); /* for debugging we make it host-visible */
 		}
 
-		inline Buffer addStorageBuffer(VkDeviceSize bufferSize, bool createMapping = false)
+		inline IBuffer* addStorageBuffer(VkDeviceSize bufferSize, bool createMapping = false)
 		{
 			return addBuffer(bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, createMapping); /* for debugging we make it host-visible */
 		}
 
-		inline Buffer addLocalDeviceStorageBuffer(VkDeviceSize bufferSize, bool createMapping = false)
+		inline IBuffer* addLocalDeviceStorageBuffer(VkDeviceSize bufferSize, bool createMapping = false)
 		{
 			return addBuffer(bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, createMapping); /* for debugging we make it host-visible */
 		}
 
 		/* Allocate and upload vertex & index buffer pair */
-		Buffer addVertexBuffer(uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData);
+		IBuffer* addVertexBuffer(uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData);
 
 		size_t allocateVertexBuffer(VkBuffer* storageBuffer, VkDeviceMemory* storageBufferMemory, size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData);
 
@@ -753,25 +776,21 @@ namespace RHI::Vulkan
 		bool createColorAndDepthRenderPass(bool useDepth, VkRenderPass* renderPass, const RenderPassCreateInfo& ci, VkFormat colorFormat = VK_FORMAT_B8G8R8A8_UNORM);
 		bool createDepthOnlyRenderPass(VkRenderPass* renderPass, const RenderPassCreateInfo& ci);
 
-		RenderPass addFullScreenPass(const RenderPassCreateInfo ci = RenderPassCreateInfo());
+		IRenderPass* addFullScreenPass(const RenderPassCreateInfo ci = RenderPassCreateInfo());
 
 		IRenderPass* createRenderPass(const RenderPassCreateInfo& ci = {
 			true, true, true, 1, Format::BGRA8_UNORM, eRenderPassBit_Offscreen | eRenderPassBit_First }) override;
 
-		RenderPass addDepthRenderPass(const RenderPassCreateInfo ci = {
-			false, true, eRenderPassBit_Offscreen | eRenderPassBit_First });
+		IRenderPass* addDepthRenderPass(const RenderPassCreateInfo ci = {
+			false, true, true, 1, Format::BGRA8_UNORM, eRenderPassBit_Offscreen | eRenderPassBit_First });
 
-		bool createPipelineLayout(VkDescriptorSetLayout dsLayout, VkPipelineLayout* pipelineLayout);
+		bool createPipelineLayout(std::vector<VkDescriptorSetLayout>& dsLayouts, VkPipelineLayout* pipelineLayout);
 
 		bool createPipelineLayoutWithConstants(VkDescriptorSetLayout dsLayout, VkPipelineLayout* pipelineLayout, uint32_t vtxConstSize, uint32_t fragConstSize);
 
 		VkPipelineLayout addPipelineLayout(VkDescriptorSetLayout dsLayout, uint32_t vtxConstSize = 0, uint32_t fragConstSize = 0);
 
-		VkPipeline addPipeline(VkRenderPass renderPass, VkPipelineLayout pipelineLayout,
-			const std::vector<const char*>& shaderFiles,
-			const GraphicsPipelineInfo& pipelineParams = GraphicsPipelineInfo{
-			0, 0, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-			true, false, false });
+		VkPipeline addPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* framebuffer);
 
 		VkResult createComputePipeline(VkShaderModule computeShader, VkPipelineLayout pipelineLayout, VkPipeline* pipeline);
 

@@ -137,8 +137,10 @@ namespace RHI::Vulkan
         {
             BufferAttachment b = dsInfo.buffers[i];
 
+            Buffer* buffer = dynamic_cast<Buffer*>(b.buffer);
+
             bufferDescriptors[i] = VkDescriptorBufferInfo{
-                b.buffer->buffer,
+                buffer->buffer,
                 b.offset,
                 (b.size > 0) ? b.size : VK_WHOLE_SIZE
             };

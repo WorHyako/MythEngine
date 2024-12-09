@@ -1,6 +1,7 @@
 #include <memory>
 
 #include <System/WindowInterface.hpp>
+#include <System/Application.hpp>
 #include <Filesystem/FilesystemUtilities.hpp>
 #include <Utils/RedirectToConsole.hpp>
 #include <Utils/UtilsFPS.hpp>
@@ -25,6 +26,10 @@ int __stdcall WinMain(
     mythSystem::WindowInterface* Window;
 
     RedirectIOToConsole();
+
+    mythSystem::Application* application;
+    application = new mythSystem::Application();
+    application->mainLoop();
 
     //Window = new OpenGLWindow();
     Window = new VulkanWindow();

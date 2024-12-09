@@ -3,10 +3,10 @@
 
 namespace RHI::Vulkan
 {
-    RenderPass Device::addFullScreenPass(const RenderPassCreateInfo ci)
+    IRenderPass* Device::addFullScreenPass(const RenderPassCreateInfo ci)
     {
-        RenderPass result(ci);
-        m_Resources.allRenderPasses.push_back(result.handle);
+        RenderPass* result = new RenderPass(ci);
+        //m_Resources.allRenderPasses.push_back(result->handle);
         return result;
     }
 
@@ -42,14 +42,15 @@ namespace RHI::Vulkan
             }
         }
 
-        m_Resources.allRenderPasses.push_back(renderPass);
+        //m_Resources.allRenderPasses.push_back(renderPass);
         rp->info = ci;
         rp->handle = renderPass;
         return rp;
     }
 
-    RenderPass Device::addDepthRenderPass(const RenderPassCreateInfo ci)
+    IRenderPass* Device::addDepthRenderPass(const RenderPassCreateInfo ci)
     {
+        RenderPass* rp = new RenderPass(ci);
         VkRenderPass renderPass;
 
         if (!createDepthOnlyRenderPass(&renderPass, ci))
@@ -59,11 +60,9 @@ namespace RHI::Vulkan
         }
 
         m_Resources.allRenderPasses.push_back(renderPass);
-        RenderPass rp;
-        rp.info = ci;
-        rp.handle = renderPass;
+        rp->info = ci;
+        rp->handle = renderPass;
         return rp;
-        //	return RenderPass { .info = ci, .handle = renderPass };
     }
 
 

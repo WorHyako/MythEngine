@@ -51,14 +51,14 @@ bool VulkanSceneRenderer::renderScene()
 		pipelineDesc.primType = RHI::PrimitiveType::TriangleList;
 		pipelineDesc.pipelineInfo.useDepth = true;
 
-		m_GraphicsPipeline = m_Device->createGraphicsPipeline(pipelineDesc, );
+		m_GraphicsPipeline = m_Device->createGraphicsPipeline(pipelineDesc, m_DynamicRHI->GetFramebuffer(0));
 	}
 
-    updateBuffers(imageIndex);
+    //updateBuffers(imageIndex);
 
 	m_CommandList->beginSingleTimeCommands();
 
-    composeFrame(imageIndex);
+    //composeFrame(imageIndex);
 
 	RHI::DrawArguments drawArgs = {};
 	drawArgs.vertexCount = 3;
@@ -66,4 +66,6 @@ bool VulkanSceneRenderer::renderScene()
     m_CommandList->endSingleTimeCommands();
 
     m_Device->executeCommandLists(m_CommandLists, m_CommandLists.size(), RHI::CommandQueue::Graphics);
+
+	return true;
 }

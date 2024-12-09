@@ -15,6 +15,7 @@ namespace mythSystem
     class WindowInterface
     {
     public:
+        WindowInterface() = default;
         WindowInterface(Resolution resolution);
         virtual ~WindowInterface();
 

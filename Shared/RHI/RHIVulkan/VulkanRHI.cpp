@@ -32,6 +32,11 @@ namespace RHI::Vulkan
         }
     }
 
+    VulkanRHIModule::~VulkanRHIModule()
+    {
+	    
+    }
+
 	IDynamicRHI* VulkanRHIModule::createRHI()
 	{
 		VulkanDynamicRHI* VulkanRHI = new VulkanDynamicRHI();
@@ -46,9 +51,6 @@ namespace RHI::Vulkan
         {
             exit(EXIT_FAILURE);
         }
-
-        createWindowSurface();
-        CreateDevice();
 	}
 
     RHI::IDevice* VulkanDynamicRHI::getDevice() const
@@ -209,7 +211,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        VK_CHECK(createSwapchain());
+        createSwapchain();
         const size_t imageCount = createSwapchainImages();
         m_SwapChainIndex = 0;
 
@@ -218,8 +220,12 @@ namespace RHI::Vulkan
         const VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
         for (uint32_t i = 0; i < m_DeviceParams.maxFramesInFlight + 1; ++i)
         {
-            vkCreateSemaphore(m_VulkanDevice, &semaphoreCreateInfo, nullptr, &m_PresentSemaphores[i]);
-            vkCreateSemaphore(m_VulkanDevice, &semaphoreCreateInfo, nullptr, &m_AcquireSemaphores[i]);
+            VkSemaphore presentSemaphore;
+            VkSemaphore acquireSemaphore;
+            vkCreateSemaphore(m_VulkanDevice, &semaphoreCreateInfo, nullptr, &presentSemaphore);
+            vkCreateSemaphore(m_VulkanDevice, &semaphoreCreateInfo, nullptr, &acquireSemaphore);
+            m_PresentSemaphores.push_back(presentSemaphore);
+            m_AcquireSemaphores.push_back(acquireSemaphore);
         }
     }
 
@@ -321,6 +327,16 @@ namespace RHI::Vulkan
         return uint32_t(m_SwapchainImages.size());
     }
 
+    ITexture* VulkanDynamicRHI::GetBackBuffer(uint32_t index)
+    {
+        return m_SwapchainTextures[index];
+    }
+
+    IFramebuffer* VulkanDynamicRHI::GetFramebuffer(uint32_t index)
+    {
+        return m_SwapChainFramebuffers[index];
+    }
+
     bool VulkanDynamicRHI::createSwapchain()
     {
         destroySwapChain();
@@ -349,7 +365,9 @@ namespace RHI::Vulkan
                 VK_TRUE,
                 VK_NULL_HANDLE };
 
-        return vkCreateSwapchainKHR(m_VulkanDevice, &ci, nullptr, &m_SwapChain);
+        VK_CHECK(vkCreateSwapchainKHR(m_VulkanDevice, &ci, nullptr, &m_SwapChain));
+
+        return true;
     }
 
     size_t VulkanDynamicRHI::createSwapchainImages()
@@ -362,9 +380,18 @@ namespace RHI::Vulkan
 
         VK_CHECK(vkGetSwapchainImagesKHR(m_VulkanDevice, m_SwapChain, &imageCount, m_SwapchainImages.data()));
 
+        Vulkan::Device* device = dynamic_cast<Vulkan::Device*>(m_Device);
         for (unsigned i = 0; i < imageCount; i++)
-            if (!createImageView(m_VulkanDevice, m_SwapchainImages[i], VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, &m_SwapchainImageViews[i]))
-                exit(0);
+        {
+            if (!device->createImageView(m_SwapchainImages[i], VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, &m_SwapchainImageViews[i]))
+            {
+                printf("Cannot create swapchain image view\n");
+                exit(EXIT_FAILURE);
+            }
+            Vulkan::Texture* texture = new Texture();
+            texture->image.image = m_SwapchainImages[i];
+            m_SwapchainTextures.push_back(texture);
+        }
 
         return static_cast<size_t>(imageCount);
     }
@@ -409,6 +436,7 @@ namespace RHI::Vulkan
             deviceFeatures2.features = deviceFeatures;
         }
 
+        return deviceFeatures;
         //return initVulkanRenderDeviceWithCompute(vk, vkDev, width, height, ctxExtensions, isDeviceSuitable, deviceFeatures, deviceFeatures2, ctxFeatures.supportsScreenshots_);
     }
 
@@ -642,5 +670,187 @@ namespace RHI::Vulkan
         VK_CHECK(vkDeviceWaitIdle(m_VulkanDevice));
 
         return true;
+    }
+
+    static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(
+        VkDebugUtilsMessageSeverityFlagBitsEXT Severity,
+        VkDebugUtilsMessageTypeFlagsEXT Type,
+        const VkDebugUtilsMessengerCallbackDataEXT* CallbackData,
+        void* UserData
+    )
+    {
+        printf("Validation layer: %s\n", CallbackData->pMessage);
+        return VK_FALSE;
+    }
+
+    static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugReportCallback(
+        VkDebugReportFlagsEXT		flags,
+        VkDebugReportObjectTypeEXT	objectType,
+        uint64_t					object,
+        size_t						location,
+        int32_t						messageCode,
+        const char* pLayerPrefix,
+        const char* pMessage,
+        void* UserData
+    )
+    {
+        // https://github.com/zeux/niagara/blob/master/src/device.cpp   [ignoring performance warnings]
+        // This silences warnings like "For optimal performance image layout should be VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL instead of GENERAL."
+        if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT)
+            return VK_FALSE;
+
+        printf("Debug callback (%s): %s\n", pLayerPrefix, pMessage);
+        return VK_FALSE;
+    }
+
+    bool setupDebugCallbacks(VkInstance instance, VkDebugUtilsMessengerEXT* messenger, VkDebugReportCallbackEXT* reportCallback)
+    {
+        if (!enableValidationLayers) return true;
+
+        {
+            VkDebugUtilsMessengerCreateInfoEXT ci{};
+            ci.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+            ci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            ci.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            ci.pfnUserCallback = &VulkanDebugCallback;
+            ci.pUserData = nullptr;
+
+            VK_CHECK(vkCreateDebugUtilsMessengerEXT(instance, &ci, nullptr, messenger));
+        }
+        {
+            VkDebugReportCallbackCreateInfoEXT ci{};
+            ci.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
+            ci.pNext = nullptr;
+            ci.flags = VK_DEBUG_REPORT_WARNING_BIT_EXT |
+                VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT |
+                VK_DEBUG_REPORT_ERROR_BIT_EXT |
+                VK_DEBUG_REPORT_DEBUG_BIT_EXT;
+            ci.pfnCallback = &VulkanDebugReportCallback;
+            ci.pUserData = nullptr;
+
+            VK_CHECK(vkCreateDebugReportCallbackEXT(instance, &ci, nullptr, reportCallback));
+        }
+
+        return true;
+    }
+
+    SwapchainSupportDetails querySwapchainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
+    {
+        SwapchainSupportDetails details;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+
+        uint32_t formatCount;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+
+        if (formatCount)
+        {
+            details.formats.resize(formatCount);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+        }
+
+        uint32_t presentModeCount;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+
+        if (presentModeCount)
+        {
+            details.presentModes.resize(presentModeCount);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+        }
+
+        return details;
+    }
+
+    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+    {
+        return { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+    }
+
+    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
+    {
+        for (const auto mode : availablePresentModes)
+            if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
+                return mode;
+
+        // FIFO will always be supported
+        return VK_PRESENT_MODE_FIFO_KHR;
+    }
+
+    uint32_t chooseSwapImageCount(const VkSurfaceCapabilitiesKHR& capabilities)
+    {
+        const uint32_t imageCount = capabilities.minImageCount + 1;
+
+        const bool imageCountExceeded = capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount;
+
+        return imageCountExceeded ? capabilities.maxImageCount : imageCount;
+    }
+
+
+    VkResult findSuitablePhysicalDevice(VkInstance instance, std::function<bool(VkPhysicalDevice)> selector, VkPhysicalDevice* physicalDevice)
+    {
+        uint32_t deviceCount = 0;
+        VK_CHECK_RET(vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr));
+
+        if (!deviceCount) return VK_ERROR_INITIALIZATION_FAILED;
+
+        std::vector<VkPhysicalDevice> devices(deviceCount);
+        VK_CHECK_RET(vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data()));
+
+        for (const auto& device : devices)
+        {
+            if (selector(device))
+            {
+                *physicalDevice = device;
+                return VK_SUCCESS;
+            }
+        }
+
+        return VK_ERROR_INITIALIZATION_FAILED;
+    }
+
+    uint32_t findQueueFamilies(VkPhysicalDevice device, VkQueueFlags desiredFlags)
+    {
+        uint32_t familyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &familyCount, nullptr);
+
+        std::vector<VkQueueFamilyProperties> families(familyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &familyCount, families.data());
+
+        for (uint32_t i = 0; i != families.size(); i++)
+        {
+            if (families[i].queueCount > 0 && families[i].queueFlags & desiredFlags)
+                return i;
+        }
+
+        return 0;
+    }
+
+    uint32_t bytesPerTexFormat(VkFormat fmt)
+    {
+        switch (fmt)
+        {
+        case VK_FORMAT_R8_SINT:
+        case VK_FORMAT_R8_UNORM:
+            return 1;
+        case VK_FORMAT_R16_SFLOAT:
+            return 2;
+        case VK_FORMAT_R16G16_SFLOAT:
+            return 4;
+        case VK_FORMAT_R16G16_SNORM:
+            return 4;
+        case VK_FORMAT_B8G8R8A8_UNORM:
+            return 4;
+        case VK_FORMAT_R8G8B8A8_UNORM:
+            return 4;
+        case VK_FORMAT_R16G16B16A16_SFLOAT:
+            return 4 * sizeof(uint16_t);
+        case VK_FORMAT_R32G32B32A32_SFLOAT:
+            return 4 * sizeof(float);
+        default:
+            break;
+        }
+        return 0;
     }
 }

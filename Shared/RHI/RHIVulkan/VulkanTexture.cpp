@@ -4,7 +4,7 @@
 #include <imgui.h>
 
 #include "stb_image.h"
-#define STB_IMAGE_RESIZE_IMPLEMENTATION
+//#define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include <stb_image_resize.h>
 
 #include <gli/load_ktx.hpp>
@@ -21,6 +21,11 @@ namespace RHI::Vulkan
             *img32++ = *img24++;
             *img32++ = 1.0f;
         }
+    }
+
+    static VkImageCreateInfo fillImageInfo()
+    {
+	    
     }
 
     VkFormat Device::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
@@ -74,121 +79,130 @@ namespace RHI::Vulkan
         return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
     }
 
-    Texture Device::addRGBATexture(int texWidth, int texHeight, void* data)
+    ITexture* Device::addRGBATexture(int texWidth, int texHeight, void* data)
     {
-        Texture tex;
-        tex.width = texWidth;
-        tex.height = texHeight;
-        tex.depth = 1;
-        tex.format = VK_FORMAT_R8G8B8A8_UNORM;
-        if (!createTextureImageFromData(tex.image.image, tex.image.imageMemory,
-            data, texWidth, texHeight, tex.format))
+        Texture* tex = new Texture();
+        tex->width = texWidth;
+        tex->height = texHeight;
+        tex->depth = 1;
+        tex->format = VK_FORMAT_R8G8B8A8_UNORM;
+        if (!createTextureImageFromData(tex->image.image, tex->image.imageMemory,
+            data, texWidth, texHeight, tex->format))
         {
             printf("Cannot create solid texture\n");
             exit(EXIT_FAILURE);
         }
 
-        transitionImageLayout(tex.image.image, tex.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        // TODO:fix command list ussie
+        //transitionImageLayout(tex->image.image, tex->format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        if (!createImageView(tex.image.image, tex.format, VK_IMAGE_ASPECT_COLOR_BIT, &tex.image.imageView))
+        if (!createImageView(tex->image.image, tex->format, VK_IMAGE_ASPECT_COLOR_BIT, &tex->image.imageView))
         {
             printf("Cannot create image view for 2d texture\n");
             exit(EXIT_FAILURE);
         }
 
-        createTextureSampler(&tex.sampler);
-        m_Resources.allTextures.push_back(tex);
+        createTextureSampler(&tex->sampler);
+        // TODO:fix allocation issue
+        //m_Resources.allTextures.push_back(tex);
         return tex;
     }
 
-    Texture Device::addSolidRGBATexture(uint32_t color)
+    ITexture* Device::addSolidRGBATexture(uint32_t color)
     {
-        Texture tex;
-        tex.width = 1;
-        tex.height = 1;
-        tex.depth = 1;
-        tex.format = VK_FORMAT_R8G8B8A8_UNORM;
-        if (!createTextureImageFromData(tex.image.image, tex.image.imageMemory,
-            &color, 1, 1, tex.format))
+        Texture* tex = new Texture();
+        tex->width = 1;
+        tex->height = 1;
+        tex->depth = 1;
+        tex->format = VK_FORMAT_R8G8B8A8_UNORM;
+        if (!createTextureImageFromData(tex->image.image, tex->image.imageMemory,
+            &color, 1, 1, tex->format))
         {
             printf("Cannot create solid texture\n");
             exit(EXIT_FAILURE);
         }
 
-        transitionImageLayout(tex.image.image, tex.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        // TODO:fix command list ussie
+        //transitionImageLayout(tex->image.image, tex->format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        if (!createImageView(tex.image.image, tex.format, VK_IMAGE_ASPECT_COLOR_BIT, &tex.image.imageView))
+        if (!createImageView(tex->image.image, tex->format, VK_IMAGE_ASPECT_COLOR_BIT, &tex->image.imageView))
         {
             printf("Cannot create image view for solid texture\n");
             exit(EXIT_FAILURE);
         }
 
-        createTextureSampler(&tex.sampler);
-        m_Resources.allTextures.push_back(tex);
+        createTextureSampler(&tex->sampler);
+        // TODO:fix allocation issue
+        //m_Resources.allTextures.push_back(tex);
 
         return tex;
     }
 
-    Texture Device::addColorTexture(int texWidth, int texHeight, VkFormat colorFormat, VkFilter minFilter, VkFilter maxFilter, VkSamplerAddressMode addressMode)
+    ITexture* Device::addColorTexture(int texWidth, int texHeight, VkFormat colorFormat, VkFilter minFilter, VkFilter maxFilter, VkSamplerAddressMode addressMode)
     {
         const uint32_t w = (texWidth > 0) ? texWidth : m_DeviceDesc.framebufferWidth;
         const uint32_t h = (texHeight > 0) ? texHeight : m_DeviceDesc.framebufferHeight;
 
-        Texture res{};
-        res.width = w;
-        res.height = h;
-        res.depth = 1;
-        res.format = colorFormat;
+        Texture* tex = new Texture();
+        tex->width = w;
+        tex->height = h;
+        tex->depth = 1;
+        tex->format = colorFormat;
 
         if (!createOffscreenImage(
-            res.image.image, res.image.imageMemory,
+            tex->image.image, tex->image.imageMemory,
             w, h, colorFormat, 1, 0))
         {
             printf("Cannot create color texture\n");
             exit(EXIT_FAILURE);
         }
 
-        createImageView(res.image.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, &res.image.imageView);
-        createTextureSampler(&res.sampler, minFilter, maxFilter, addressMode);
+        createImageView(tex->image.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, &tex->image.imageView);
+        createTextureSampler(&tex->sampler, minFilter, maxFilter, addressMode);
 
-        transitionImageLayout(res.image.image, colorFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        // TODO:fix command list ussie
+        //transitionImageLayout(tex->image.image, colorFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        // TODO:fix allocation issue
+        //m_Resources.allTextures.push_back(tex);
 
-        m_Resources.allTextures.push_back(res);
-        return res;
+        return tex;
     }
 
-    Texture Device::addDepthTexture(int texWidth, int texHeight, VkImageLayout layout)
+    ITexture* Device::addDepthTexture(int texWidth, int texHeight, VkImageLayout layout)
     {
         const uint32_t w = (texWidth > 0) ? texWidth : m_DeviceDesc.framebufferWidth;
         const uint32_t h = (texHeight > 0) ? texHeight : m_DeviceDesc.framebufferHeight;
 
         const VkFormat depthFormat = findDepthFormat();
 
-        Texture depth{};
-        depth.width = w;
-        depth.height = h;
-        depth.depth = 1;
-        depth.format = depthFormat;
+        Texture* tex = new Texture();
+        tex->width = w;
+        tex->height = h;
+        tex->depth = 1;
+        tex->format = depthFormat;
 
         if (!createImage(w, h, depthFormat,
             VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth.image.image, depth.image.imageMemory))
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex->image.image, tex->image.imageMemory))
         {
             printf("Cannot create depth texture\n");
             exit(EXIT_FAILURE);
         }
 
-        createImageView(depth.image.image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, &depth.image.imageView);
-        transitionImageLayout(depth.image.image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, layout/*VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL*/);
+        createImageView(tex->image.image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, &tex->image.imageView);
+        // TODO:fix command list ussie
+        //transitionImageLayout(tex->image.image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, layout/*VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL*/);
 
-        if (!createDepthSampler(&depth.sampler))
+        if (!createDepthSampler(&tex->sampler))
         {
             printf("Cannot create a depth sampler");
             exit(EXIT_FAILURE);
         }
 
-        m_Resources.allTextures.push_back(depth);
-        return depth;
+        // TODO:fix allocation issue
+        //m_Resources.allTextures.push_back(tex);
+
+        return tex;
     }
 
     bool Device::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory, VkImageCreateFlags flags, uint32_t mipLevels)
@@ -548,9 +562,12 @@ namespace RHI::Vulkan
 
         uploadBufferData(stagingBufferMemory, 0, mipData, imageSize);
 
-        transitionImageLayout(textureImage, texFormat, VK_IMAGE_LAYOUT_UNDEFINED/*sourceImageLayout*/, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layerCount, mipLevels);
-        copyMIPBufferToImage(stagingBuffer, textureImage, mipLevels, texWidth, texHeight, bytesPerPixel, layerCount);
-        transitionImageLayout(textureImage, texFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layerCount, mipLevels);
+        // TODO:fix command list ussie
+        //transitionImageLayout(textureImage, texFormat, VK_IMAGE_LAYOUT_UNDEFINED/*sourceImageLayout*/, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layerCount, mipLevels);
+        // TODO:fix command list ussie
+        //copyMIPBufferToImage(stagingBuffer, textureImage, mipLevels, texWidth, texHeight, bytesPerPixel, layerCount);
+        // TODO:fix command list ussie
+        //transitionImageLayout(textureImage, texFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layerCount, mipLevels);
 
         vkDestroyBuffer(m_Context.device, stagingBuffer, nullptr);
         vkFreeMemory(m_Context.device, stagingBufferMemory, nullptr);
@@ -571,9 +588,12 @@ namespace RHI::Vulkan
 
         uploadBufferData(stagingBufferMemory, 0, imageData, imageSize);
 
-        transitionImageLayout(textureImage, texFormat, sourceImageLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layerCount);
-        copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), layerCount);
-        transitionImageLayout(textureImage, texFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layerCount);
+        // TODO:fix command list ussie
+        //transitionImageLayout(textureImage, texFormat, sourceImageLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layerCount);
+        // TODO:fix command list ussie
+        //copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), layerCount);
+        // TODO:fix command list ussie
+        //transitionImageLayout(textureImage, texFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layerCount);
 
         vkDestroyBuffer(m_Context.device, stagingBuffer, nullptr);
         vkFreeMemory(m_Context.device, stagingBufferMemory, nullptr);
@@ -602,8 +622,12 @@ namespace RHI::Vulkan
         cubemap.height = h;
         cubemap.depth = 1;
 
-        m_Resources.allTextures.push_back(cubemap);
-        return cubemap;
+        // TODO:fix allocation issue
+        //m_Resources.allTextures.push_back(cubemap);
+
+        // TODO: fix loading resources
+        //return cubemap;
+        return Texture();
     }
 
     Texture Device::loadKTX(const char* fileName)
@@ -626,9 +650,12 @@ namespace RHI::Vulkan
         createImageView(ktx.image.image, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, &ktx.image.imageView);
         createTextureSampler(&ktx.sampler, VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
-        m_Resources.allTextures.push_back(ktx);
+        // TODO:fix allocation issue
+        //m_Resources.allTextures.push_back(ktx);
 
-        return ktx;
+        // TODO: fix loading resources
+        //return ktx;
+        return Texture();
     }
 
     Texture Device::loadTexture2D(const char* fileName)
@@ -641,7 +668,8 @@ namespace RHI::Vulkan
         }
 
         VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
-        transitionImageLayout(tex.image.image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        // TODO:fix command list ussie
+        //transitionImageLayout(tex.image.image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         if (!createImageView(tex.image.image, format, VK_IMAGE_ASPECT_COLOR_BIT, &tex.image.imageView))
         {
@@ -650,49 +678,54 @@ namespace RHI::Vulkan
         }
 
         createTextureSampler(&tex.sampler);
-        m_Resources.allTextures.push_back(tex);
-        return tex;
+        // TODO:fix allocation issue
+        //m_Resources.allTextures.push_back(tex);
+        // TODO: fix loading resources
+        //return tex;
+        return Texture();
     }
 
 
     Texture Device::createFontTexture(const char* fontFile)
     {
-        ImGuiIO& io = ImGui::GetIO();
-        VulkanImage img{};
-        img.image = VK_NULL_HANDLE;
-        Texture res{};
-        res.image = img;
+        // TODO: fix loading resources
+        //ImGuiIO& io = ImGui::GetIO();
+        //VulkanImage img{};
+        //img.image = VK_NULL_HANDLE;
+        //Texture res{};
+        //res.image = img;
 
-        // Build texture atlas
-        ImFontConfig cfg = ImFontConfig();
-        cfg.FontDataOwnedByAtlas = false;
-        cfg.RasterizerMultiply = 1.5f;
-        cfg.SizePixels = 768.0f / 32.0f;
-        cfg.PixelSnapH = true;
-        cfg.OversampleH = 4;
-        cfg.OversampleV = 4;
-        ImFont* Font = io.Fonts->AddFontFromFileTTF(fontFile, cfg.SizePixels, &cfg);
+        //// Build texture atlas
+        //ImFontConfig cfg = ImFontConfig();
+        //cfg.FontDataOwnedByAtlas = false;
+        //cfg.RasterizerMultiply = 1.5f;
+        //cfg.SizePixels = 768.0f / 32.0f;
+        //cfg.PixelSnapH = true;
+        //cfg.OversampleH = 4;
+        //cfg.OversampleV = 4;
+        //ImFont* Font = io.Fonts->AddFontFromFileTTF(fontFile, cfg.SizePixels, &cfg);
 
 
-        unsigned char* pixels = nullptr;
-        int texWidth = 1, texHeight = 1;
-        io.Fonts->GetTexDataAsRGBA32(&pixels, &texWidth, &texHeight);
+        //unsigned char* pixels = nullptr;
+        //int texWidth = 1, texHeight = 1;
+        //io.Fonts->GetTexDataAsRGBA32(&pixels, &texWidth, &texHeight);
 
-        if (!pixels || !createTextureImageFromData(res.image.image, res.image.imageMemory, pixels, texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM))
-        {
-            printf("Failed to load texture\n"); fflush(stdout);
-            return res;
-        }
+        //if (!pixels || !createTextureImageFromData(res.image.image, res.image.imageMemory, pixels, texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM))
+        //{
+        //    printf("Failed to load texture\n"); fflush(stdout);
+        //    return res;
+        //}
 
-        createImageView(res.image.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, &res.image.imageView);
-        createTextureSampler(&res.sampler);
+        //createImageView(res.image.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, &res.image.imageView);
+        //createTextureSampler(&res.sampler);
 
-        /* This is not strictly necessary, a font can be any texture */
-        io.Fonts->TexID = (ImTextureID)0;
-        io.FontDefault = Font;
-        io.DisplayFramebufferScale = ImVec2(1, 1);
+        ///* This is not strictly necessary, a font can be any texture */
+        //io.Fonts->TexID = (ImTextureID)0;
+        //io.FontDefault = Font;
+        //io.DisplayFramebufferScale = ImVec2(1, 1);
 
-        m_Resources.allTextures.push_back(res);
-        return res;
+        //m_Resources.allTextures.push_back(res);
+        //return res;
+        return Texture();
     }
 }

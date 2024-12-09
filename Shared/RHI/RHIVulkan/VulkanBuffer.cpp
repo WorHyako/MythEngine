@@ -102,36 +102,36 @@ namespace RHI::Vulkan
         vkUnmapMemory(m_Context.device, bufferMemory);
     }
 
-    Buffer Device::addBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool createMapping)
+    IBuffer* Device::addBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool createMapping)
     {
-        Buffer buffer{};
-        buffer.buffer = VK_NULL_HANDLE;
-        buffer.size = 0;
-        buffer.memory = VK_NULL_HANDLE;
-        buffer.ptr = nullptr;
+        Buffer* buffer = new Buffer();
+        buffer->buffer = VK_NULL_HANDLE;
+        buffer->size = 0;
+        buffer->memory = VK_NULL_HANDLE;
+        buffer->ptr = nullptr;
 
-        if (!createSharedBuffer(size, usage, properties, buffer.buffer, buffer.memory))
+        if (!createSharedBuffer(size, usage, properties, buffer->buffer, buffer->memory))
         {
             printf("Cannot allocate buffer\n");
             exit(EXIT_FAILURE);
         }
         else
         {
-            buffer.size = size;
-            m_Resources.allBuffers.push_back(buffer);
+            buffer->size = size;
+            //m_Resources.allBuffers.push_back(buffer);
         }
 
         if (createMapping)
-            vkMapMemory(m_Context.device, buffer.memory, 0, VK_WHOLE_SIZE, 0, &buffer.ptr);
+            vkMapMemory(m_Context.device, buffer->memory, 0, VK_WHOLE_SIZE, 0, &buffer->ptr);
 
         return buffer;
     }
 
-    Buffer Device::addVertexBuffer(uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData)
+    IBuffer* Device::addVertexBuffer(uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData)
     {
-        Buffer result;
-        result.size = allocateVertexBuffer(&result.buffer, &result.memory, vertexBufferSize, vertexData, indexBufferSize, indexData);
-        m_Resources.allBuffers.push_back(result);
+        Buffer* result = new Buffer();
+        result->size = allocateVertexBuffer(&result->buffer, &result->memory, vertexBufferSize, vertexData, indexBufferSize, indexData);
+        //m_Resources.allBuffers.push_back(result);
         return result;
     }
 
@@ -155,7 +155,8 @@ namespace RHI::Vulkan
             bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, *storageBuffer, *storageBufferMemory);
 
-        copyBuffer(vkDev, stagingBuffer, *storageBuffer, bufferSize);
+        // TODO:fix command list ussie
+        //copyBuffer(vkDev, stagingBuffer, *storageBuffer, bufferSize);
 
         vkDestroyBuffer(m_Context.device, stagingBuffer, nullptr);
         vkFreeMemory(m_Context.device, stagingBufferMemory, nullptr);
@@ -169,7 +170,7 @@ namespace RHI::Vulkan
         const uint32_t indexBufferSize = uint32_t(indices.size() * sizeof(int));
         const uint32_t vertexBufferSize = uint32_t(vertices.size() * sizeof(float));
 
-        Buffer storageBuffer = addVertexBuffer(indexBufferSize, indices.data(), vertexBufferSize, vertices.data());
+        IBuffer* storageBuffer = addVertexBuffer(indexBufferSize, indices.data(), vertexBufferSize, vertices.data());
 
         BufferAttachment vertexBufferAttachment{};
         vertexBufferAttachment.dInfo = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT };
@@ -197,7 +198,8 @@ namespace RHI::Vulkan
         if (!scene || !scene->HasMeshes())
         {
             printf("Unable to load %s\n", filename);
-            Buffer nullBuffer{ VK_NULL_HANDLE, 0, VK_NULL_HANDLE };
+            //Buffer nullBuffer{ VK_NULL_HANDLE, 0, VK_NULL_HANDLE };
+            Buffer* nullBuffer = nullptr;
 
             return std::pair{ BufferAttachment { DescriptorInfo {} , nullBuffer } , BufferAttachment { DescriptorInfo {}, nullBuffer } };
         }
