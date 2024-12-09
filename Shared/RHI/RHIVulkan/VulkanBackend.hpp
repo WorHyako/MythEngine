@@ -279,7 +279,7 @@ namespace RHI::Vulkan
 		VkQueue m_GraphicsQueue;
 		VkQueue m_ComputeQueue;
 		VkQueue m_TransferQueue;
-		VkQueue m_PresetnQueue;
+		VkQueue m_PresentQueue;
 
 		std::vector<VkImage> m_SwapchainImages;
 		std::vector<VkImageView> m_SwapchainImageViews;
@@ -819,7 +819,7 @@ namespace RHI::Vulkan
 		std::pair<BufferAttachment, BufferAttachment> createPlaneBuffer_XZ(float sx, float sz);
 		std::pair<BufferAttachment, BufferAttachment> createPlaneBuffer_XY(float sx, float sy);
 
-		VkResult createShaderModule(Shader* shader, const char* fileName);
+		virtual IShader* createShaderModule(const char* fileName) override;
 
 		virtual IRHICommandList* createCommandList(const CommandListParameters& params) override;
 		virtual uint64_t executeCommandLists(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists, CommandQueue executionQueue) override;
@@ -851,6 +851,7 @@ namespace RHI::Vulkan
 
 		virtual void beginSingleTimeCommands() override;
 		virtual void endSingleTimeCommands() override;
+
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 		void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount = 1, uint32_t mipLevels = 1);
 		void transitionImageLayoutCmd(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount = 1, uint32_t mipLevels = 1);
@@ -859,6 +860,9 @@ namespace RHI::Vulkan
 		void copyMIPBufferToImage(VkBuffer buffer, VkImage image, uint32_t mipLevels, uint32_t width, uint32_t height, uint32_t bytesPP, uint32_t layerCount = 1);
 		void copyImageToBuffer(VkImage image, VkBuffer buffer, uint32_t width, uint32_t height, uint32_t layerCount = 1);
 
+		void beginRenderPass(Framebuffer* framebuffer);
+		void endRenderPass();
+		void setGraphicsState(const GraphicsState& state) override;
 		void draw(const DrawArguments& args) override;
 
 		TrackedCommandBufferPtr getCurrentCommandBuffer() const { return m_CurrentCommandBuffer; }

@@ -17,7 +17,13 @@ namespace RHI
 		m_SwapChainFramebuffers.resize(backBufferCount);
 		for(uint32_t index = 0; index < backBufferCount; index++)
 		{
-			IRenderPass* renderPass = getDevice()->createRenderPass();
+			RenderPassCreateInfo ci{};
+			ci.clearColor = true;
+			ci.clearDepth = true;
+			ci.useDepth = false;
+			ci.format = Format::BGRA8_UNORM;
+			ci.numOutputs = 1;
+			IRenderPass* renderPass = getDevice()->createRenderPass(ci);
 			m_SwapChainFramebuffers[index] = getDevice()->createFramebuffer(renderPass, { GetBackBuffer(index) });
 		}
 	}

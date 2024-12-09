@@ -100,6 +100,8 @@ namespace mythSystem
 
     void Application::mainLoop()
     {
+        m_Renderer->initializeRender();
+
         double timeStamp = glfwGetTime();
         float deltaSeconds = 0.0f;
 

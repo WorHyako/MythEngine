@@ -1,5 +1,7 @@
-#include "VulkanSceneRenderer.hpp"
+#include <RHI/Vulkan/VulkanSceneRenderer.hpp>
 #include <RHI/RHICommon/RHIModuleWrapper.hpp>
+
+#include <Filesystem/FilesystemUtilities.hpp>
 
 VulkanSceneRenderer::VulkanSceneRenderer(RHI::IDynamicRHI* dynamicRHI)
 	: RendererInterface(dynamicRHI)
@@ -16,6 +18,9 @@ bool VulkanSceneRenderer::initializeRender()
 {
 	if(m_Device)
 	{
+		m_VertexShader = m_Device->createShaderModule((FilesystemUtilities::GetShadersDir() + "Vulkan/VK01.vert").c_str());
+		m_PixelShader = m_Device->createShaderModule((FilesystemUtilities::GetShadersDir() + "Vulkan/VK01.frag").c_str());
+
 		if(!m_VertexShader || !m_PixelShader)
 		{
 			return false;
@@ -43,7 +48,7 @@ void VulkanSceneRenderer::composeFrame()
 
 bool VulkanSceneRenderer::renderScene()
 {
-	if(m_GraphicsPipeline)
+	if(!m_GraphicsPipeline)
 	{
 		RHI::GraphicsPipelineDesc pipelineDesc;
 		pipelineDesc.VS = m_VertexShader;
@@ -59,6 +64,11 @@ bool VulkanSceneRenderer::renderScene()
 	m_CommandList->beginSingleTimeCommands();
 
     //composeFrame(imageIndex);
+
+	RHI::GraphicsState state = {};
+	state.pipeline = m_GraphicsPipeline;
+	state.framebuffer = m_DynamicRHI->GetFramebuffer(0);
+	m_CommandList->setGraphicsState(state);
 
 	RHI::DrawArguments drawArgs = {};
 	drawArgs.vertexCount = 3;

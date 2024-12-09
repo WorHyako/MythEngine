@@ -60,7 +60,11 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        m_Resources.allFramebuffers.push_back(fb->framebuffer);
+        // TODO:fix allocation issue
+        //m_Resources.allFramebuffers.push_back(fb->framebuffer);
+        fb->renderPass = rp->handle;
+        fb->framebufferWidth = images[0]->width;
+        fb->framebufferHeight = images[0]->height;
         return fb;
     }
 
@@ -68,8 +72,9 @@ namespace RHI::Vulkan
     {
         std::vector<VkFramebuffer> framebuffers;
         createColorAndDepthFramebuffers(renderPass, depthView, framebuffers);
-        for (auto f : framebuffers)
-            m_Resources.allFramebuffers.push_back(f);
+        // TODO:fix allocation issue
+        //for (auto f : framebuffers)
+            //m_Resources.allFramebuffers.push_back(f);
         return framebuffers;
     }
 }

@@ -15,8 +15,8 @@ public:
 	virtual void composeFrame() override;
 
 private:
-	RHI::IShader* m_VertexShader;
-	RHI::IShader* m_PixelShader;
-	RHI::IGraphicsPipeline* m_GraphicsPipeline;
-	RHI::IRHICommandList* m_CommandList;
+	RHI::IShader* m_VertexShader = nullptr;
+	RHI::IShader* m_PixelShader = nullptr;
+	RHI::IGraphicsPipeline* m_GraphicsPipeline = nullptr;
+	RHI::IRHICommandList* m_CommandList = nullptr;
 };

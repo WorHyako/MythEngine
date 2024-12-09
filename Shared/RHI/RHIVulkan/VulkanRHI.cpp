@@ -166,6 +166,24 @@ namespace RHI::Vulkan
 
     	VK_CHECK(createDevice(deviceFeatures, deviceFeatures2));
 
+        if (m_DeviceParams.useGraphicsQueue)
+        {
+            vkGetDeviceQueue(m_VulkanDevice, m_GraphicsQueueFamily, 0, &m_GraphicsQueue);
+        }
+        if (m_GraphicsQueue == nullptr)
+        {
+            exit(EXIT_FAILURE);
+        }
+
+        if (m_DeviceParams.useComputeQueue)
+        {
+            vkGetDeviceQueue(m_VulkanDevice, m_ComputeQueueFamily, 0, &m_ComputeQueue);
+            if (m_ComputeQueue == nullptr)
+            {
+                exit(EXIT_FAILURE);
+            }
+        }
+
         RHI::Vulkan::DeviceDesc DeviceDesc = {
             .framebufferWidth = m_DeviceParams.backBufferWidth,
             .framebufferHeight = m_DeviceParams.backBufferHeight,
@@ -185,24 +203,6 @@ namespace RHI::Vulkan
             .useTransferQueue = m_DeviceParams.useTransferQueue };
 
         m_Device = new RHI::Vulkan::Device(DeviceDesc);
-
-        if (m_DeviceParams.useGraphicsQueue)
-        {
-            vkGetDeviceQueue(m_VulkanDevice, m_GraphicsQueueFamily, 0, &m_GraphicsQueue);
-        }
-        if (m_GraphicsQueue == nullptr)
-        {
-            exit(EXIT_FAILURE);
-        }
-
-        if (m_DeviceParams.useComputeQueue)
-        {
-            vkGetDeviceQueue(m_VulkanDevice, m_ComputeQueueFamily, 0, &m_ComputeQueue);
-            if (m_ComputeQueue == nullptr)
-            {
-                exit(EXIT_FAILURE);
-            }
-        }
 
         VkBool32 presentSupported = 0;
         vkGetPhysicalDeviceSurfaceSupportKHR(m_VulkanPhysicalDevice, m_GraphicsQueueFamily, m_VulkanInstance.surface, &presentSupported);
@@ -227,6 +227,8 @@ namespace RHI::Vulkan
             m_PresentSemaphores.push_back(presentSemaphore);
             m_AcquireSemaphores.push_back(acquireSemaphore);
         }
+
+        BackBufferResized();
     }
 
     VkResult VulkanDynamicRHI::createDevice(VkPhysicalDeviceFeatures deviceFeatures, VkPhysicalDeviceFeatures2 deviceFeatures2)
@@ -390,6 +392,9 @@ namespace RHI::Vulkan
             }
             Vulkan::Texture* texture = new Texture();
             texture->image.image = m_SwapchainImages[i];
+            texture->image.imageView = m_SwapchainImageViews[i];
+            texture->width = m_DeviceParams.backBufferWidth;
+            texture->height = m_DeviceParams.backBufferHeight;
             m_SwapchainTextures.push_back(texture);
         }
 
@@ -666,7 +671,8 @@ namespace RHI::Vulkan
 
         m_PresentSemaphoreIndex = (m_PresentSemaphoreIndex + 1) % m_PresentSemaphores.size();
 
-        VK_CHECK(vkQueuePresentKHR(m_PresetnQueue, &pi));
+        //VK_CHECK(vkQueuePresentKHR(m_PresentQueue, &pi));
+        VK_CHECK(vkQueuePresentKHR(m_GraphicsQueue, &pi));
         VK_CHECK(vkDeviceWaitIdle(m_VulkanDevice));
 
         return true;

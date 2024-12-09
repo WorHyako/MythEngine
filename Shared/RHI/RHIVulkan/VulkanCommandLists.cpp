@@ -32,9 +32,11 @@ namespace RHI::Vulkan
 
     void CommandList::endSingleTimeCommands()
     {
+        endRenderPass();
+
         vkEndCommandBuffer(m_CurrentCommandBuffer->commandBuffer);
 
-        VkSubmitInfo submitInfo{};
+        /*VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.pNext = nullptr;
         submitInfo.waitSemaphoreCount = 0;
@@ -48,7 +50,7 @@ namespace RHI::Vulkan
         vkQueueSubmit(m_Device->getQueue(m_CommandListParameters.queueType)->getVkQueue(), 1, &submitInfo, VK_NULL_HANDLE);
         vkQueueWaitIdle(m_Device->getQueue(m_CommandListParameters.queueType)->getVkQueue());
 
-        vkFreeCommandBuffers(m_Context.device, m_CurrentCommandBuffer->commandPool, 1, &m_CurrentCommandBuffer->commandBuffer);
+        vkFreeCommandBuffers(m_Context.device, m_CurrentCommandBuffer->commandPool, 1, &m_CurrentCommandBuffer->commandBuffer);*/
     }
 
 

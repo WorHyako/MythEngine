@@ -8,6 +8,7 @@
 namespace RHI
 {
 	class ITexture;
+    class IGraphicsPipeline;
 	class IDevice;
     class IFramebuffer;
 
@@ -111,6 +112,15 @@ namespace RHI
         CommandQueue queueType = CommandQueue::Graphics;
     };
 
+    struct GraphicsState
+    {
+        IGraphicsPipeline* pipeline = nullptr;
+        IFramebuffer* framebuffer = nullptr;
+
+        GraphicsState& setPipeline(IGraphicsPipeline* value) { pipeline = value; return *this; }
+        GraphicsState& setFramebuffer(IFramebuffer* value) { framebuffer = value; return *this; }
+    };
+
     struct DrawArguments
     {
         uint32_t vertexCount = 0;
@@ -132,6 +142,7 @@ namespace RHI
         virtual void beginSingleTimeCommands() = 0;
         virtual void endSingleTimeCommands() = 0;
         virtual void draw(const DrawArguments& args) = 0;
+        virtual void setGraphicsState(const GraphicsState& state) = 0;
     };
 
     class IInstance : public IResource
@@ -205,7 +216,7 @@ namespace RHI
     public:
         uint32_t width;
         uint32_t height;
-        uint32_t depth;
+        uint32_t depth = 1;
     };
 
     class IImage : public IResource
@@ -263,6 +274,10 @@ namespace RHI
 
     class IFramebuffer : public IResource
     {
+    public:
+        uint32_t framebufferWidth = -1;
+        uint32_t framebufferHeight = -1;
+
     private:
         IRenderPass* m_RenderPass;
     };
@@ -297,11 +312,11 @@ namespace RHI
     {
         PrimitiveType primType = PrimitiveType::TriangleList;
 
-        IShader* VS;
-        IShader* HS;
-        IShader* DS;
-        IShader* GS;
-        IShader* PS;
+        IShader* VS = nullptr;
+        IShader* HS = nullptr;
+        IShader* DS = nullptr;
+        IShader* GS = nullptr;
+        IShader* PS = nullptr;
 
         //VkPipelineLayout pipelineLayout,
         GraphicsPipelineInfo pipelineInfo;
@@ -328,5 +343,6 @@ namespace RHI
         virtual IRenderPass* createRenderPass(const RenderPassCreateInfo& ci = RenderPassCreateInfo()) = 0;
         virtual IFramebuffer* createFramebuffer(IRenderPass* renderPass, const std::vector<ITexture*>& images) = 0;
         virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* framebuffer) = 0;
+        virtual IShader* createShaderModule(const char* fileName) = 0;
     };
 }

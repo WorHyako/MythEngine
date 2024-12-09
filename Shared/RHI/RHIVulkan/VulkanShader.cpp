@@ -122,16 +122,23 @@ namespace RHI::Vulkan
         return 0;
     }
 
-    VkResult Device::createShaderModule(Shader* shader, const char* fileName)
+    IShader* Device::createShaderModule(const char* fileName)
     {
+        Shader* shader = new Shader();
+
         if (compileShaderFile(fileName, *shader) < 1)
-            return VK_NOT_READY;
+        {
+            //return VK_NOT_READY;
+            return nullptr;
+        }
 
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         createInfo.codeSize = shader->SPIRV.size() * sizeof(unsigned int);
         createInfo.pCode = shader->SPIRV.data();
 
-        return vkCreateShaderModule(m_Context.device, &createInfo, nullptr, &shader->shaderModule);
+        vkCreateShaderModule(m_Context.device, &createInfo, nullptr, &shader->shaderModule);
+
+        return shader;
     }
 }

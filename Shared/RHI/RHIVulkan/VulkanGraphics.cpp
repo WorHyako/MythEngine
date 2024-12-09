@@ -21,7 +21,7 @@ namespace RHI::Vulkan
 
         Framebuffer* fb = dynamic_cast<Framebuffer*>(framebuffer);
 
-        std::vector<Shader> localShaderModules;
+        //std::vector<Shader> localShaderModules;
         std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 
         uint32_t numShaders = 0;
@@ -31,7 +31,7 @@ namespace RHI::Vulkan
         countShaders(desc.GS, numShaders);
         countShaders(desc.PS, numShaders);
 
-        shaderStages.resize(numShaders);
+        shaderStages.reserve(numShaders);
         /*localShaderModules.resize(numShaders);
 
         for (size_t i = 0; i < numShaders; i++)
@@ -59,11 +59,13 @@ namespace RHI::Vulkan
 
         if (Shader* shader = dynamic_cast<Shader*>(desc.VS))
         {
-            shaderStages.push_back(shaderStageInfo(shader->stage, *shader, "main"));
+            //shaderStages.push_back(shaderStageInfo(shader->stage, *shader, "main"));
+            shaderStages.push_back(shaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, *shader, "main"));
         }
         if (Shader* shader = dynamic_cast<Shader*>(desc.PS))
         {
-            shaderStages.push_back(shaderStageInfo(shader->stage, *shader, "main"));
+            //shaderStages.push_back(shaderStageInfo(shader->stage, *shader, "main"));
+            shaderStages.push_back(shaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, *shader, "main"));
         }
 
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
@@ -252,5 +254,41 @@ namespace RHI::Vulkan
 
         m_Resources.allPipelineLayouts.push_back(pipelineLayout);
         return pipelineLayout;
+    }
+
+    void CommandList::beginRenderPass(Framebuffer* framebuffer)
+    {
+        VkRect2D rect = {};
+        rect.offset = VkOffset2D(0, 0);
+        rect.extent = VkExtent2D(framebuffer->framebufferWidth, framebuffer->framebufferHeight);
+
+        VkClearValue clearValue{ .color = {0.0f, 0.0f, 0.0f, 1.0f} };
+
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = framebuffer->renderPass;
+        renderPassInfo.framebuffer = framebuffer->framebuffer; //(fb != VK_NULL_HANDLE) ? fb : swapchainFramebuffers[currentImage];
+        renderPassInfo.renderArea = rect;
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearValue;
+        //renderPassInfo.clearValueCount = clearValueCount;
+        //renderPassInfo.pClearValues = clearValues;
+
+        vkCmdBeginRenderPass(m_CurrentCommandBuffer->commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    }
+
+    void CommandList::endRenderPass()
+    {
+        vkCmdEndRenderPass(m_CurrentCommandBuffer->commandBuffer);
+    }
+
+    void CommandList::setGraphicsState(const GraphicsState& state)
+    {
+        GraphicsPipeline* pipeline = dynamic_cast<GraphicsPipeline*>(state.pipeline);
+        Framebuffer* fb = dynamic_cast<Framebuffer*>(state.framebuffer);
+
+        beginRenderPass(fb);
+
+        vkCmdBindPipeline(m_CurrentCommandBuffer->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
     }
 }

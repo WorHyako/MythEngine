@@ -44,7 +44,7 @@ namespace mythSystem
             m_Window,
             [](GLFWwindow* window, double x, double y)
             {
-                ImGui::GetIO().MousePos = ImVec2((float)x, (float)y);
+                /*ImGui::GetIO().MousePos = ImVec2((float)x, (float)y);
                 int width, height;
                 glfwGetFramebufferSize(window, &width, &height);
 
@@ -54,7 +54,7 @@ namespace mythSystem
                 if (void* ptr = glfwGetWindowUserPointer(window))
                 {
                     reinterpret_cast<Application*>(ptr)->handleMouseMove(mx, my);
-                }
+                }*/
             }
         );
 
@@ -62,14 +62,14 @@ namespace mythSystem
             m_Window,
             [](GLFWwindow* window, int button, int action, int mods)
             {
-                auto& io = ImGui::GetIO();
+                /*auto& io = ImGui::GetIO();
                 const int idx = button == GLFW_MOUSE_BUTTON_LEFT ? 0 : button == GLFW_MOUSE_BUTTON_RIGHT ? 2 : 1;
                 io.MouseDown[idx] = action == GLFW_PRESS;
 
                 if (void* ptr = glfwGetWindowUserPointer(window))
                 {
                     reinterpret_cast<Application*>(ptr)->handleMouseClick(button, action == GLFW_PRESS);
-                }
+                }*/
             }
         );
 
