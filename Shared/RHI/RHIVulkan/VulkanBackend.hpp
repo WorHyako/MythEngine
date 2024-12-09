@@ -241,11 +241,12 @@ namespace RHI::Vulkan
 		VkResult createDevice(VkPhysicalDeviceFeatures deviceFeatures, VkPhysicalDeviceFeatures2 deviceFeatures2);
 		virtual RHI::IDevice* getDevice() const override;
 		bool CreateSwapchain();
-
 		virtual bool BeginFrame() override;
 		virtual bool Present() override;
 
 		void setWindow(GLFWwindow* window);
+
+		virtual uint32_t GetBackBufferCount() override;
 
 		static VulkanContextFeatures& initializeContextFeatures();
 		static VulkanContextExtensions& initializeContextExtensions();
@@ -304,10 +305,12 @@ namespace RHI::Vulkan
 		std::vector<VkPresentModeKHR> presentModes;
 	};
 
-	struct ShaderModule final : public IShader
+	struct Shader final : public IShader
 	{
 		std::vector<unsigned int> SPIRV;
 		VkShaderModule shaderModule = nullptr;
+
+		VkShaderStageFlagBits stage{};
 	};
 
 	struct Buffer : public IBuffer
@@ -426,16 +429,16 @@ namespace RHI::Vulkan
 
 	bool setupDebugCallbacks(VkInstance instance, VkDebugUtilsMessengerEXT* messenger, VkDebugReportCallbackEXT* reportCallback);
 
-	size_t compileShaderFile(const char* file, ShaderModule& shaderModule);
+	size_t compileShaderFile(const char* file, Shader& shaderModule);
 
-	inline VkPipelineShaderStageCreateInfo shaderStageInfo(VkShaderStageFlagBits shaderStage, ShaderModule& module, const char* entryPoint)
+	inline VkPipelineShaderStageCreateInfo shaderStageInfo(VkShaderStageFlagBits shaderStage, Shader& shader, const char* entryPoint)
 	{
 		VkPipelineShaderStageCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		createInfo.pNext = nullptr;
 		createInfo.flags = 0;
 		createInfo.stage = shaderStage;
-		createInfo.module = module.shaderModule;
+		createInfo.module = shader.shaderModule;
 		createInfo.pName = entryPoint;
 		createInfo.pSpecializationInfo = nullptr;
 		return createInfo;
@@ -502,44 +505,6 @@ namespace RHI::Vulkan
 
 	uint32_t findQueueFamilies(VkPhysicalDevice device, VkQueueFlags desiredFlags);
 
-	bool createGraphicsPipeline(
-		Device& vkDev,
-		VkRenderPass renderPass, VkPipelineLayout pipelineLayout,
-		const std::vector<const char*>& shaderFiles,
-		VkPipeline* pipeline,
-		VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST /* defaults to triangles*/,
-		bool useDepth = true,
-		bool useBlending = true,
-		bool dynamicScissorState = false,
-		int32_t customWidth = -1,
-		int32_t customHeight = -1,
-		uint32_t numPatchControlPoints = 0);
-
-	enum eRenderPassBit : uint8_t
-	{
-		eRenderPassBit_First = 0x01, // clear the attachment
-		eRenderPassBit_Last = 0x02, // transition to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-		eRenderPassBit_Offscreen = 0x04, // transition to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-		eRenderPassBit_OffscreenInternal = 0x08, // keepVK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL
-	};
-
-	struct RenderPassCreateInfo final
-	{
-		bool clearColor_ = false;
-		bool clearDepth_ = false;
-		uint8_t flags_ = 0;
-	};
-
-	// Utility structure for Renderer classes to know the details about starting this pass
-	struct RenderPass
-	{
-		RenderPass() = default;
-		explicit RenderPass(bool useDepth = true, const RenderPassCreateInfo& ci = RenderPassCreateInfo());
-
-		RenderPassCreateInfo info;
-		VkRenderPass handle = VK_NULL_HANDLE;
-	};
-
 	uint32_t bytesPerTexFormat(VkFormat fmt);
 
 	bool downloadImageData(Device& vkDev, VkImage& textureImage, uint32_t texWidth, uint32_t texHeight, VkFormat texFormat, uint32_t layerCount, void* imageData, VkImageLayout sourceImageLayout);
@@ -604,7 +569,7 @@ namespace RHI::Vulkan
 		std::vector<VkDescriptorSetLayout> allDSLayouts;
 		std::vector<VkDescriptorPool> allDPools;
 
-		std::vector<ShaderModule> shaderModules;
+		std::vector<Shader> shaderModules;
 		std::map<std::string, uint32_t> shaderMap;
 
 		std::vector<VkImageView> swapchainImageViews;
@@ -614,6 +579,31 @@ namespace RHI::Vulkan
 
 	private:
 		Device* m_Device;
+	};
+
+	class RenderPass : public IRenderPass
+	{
+	public:
+		RenderPass() = default;
+		explicit RenderPass(const RenderPassCreateInfo& ci = RenderPassCreateInfo());
+
+		RenderPassCreateInfo info;
+		VkRenderPass handle = VK_NULL_HANDLE;
+	};
+
+	class Framebuffer : public IFramebuffer
+	{
+	public:
+		explicit Framebuffer(const VulkanContext& context)
+			: m_Context(context)
+		{}
+
+		~Framebuffer() override;
+
+		VkRenderPass renderPass = VkRenderPass();
+		VkFramebuffer framebuffer = VkFramebuffer();
+	private:
+		const VulkanContext& m_Context;
 	};
 
 	class GraphicsPipeline : public IGraphicsPipeline
@@ -763,12 +753,12 @@ namespace RHI::Vulkan
 		bool createColorAndDepthRenderPass(bool useDepth, VkRenderPass* renderPass, const RenderPassCreateInfo& ci, VkFormat colorFormat = VK_FORMAT_B8G8R8A8_UNORM);
 		bool createDepthOnlyRenderPass(VkRenderPass* renderPass, const RenderPassCreateInfo& ci);
 
-		RenderPass addFullScreenPass(bool useDepth = true, const RenderPassCreateInfo ci = RenderPassCreateInfo());
+		RenderPass addFullScreenPass(const RenderPassCreateInfo ci = RenderPassCreateInfo());
 
-		RenderPass addRenderPass(const std::vector<Texture>& outputs, const RenderPassCreateInfo& ci = {
-			true, true, eRenderPassBit_Offscreen | eRenderPassBit_First }, bool useDepth = true);
+		IRenderPass* createRenderPass(const RenderPassCreateInfo& ci = {
+			true, true, true, 1, Format::BGRA8_UNORM, eRenderPassBit_Offscreen | eRenderPassBit_First }) override;
 
-		RenderPass addDepthRenderPass(const std::vector<Texture>& outputs, const RenderPassCreateInfo ci = {
+		RenderPass addDepthRenderPass(const RenderPassCreateInfo ci = {
 			false, true, eRenderPassBit_Offscreen | eRenderPassBit_First });
 
 		bool createPipelineLayout(VkDescriptorSetLayout dsLayout, VkPipelineLayout* pipelineLayout);
@@ -796,7 +786,7 @@ namespace RHI::Vulkan
 
 		bool createColorAndDepthFramebuffers(VkRenderPass renderPass, VkImageView depthImageView, std::vector<VkFramebuffer>& swapchainFramebuffers);
 
-		VkFramebuffer createFramebuffer(RenderPass renderPass, const std::vector<Texture>& images);
+		virtual IFramebuffer* createFramebuffer(IRenderPass* renderPass, const std::vector<ITexture*>& images) override;
 
 		std::vector<VkFramebuffer> addFramebuffers(VkRenderPass renderPass, VkImageView depthView = VK_NULL_HANDLE);
 
@@ -810,7 +800,7 @@ namespace RHI::Vulkan
 		std::pair<BufferAttachment, BufferAttachment> createPlaneBuffer_XZ(float sx, float sz);
 		std::pair<BufferAttachment, BufferAttachment> createPlaneBuffer_XY(float sx, float sy);
 
-		VkResult createShaderModule(ShaderModule* shader, const char* fileName);
+		VkResult createShaderModule(Shader* shader, const char* fileName);
 
 		virtual IRHICommandList* createCommandList(const CommandListParameters& params) override;
 		virtual uint64_t executeCommandLists(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists, CommandQueue executionQueue) override;

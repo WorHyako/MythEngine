@@ -7,7 +7,9 @@
 
 namespace RHI
 {
-    class IDevice;
+	class ITexture;
+	class IDevice;
+    class IFramebuffer;
 
 	enum class GraphicsAPI : uint8_t
     {
@@ -168,11 +170,15 @@ namespace RHI
         virtual void CreateDevice() = 0;
         virtual bool BeginFrame() = 0;
         virtual bool Present() = 0;
+        virtual void BackBufferResized();
+        virtual ITexture* GetBackBuffer() = 0;
+        virtual uint32_t GetBackBufferCount() = 0;
         virtual IDevice* getDevice() const = 0;
         virtual GraphicsAPI getGraphicsAPI() const = 0;
 
     protected:
         DeviceParams m_DeviceParams;
+        std::vector<IFramebuffer*> m_SwapChainFramebuffers;
     };
 
     class IRHIModule
@@ -230,9 +236,33 @@ namespace RHI
 	    
     };
 
-    class IFramebuffer : public IResource
+    enum eRenderPassBit : uint8_t
+    {
+        eRenderPassBit_First = 0x01, // clear the attachment
+        eRenderPassBit_Last = 0x02, // transition to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+        eRenderPassBit_Offscreen = 0x04, // transition to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        eRenderPassBit_OffscreenInternal = 0x08, // keepVK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL
+    };
+
+    struct RenderPassCreateInfo final
+    {
+        bool clearColor = false;
+        bool clearDepth = false;
+        bool useDepth = false;
+        uint32_t numOutputs = 0;
+        Format format = Format::UNKNOWN;
+        uint8_t flags = 0;
+    };
+
+    class IRenderPass : public IResource
     {
 	    
+    };
+
+    class IFramebuffer : public IResource
+    {
+    private:
+        IRenderPass* m_RenderPass;
     };
 
     enum class PrimitiveType : uint8_t
@@ -293,6 +323,8 @@ namespace RHI
         virtual IRHICommandList* createCommandList(const CommandListParameters& params = CommandListParameters()) = 0;
         virtual uint64_t executeCommandLists(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists, CommandQueue executionQueue = CommandQueue::Graphics) = 0;
         virtual GraphicsAPI getGraphicsAPI() const = 0;
+        virtual IRenderPass* createRenderPass(const RenderPassCreateInfo& ci = RenderPassCreateInfo()) = 0;
+        virtual IFramebuffer* createFramebuffer(IRenderPass* renderPass, const std::vector<ITexture*>& images) = 0;
         virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* framebuffer) = 0;
     };
 }

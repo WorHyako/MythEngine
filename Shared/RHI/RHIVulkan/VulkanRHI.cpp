@@ -316,7 +316,10 @@ namespace RHI::Vulkan
         }
     }
 
-
+    uint32_t VulkanDynamicRHI::GetBackBufferCount()
+    {
+        return uint32_t(m_SwapchainImages.size());
+    }
 
     bool VulkanDynamicRHI::createSwapchain()
     {
@@ -602,7 +605,7 @@ namespace RHI::Vulkan
                 m_DeviceParams.backBufferHeight = surfaceCaps.currentExtent.height;
 
                 resizeSwapchain();
-                //BackBufferResized();
+                BackBufferResized();
             }
             else
                 break;

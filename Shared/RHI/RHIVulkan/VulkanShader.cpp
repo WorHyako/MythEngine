@@ -48,7 +48,7 @@ namespace RHI::Vulkan
         return GLSLANG_STAGE_VERTEX;
     }
 
-    static size_t compileShader(glslang_stage_t stage, const char* shaderSource, ShaderModule& shaderModule)
+    static size_t compileShader(glslang_stage_t stage, const char* shaderSource, Shader& shaderModule)
     {
         const glslang_input_t input{
                 GLSLANG_SOURCE_GLSL,
@@ -114,7 +114,7 @@ namespace RHI::Vulkan
         return shaderModule.SPIRV.size();
     }
 
-    size_t compileShaderFile(const char* file, ShaderModule& shaderModule)
+    size_t compileShaderFile(const char* file, Shader& shaderModule)
     {
         if (auto shaderSource = readShaderFile(file); !shaderSource.empty())
             return compileShader(glslangShaderStageFromFileName(file), shaderSource.c_str(), shaderModule);
@@ -122,7 +122,7 @@ namespace RHI::Vulkan
         return 0;
     }
 
-    VkResult Device::createShaderModule(ShaderModule* shader, const char* fileName)
+    VkResult Device::createShaderModule(Shader* shader, const char* fileName)
     {
         if (compileShaderFile(fileName, *shader) < 1)
             return VK_NOT_READY;

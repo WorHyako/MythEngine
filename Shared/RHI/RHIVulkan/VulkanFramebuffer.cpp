@@ -31,33 +31,37 @@ namespace RHI::Vulkan
         return true;
     }
 
-    VkFramebuffer Device::createFramebuffer(RenderPass renderPass, const std::vector<Texture>& images)
+    IFramebuffer* Device::createFramebuffer(IRenderPass* renderPass, const std::vector<ITexture*>& images)
     {
-        VkFramebuffer framebuffer;
+        Framebuffer* fb = new Framebuffer(m_Context);
+        RenderPass* rp = dynamic_cast<RenderPass*>(renderPass);
 
         std::vector<VkImageView> attachments;
-        for (const auto& i : images)
-            attachments.push_back(i.image.imageView);
+        for (const auto& image : images)
+        {
+            Texture* texture = dynamic_cast<Texture*>(image);
+            attachments.push_back(texture->image.imageView);
+        }
 
         VkFramebufferCreateInfo fbInfo{};
         fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fbInfo.pNext = nullptr;
         fbInfo.flags = 0;
-        fbInfo.renderPass = renderPass.handle;
+        fbInfo.renderPass = rp->handle;
         fbInfo.attachmentCount = (uint32_t)attachments.size();
         fbInfo.pAttachments = attachments.data();
-        fbInfo.width = images[0].width;
-        fbInfo.height = images[0].height;
+        fbInfo.width = images[0]->width;
+        fbInfo.height = images[0]->height;
         fbInfo.layers = 1;
 
-        if (vkCreateFramebuffer(m_Context.device, &fbInfo, nullptr, &framebuffer) != VK_SUCCESS)
+        if (vkCreateFramebuffer(m_Context.device, &fbInfo, nullptr, &fb->framebuffer) != VK_SUCCESS)
         {
             printf("Unable to create offscreen framebuffer\n");
             exit(EXIT_FAILURE);
         }
 
-        m_Resources.allFramebuffers.push_back(framebuffer);
-        return framebuffer;
+        m_Resources.allFramebuffers.push_back(fb->framebuffer);
+        return fb;
     }
 
     std::vector<VkFramebuffer> Device::addFramebuffers(VkRenderPass renderPass, VkImageView depthView)

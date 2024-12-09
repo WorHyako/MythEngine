@@ -15,4 +15,6 @@ namespace RHI::Vulkan
 		virtual void queueWaitForSemaphore(CommandQueue waitQueueID, VkSemaphore semaphore, uint64_t value) = 0;
 		virtual void queueSignalSemaphore(CommandQueue executionQueueID, VkSemaphore semaphore, uint64_t value) = 0;
 	};
+
+	VkFormat convertFormat(RHI::Format format);
 }

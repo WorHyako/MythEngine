@@ -3,28 +3,29 @@
 
 namespace RHI::Vulkan
 {
-
-    RenderPass Device::addFullScreenPass(bool useDepth, const RenderPassCreateInfo ci)
+    RenderPass Device::addFullScreenPass(const RenderPassCreateInfo ci)
     {
-        RenderPass result(useDepth, ci);
+        RenderPass result(ci);
         m_Resources.allRenderPasses.push_back(result.handle);
         return result;
     }
 
-    RenderPass Device::addRenderPass(const std::vector<Texture>& outputs, const RenderPassCreateInfo& ci, bool useDepth)
+    IRenderPass* Device::createRenderPass(const RenderPassCreateInfo& ci)
     {
+        RenderPass* rp = new RenderPass(ci);
+
         VkRenderPass renderPass;
 
-        if (outputs.empty())
+        if (ci.numOutputs == 0)
         {
             printf("Empty list of output attachments for RenderPass\n");
             exit(EXIT_FAILURE);
         }
 
-        if (outputs.size() == 1)
+        if (ci.numOutputs == 1)
         {
             printf("Creating color-only render pass\n");
-            if (!createColorOnlyRenderPass(&renderPass, ci, outputs[0].format))
+            if (!createColorOnlyRenderPass(&renderPass, ci, convertFormat(ci.format)))
             {
                 printf("Unable to create offscreen color-only render pass\n");
                 exit(EXIT_FAILURE);
@@ -34,7 +35,7 @@ namespace RHI::Vulkan
         {
             printf("Creating color/depth render pass\n");
             // TODO: update create...RenderPass to support multiple color attachments
-            if (!createColorAndDepthRenderPass(useDepth && (outputs.size() > 1), &renderPass, ci, outputs[0].format))
+            if (!createColorAndDepthRenderPass(ci.useDepth && (ci.numOutputs > 1), &renderPass, ci, convertFormat(ci.format)))
             {
                 printf("Unable to create offscreen render pass\n");
                 exit(EXIT_FAILURE);
@@ -42,13 +43,12 @@ namespace RHI::Vulkan
         }
 
         m_Resources.allRenderPasses.push_back(renderPass);
-        RenderPass rp;
-        rp.info = ci;
-        rp.handle = renderPass;
+        rp->info = ci;
+        rp->handle = renderPass;
         return rp;
     }
 
-    RenderPass Device::addDepthRenderPass(const std::vector<Texture>& outputs, const RenderPassCreateInfo ci)
+    RenderPass Device::addDepthRenderPass(const RenderPassCreateInfo ci)
     {
         VkRenderPass renderPass;
 
@@ -70,21 +70,21 @@ namespace RHI::Vulkan
     bool Device::createColorOnlyRenderPass(VkRenderPass* renderPass, const RenderPassCreateInfo& ci, VkFormat colorFormat)
     {
         RenderPassCreateInfo ci2 = ci;
-        ci2.clearDepth_ = false;
+        ci2.clearDepth = false;
         return createColorAndDepthRenderPass(false, renderPass, ci2, colorFormat);
     }
 
     bool Device::createColorAndDepthRenderPass(bool useDepth, VkRenderPass* renderPass, const RenderPassCreateInfo& ci, VkFormat colorFormat)
     {
-        const bool offscreenInt = ci.flags_ & eRenderPassBit_OffscreenInternal;
-        const bool first = ci.flags_ & eRenderPassBit_First;
-        const bool last = ci.flags_ & eRenderPassBit_Last;
+        const bool offscreenInt = ci.flags & eRenderPassBit_OffscreenInternal;
+        const bool first = ci.flags & eRenderPassBit_First;
+        const bool last = ci.flags & eRenderPassBit_Last;
 
         VkAttachmentDescription colorAttachment{};
         colorAttachment.flags = 0;
         colorAttachment.format = colorFormat;
         colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        colorAttachment.loadOp = offscreenInt ? VK_ATTACHMENT_LOAD_OP_LOAD : (ci.clearColor_ ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD);
+        colorAttachment.loadOp = offscreenInt ? VK_ATTACHMENT_LOAD_OP_LOAD : (ci.clearColor ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD);
         colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -99,18 +99,18 @@ namespace RHI::Vulkan
         depthAttachment.flags = 0;
         depthAttachment.format = useDepth ? findDepthFormat() : VK_FORMAT_D32_SFLOAT;
         depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        depthAttachment.loadOp = offscreenInt ? VK_ATTACHMENT_LOAD_OP_LOAD : (ci.clearDepth_ ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD);
+        depthAttachment.loadOp = offscreenInt ? VK_ATTACHMENT_LOAD_OP_LOAD : (ci.clearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD);
         depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        depthAttachment.initialLayout = ci.clearDepth_ ? VK_IMAGE_LAYOUT_UNDEFINED : (offscreenInt ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        depthAttachment.initialLayout = ci.clearDepth ? VK_IMAGE_LAYOUT_UNDEFINED : (offscreenInt ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
         depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
         VkAttachmentReference depthAttachmentRef{};
         depthAttachmentRef.attachment = 1;
         depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-        if (ci.flags_ & eRenderPassBit_Offscreen)
+        if (ci.flags & eRenderPassBit_Offscreen)
             colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         std::vector<VkSubpassDependency> dependencies;
@@ -123,7 +123,7 @@ namespace RHI::Vulkan
         subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         subpassDependency.dependencyFlags = 0;
 
-        if (ci.flags_ & eRenderPassBit_Offscreen)
+        if (ci.flags & eRenderPassBit_Offscreen)
         {
             colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             depthAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -186,11 +186,11 @@ namespace RHI::Vulkan
         depthAttachment.flags = 0;
         depthAttachment.format = findDepthFormat();
         depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        depthAttachment.loadOp = ci.clearDepth_ ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        depthAttachment.loadOp = ci.clearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        depthAttachment.initialLayout = ci.clearDepth_ ? VK_IMAGE_LAYOUT_UNDEFINED : (ci.flags_ & eRenderPassBit_OffscreenInternal ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        depthAttachment.initialLayout = ci.clearDepth ? VK_IMAGE_LAYOUT_UNDEFINED : (ci.flags & eRenderPassBit_OffscreenInternal ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
         depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
         VkAttachmentReference depthAttachmentRef{};
@@ -199,7 +199,7 @@ namespace RHI::Vulkan
 
         std::vector<VkSubpassDependency> dependencies;
 
-        if (ci.flags_ & eRenderPassBit_Offscreen)
+        if (ci.flags & eRenderPassBit_Offscreen)
         {
             depthAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 

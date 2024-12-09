@@ -19,7 +19,9 @@ namespace RHI::Vulkan
         GraphicsPipeline* pso = new GraphicsPipeline(m_Context);
         const GraphicsPipelineInfo& pipeInfo = desc.pipelineInfo;
 
-        std::vector<ShaderModule> localShaderModules;
+        Framebuffer* fb = dynamic_cast<Framebuffer*>(framebuffer);
+
+        std::vector<Shader> localShaderModules;
         std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 
         uint32_t numShaders = 0;
@@ -53,6 +55,11 @@ namespace RHI::Vulkan
             VkShaderStageFlagBits stage = glslangShaderStageToVulkan(glslangShaderStageFromFileName(file));
 
             shaderStages[i] = shaderStageInfo(stage, localShaderModules[i], "main");
+        }
+
+        if (Shader* shader = dynamic_cast<Shader*>(desc.VS))
+        {
+            shaderStages.push_back(shaderStageInfo(shader->stage, *shader, "main"));
         }
 
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
@@ -155,7 +162,7 @@ namespace RHI::Vulkan
         pipelineInfo.pColorBlendState = &colorBlending;
         pipelineInfo.pDynamicState = pipeInfo.dynamicScissorState ? &dynamicState : nullptr;
         pipelineInfo.layout = pipelineLayout;
-        pipelineInfo.renderPass = renderPass;
+        pipelineInfo.renderPass = fb->renderPass;
         pipelineInfo.subpass = 0;
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
         pipelineInfo.basePipelineIndex = -1;
