@@ -11,6 +11,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_set>
 
 #include <glslang/Include/glslang_c_interface.h>
 #include <glslang/Public/resource_limits_c.h>
@@ -241,7 +242,7 @@ namespace RHI::Vulkan
 		void createWindowSurface();
 		virtual GraphicsAPI getGraphicsAPI() const override;
 		virtual void CreateDevice() override;
-		VkResult createDevice(VkPhysicalDeviceFeatures deviceFeatures, VkPhysicalDeviceFeatures2 deviceFeatures2);
+		VkResult createDevice(std::unordered_set<uint32_t>& uniqueQueueFamilies, VkPhysicalDeviceFeatures deviceFeatures, VkPhysicalDeviceFeatures2 deviceFeatures2);
 		virtual RHI::IDevice* getDevice() const override;
 		bool CreateSwapchain();
 		virtual bool BeginFrame() override;
@@ -250,6 +251,7 @@ namespace RHI::Vulkan
 		void setWindow(GLFWwindow* window);
 
 		virtual uint32_t GetBackBufferCount() override;
+		virtual uint32_t GetCurrentBackBufferIndex() override;
 		virtual ITexture* GetBackBuffer(uint32_t index) override;
 		virtual IFramebuffer* GetFramebuffer(uint32_t index) override;
 

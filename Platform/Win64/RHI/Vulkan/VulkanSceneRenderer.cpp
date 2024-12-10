@@ -56,7 +56,7 @@ bool VulkanSceneRenderer::renderScene()
 		pipelineDesc.primType = RHI::PrimitiveType::TriangleList;
 		pipelineDesc.pipelineInfo.useDepth = true;
 
-		m_GraphicsPipeline = m_Device->createGraphicsPipeline(pipelineDesc, m_DynamicRHI->GetFramebuffer(0));
+		m_GraphicsPipeline = m_Device->createGraphicsPipeline(pipelineDesc, m_DynamicRHI->GetFramebuffer(m_DynamicRHI->GetCurrentBackBufferIndex()));
 	}
 
     //updateBuffers(imageIndex);
@@ -67,7 +67,7 @@ bool VulkanSceneRenderer::renderScene()
 
 	RHI::GraphicsState state = {};
 	state.pipeline = m_GraphicsPipeline;
-	state.framebuffer = m_DynamicRHI->GetFramebuffer(0);
+	state.framebuffer = m_DynamicRHI->GetFramebuffer(m_DynamicRHI->GetCurrentBackBufferIndex());
 	m_CommandList->setGraphicsState(state);
 
 	RHI::DrawArguments drawArgs = {};

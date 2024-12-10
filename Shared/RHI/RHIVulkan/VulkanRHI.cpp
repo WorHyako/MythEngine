@@ -164,7 +164,33 @@ namespace RHI::Vulkan
             uniqueQueueFamilies.insert(m_TransferQueueFamily);
         }
 
-    	VK_CHECK(createDevice(deviceFeatures, deviceFeatures2));
+        VkBool32 presentSupported = 0;
+        {
+            uint32_t familyCount = 0;
+            vkGetPhysicalDeviceQueueFamilyProperties(m_VulkanPhysicalDevice, &familyCount, nullptr);
+
+            for (uint32_t i = 0; i != familyCount; i++)
+            {
+                vkGetPhysicalDeviceSurfaceSupportKHR(m_VulkanPhysicalDevice, i, m_VulkanInstance.surface, &presentSupported);
+                if (presentSupported)
+                {
+                    m_PresentQueueFamily = i;
+                    break;
+                }
+            }
+        }
+
+        if (!presentSupported)
+        {
+            exit(EXIT_FAILURE);
+        }
+
+        if(m_DeviceParams.usePresentQueue && presentSupported)
+        {
+            uniqueQueueFamilies.insert(m_PresentQueueFamily);
+        }
+
+    	VK_CHECK(createDevice(uniqueQueueFamilies, deviceFeatures, deviceFeatures2));
 
         if (m_DeviceParams.useGraphicsQueue)
         {
@@ -179,6 +205,15 @@ namespace RHI::Vulkan
         {
             vkGetDeviceQueue(m_VulkanDevice, m_ComputeQueueFamily, 0, &m_ComputeQueue);
             if (m_ComputeQueue == nullptr)
+            {
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        if (m_DeviceParams.usePresentQueue)
+        {
+            vkGetDeviceQueue(m_VulkanDevice, m_PresentQueueFamily, 0, &m_PresentQueue);
+            if (m_PresentQueue == nullptr)
             {
                 exit(EXIT_FAILURE);
             }
@@ -204,13 +239,6 @@ namespace RHI::Vulkan
 
         m_Device = new RHI::Vulkan::Device(DeviceDesc);
 
-        VkBool32 presentSupported = 0;
-        vkGetPhysicalDeviceSurfaceSupportKHR(m_VulkanPhysicalDevice, m_GraphicsQueueFamily, m_VulkanInstance.surface, &presentSupported);
-        if (!presentSupported)
-        {
-            exit(EXIT_FAILURE);
-        }
-
         createSwapchain();
         const size_t imageCount = createSwapchainImages();
         m_SwapChainIndex = 0;
@@ -231,7 +259,7 @@ namespace RHI::Vulkan
         BackBufferResized();
     }
 
-    VkResult VulkanDynamicRHI::createDevice(VkPhysicalDeviceFeatures deviceFeatures, VkPhysicalDeviceFeatures2 deviceFeatures2)
+    VkResult VulkanDynamicRHI::createDevice(std::unordered_set<uint32_t>& uniqueQueueFamilies, VkPhysicalDeviceFeatures deviceFeatures, VkPhysicalDeviceFeatures2 deviceFeatures2)
     {
         std::vector<const char*> extensions{};
         if (m_VulkanExtensions.KHR_swapchain)
@@ -268,25 +296,16 @@ namespace RHI::Vulkan
 
         std::vector<VkDeviceQueueCreateInfo> qci{};
 
-        VkDeviceQueueCreateInfo qciGfx{};
-        qciGfx.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        qciGfx.pNext = nullptr;
-        qciGfx.flags = 0;
-        qciGfx.queueFamilyIndex = m_GraphicsQueueFamily;
-        qciGfx.queueCount = 1;
-        qciGfx.pQueuePriorities = &queuePriorities[0];
-        qci.push_back(qciGfx);
-
-        if (m_DeviceParams.useComputeQueue)
+        for(uint32_t queueFamily : uniqueQueueFamilies)
         {
-            VkDeviceQueueCreateInfo qciComp{};
-            qciComp.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            qciComp.pNext = nullptr;
-            qciComp.flags = 0;
-            qciComp.queueFamilyIndex = m_ComputeQueueFamily;
-            qciComp.queueCount = 1;
-            qciComp.pQueuePriorities = &queuePriorities[1];
-            qci.push_back(qciComp);
+            VkDeviceQueueCreateInfo qciGfx{};
+            qciGfx.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            qciGfx.pNext = nullptr;
+            qciGfx.flags = 0;
+            qciGfx.queueFamilyIndex = queueFamily;
+            qciGfx.queueCount = 1;
+            qciGfx.pQueuePriorities = &queuePriorities[0];
+            qci.push_back(qciGfx);
         }
 
         VkDeviceCreateInfo ci{};
@@ -327,6 +346,11 @@ namespace RHI::Vulkan
     uint32_t VulkanDynamicRHI::GetBackBufferCount()
     {
         return uint32_t(m_SwapchainImages.size());
+    }
+
+    uint32_t VulkanDynamicRHI::GetCurrentBackBufferIndex()
+    {
+        return m_SwapChainIndex;
     }
 
     ITexture* VulkanDynamicRHI::GetBackBuffer(uint32_t index)
@@ -619,7 +643,7 @@ namespace RHI::Vulkan
 
     bool VulkanDynamicRHI::BeginFrame()
     {
-        const auto& semaphore = m_AcquireSemaphores[m_AcquireSemaphoreIndex];
+        const VkSemaphore& semaphore = m_AcquireSemaphores[m_AcquireSemaphoreIndex];
 
         VkResult result;
 
@@ -658,7 +682,12 @@ namespace RHI::Vulkan
 
     bool VulkanDynamicRHI::Present()
     {
-        const auto& semaphore = m_PresentSemaphores[m_PresentSemaphoreIndex];
+        const VkSemaphore& semaphore = m_PresentSemaphores[m_PresentSemaphoreIndex];
+
+        m_Device->queueSignalSemaphore(RHI::CommandQueue::Graphics, semaphore, 0);
+
+        std::vector<IRHICommandList*> commandLists;
+        m_Device->executeCommandLists(commandLists, 0, CommandQueue::Graphics);
 
         VkPresentInfoKHR pi{};
         pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -672,7 +701,7 @@ namespace RHI::Vulkan
         m_PresentSemaphoreIndex = (m_PresentSemaphoreIndex + 1) % m_PresentSemaphores.size();
 
         //VK_CHECK(vkQueuePresentKHR(m_PresentQueue, &pi));
-        VK_CHECK(vkQueuePresentKHR(m_GraphicsQueue, &pi));
+        VK_CHECK(vkQueuePresentKHR(m_PresentQueue, &pi));
         VK_CHECK(vkDeviceWaitIdle(m_VulkanDevice));
 
         return true;

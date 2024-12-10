@@ -21,6 +21,7 @@ namespace RHI
 			ci.clearColor = true;
 			ci.clearDepth = true;
 			ci.useDepth = false;
+			ci.flags = eRenderPassBit_First | eRenderPassBit_Last;
 			ci.format = Format::BGRA8_UNORM;
 			ci.numOutputs = 1;
 			IRenderPass* renderPass = getDevice()->createRenderPass(ci);

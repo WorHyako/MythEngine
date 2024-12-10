@@ -70,6 +70,7 @@ namespace mythSystem
                     deviceParams.useGraphicsQueue = true;
                     deviceParams.useComputeQueue = true;
                     deviceParams.useTransferQueue = true;
+                    deviceParams.usePresentQueue = true;
                     Resolution resolution;
                     m_Window.get()->getFramebufferResolution(resolution);
                     deviceParams.backBufferWidth = resolution.width;

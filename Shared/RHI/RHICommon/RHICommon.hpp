@@ -161,6 +161,7 @@ namespace RHI
         bool useGraphicsQueue = true;
         bool useComputeQueue = false;
         bool useTransferQueue = false;
+        bool usePresentQueue = false;
 
         bool enableDebugRuntime = false;
 
@@ -183,6 +184,7 @@ namespace RHI
         virtual bool Present() = 0;
         virtual void BackBufferResized();
         virtual ITexture* GetBackBuffer(uint32_t index) = 0;
+        virtual uint32_t GetCurrentBackBufferIndex() = 0;
         virtual uint32_t GetBackBufferCount() = 0;
         virtual IFramebuffer* GetFramebuffer(uint32_t index) = 0;
         virtual IDevice* getDevice() const = 0;

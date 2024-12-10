@@ -30,10 +30,13 @@ namespace RHI::Vulkan
 				if (TrackedCommandBufferPtr commandBuffer = commandList->getCurrentCommandBuffer())
 				{
 					commandBuffers[i] = commandBuffer->commandBuffer;
-					m_CommandBuffersInFlight.push_back(commandBuffer);
+					//TODO:fix memory leaking
+					//m_CommandBuffersInFlight.push_back(commandBuffer);
 				}
 			}
 		}
+
+		//m_SignalSemaphores.push_back(trackingSemaphore);
 
 		VkSubmitInfo si{};
 		si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -41,9 +44,9 @@ namespace RHI::Vulkan
 		si.waitSemaphoreCount = uint32_t(m_WaitSemaphores.size());
 		si.pWaitSemaphores = m_WaitSemaphores.data();
 		si.pWaitDstStageMask = waitStages;
-		si.commandBufferCount = commandBuffers.size();
+		si.commandBufferCount = uint32_t(commandBuffers.size());
 		si.pCommandBuffers = commandBuffers.data();
-		si.signalSemaphoreCount = m_SignalSemaphores.size();
+		si.signalSemaphoreCount = uint32_t(m_SignalSemaphores.size());
 		si.pSignalSemaphores = m_SignalSemaphores.data();
 
 		VK_CHECK(vkQueueSubmit(m_Queue, 1, &si, nullptr));
@@ -60,7 +63,7 @@ namespace RHI::Vulkan
 
 		VkCommandPoolCreateInfo cpi{};
 		cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		cpi.flags = 0;
+		cpi.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 		cpi.queueFamilyIndex = m_QueueFamilyIndex;
 
 		VK_CHECK(vkCreateCommandPool(m_Context.device, &cpi, nullptr, &commandBuffer->commandPool));
@@ -85,11 +88,13 @@ namespace RHI::Vulkan
 		if(m_CommandBuffersPool.empty())
 		{
 			commandBuffer = createCommandBuffer();
+			m_CommandBuffersPool.push_back(commandBuffer);
 		}
 		else
 		{
 			commandBuffer = m_CommandBuffersPool.front();
-			m_CommandBuffersPool.pop_front();
+			//TODO:fix memory leaking
+			//m_CommandBuffersPool.pop_front();
 		}
 
 		return commandBuffer;
