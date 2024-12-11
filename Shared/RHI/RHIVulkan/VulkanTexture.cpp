@@ -86,7 +86,7 @@ namespace RHI::Vulkan
         tex->height = texHeight;
         tex->depth = 1;
         tex->format = VK_FORMAT_R8G8B8A8_UNORM;
-        if (!createTextureImageFromData(tex->image.image, tex->image.imageMemory,
+        if (!createTextureImageFromData(tex->image, tex->imageMemory,
             data, texWidth, texHeight, tex->format))
         {
             printf("Cannot create solid texture\n");
@@ -94,9 +94,9 @@ namespace RHI::Vulkan
         }
 
         // TODO:fix command list ussie
-        //transitionImageLayout(tex->image.image, tex->format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        //transitionImageLayout(tex->image, tex->format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        if (!createImageView(tex->image.image, tex->format, VK_IMAGE_ASPECT_COLOR_BIT, &tex->image.imageView))
+        if (!createImageView(tex->image, tex->format, VK_IMAGE_ASPECT_COLOR_BIT, &tex->imageView))
         {
             printf("Cannot create image view for 2d texture\n");
             exit(EXIT_FAILURE);
@@ -115,7 +115,7 @@ namespace RHI::Vulkan
         tex->height = 1;
         tex->depth = 1;
         tex->format = VK_FORMAT_R8G8B8A8_UNORM;
-        if (!createTextureImageFromData(tex->image.image, tex->image.imageMemory,
+        if (!createTextureImageFromData(tex->image, tex->imageMemory,
             &color, 1, 1, tex->format))
         {
             printf("Cannot create solid texture\n");
@@ -123,9 +123,9 @@ namespace RHI::Vulkan
         }
 
         // TODO:fix command list ussie
-        //transitionImageLayout(tex->image.image, tex->format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        //transitionImageLayout(tex->image, tex->format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        if (!createImageView(tex->image.image, tex->format, VK_IMAGE_ASPECT_COLOR_BIT, &tex->image.imageView))
+        if (!createImageView(tex->image, tex->format, VK_IMAGE_ASPECT_COLOR_BIT, &tex->imageView))
         {
             printf("Cannot create image view for solid texture\n");
             exit(EXIT_FAILURE);
@@ -150,18 +150,18 @@ namespace RHI::Vulkan
         tex->format = colorFormat;
 
         if (!createOffscreenImage(
-            tex->image.image, tex->image.imageMemory,
+            tex->image, tex->imageMemory,
             w, h, colorFormat, 1, 0))
         {
             printf("Cannot create color texture\n");
             exit(EXIT_FAILURE);
         }
 
-        createImageView(tex->image.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, &tex->image.imageView);
+        createImageView(tex->image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, &tex->imageView);
         createTextureSampler(&tex->sampler, minFilter, maxFilter, addressMode);
 
         // TODO:fix command list ussie
-        //transitionImageLayout(tex->image.image, colorFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        //transitionImageLayout(tex->image, colorFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         // TODO:fix allocation issue
         //m_Resources.allTextures.push_back(tex);
 
@@ -183,15 +183,15 @@ namespace RHI::Vulkan
 
         if (!createImage(w, h, depthFormat,
             VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex->image.image, tex->image.imageMemory))
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex->image, tex->imageMemory))
         {
             printf("Cannot create depth texture\n");
             exit(EXIT_FAILURE);
         }
 
-        createImageView(tex->image.image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, &tex->image.imageView);
+        createImageView(tex->image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, &tex->imageView);
         // TODO:fix command list ussie
-        //transitionImageLayout(tex->image.image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, layout/*VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL*/);
+        //transitionImageLayout(tex->image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, layout/*VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL*/);
 
         if (!createDepthSampler(&tex->sampler))
         {
@@ -318,15 +318,10 @@ namespace RHI::Vulkan
 
     void Device::destroyVulkanTexture(Texture& texture)
     {
-        destroyVulkanImage(texture.image);
+        vkDestroyImageView(m_Context.device, texture.imageView, nullptr);
+        vkDestroyImage(m_Context.device, texture.image, nullptr);
+        vkFreeMemory(m_Context.device, texture.imageMemory, nullptr);
         vkDestroySampler(m_Context.device, texture.sampler, nullptr);
-    }
-
-    void Device::destroyVulkanImage(VulkanImage& image)
-    {
-        vkDestroyImageView(m_Context.device, image.imageView, nullptr);
-        vkDestroyImage(m_Context.device, image.image, nullptr);
-        vkFreeMemory(m_Context.device, image.imageMemory, nullptr);
     }
 
     bool Device::createTextureImage(const char* filename, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* outTexWidth, uint32_t* outTexHeight)
@@ -609,11 +604,11 @@ namespace RHI::Vulkan
         uint32_t w = 0, h = 0;
 
         if (mipLevels > 1)
-            createMIPCubeTextureImage(fileName, mipLevels, cubemap.image.image, cubemap.image.imageMemory, &w, &h);
+            createMIPCubeTextureImage(fileName, mipLevels, cubemap.image, cubemap.imageMemory, &w, &h);
         else
-            createCubeTextureImage(fileName, cubemap.image.image, cubemap.image.imageMemory, &w, &h);
+            createCubeTextureImage(fileName, cubemap.image, cubemap.imageMemory, &w, &h);
 
-        createImageView(cubemap.image.image, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, &cubemap.image.imageView, VK_IMAGE_VIEW_TYPE_CUBE, 6, mipLevels);
+        createImageView(cubemap.image, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, &cubemap.imageView, VK_IMAGE_VIEW_TYPE_CUBE, 6, mipLevels);
         createTextureSampler(&cubemap.sampler);
 
         cubemap.format = VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -640,14 +635,14 @@ namespace RHI::Vulkan
         ktx.height = extent.y;
         ktx.depth = 4;
 
-        if (!createTextureImageFromData(ktx.image.image, ktx.image.imageMemory,
+        if (!createTextureImageFromData(ktx.image, ktx.imageMemory,
             (uint8_t*)gliTex.data(0, 0, 0), ktx.width, ktx.height, VK_FORMAT_R16G16_SFLOAT))
         {
             printf("ModelRenderer: failed to load BRDF LUT texture \n");
             exit(EXIT_FAILURE);
         }
 
-        createImageView(ktx.image.image, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, &ktx.image.imageView);
+        createImageView(ktx.image, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, &ktx.imageView);
         createTextureSampler(&ktx.sampler, VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
         // TODO:fix allocation issue
@@ -661,7 +656,7 @@ namespace RHI::Vulkan
     Texture Device::loadTexture2D(const char* fileName)
     {
         Texture tex;
-        if (!createTextureImage(fileName, tex.image.image, tex.image.imageMemory, &tex.width, &tex.height))
+        if (!createTextureImage(fileName, tex.image, tex.imageMemory, &tex.width, &tex.height))
         {
             printf("Cannot load %s 2D texture file\n", fileName);
             exit(EXIT_FAILURE);
@@ -669,9 +664,9 @@ namespace RHI::Vulkan
 
         VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
         // TODO:fix command list ussie
-        //transitionImageLayout(tex.image.image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        //transitionImageLayout(tex.image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        if (!createImageView(tex.image.image, format, VK_IMAGE_ASPECT_COLOR_BIT, &tex.image.imageView))
+        if (!createImageView(tex.image, format, VK_IMAGE_ASPECT_COLOR_BIT, &tex.imageView))
         {
             printf("Cannot create image view for 2d texture (%s)\n", fileName);
             exit(EXIT_FAILURE);
@@ -710,13 +705,13 @@ namespace RHI::Vulkan
         //int texWidth = 1, texHeight = 1;
         //io.Fonts->GetTexDataAsRGBA32(&pixels, &texWidth, &texHeight);
 
-        //if (!pixels || !createTextureImageFromData(res.image.image, res.image.imageMemory, pixels, texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM))
+        //if (!pixels || !createTextureImageFromData(res.image, res.imageMemory, pixels, texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM))
         //{
         //    printf("Failed to load texture\n"); fflush(stdout);
         //    return res;
         //}
 
-        //createImageView(res.image.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, &res.image.imageView);
+        //createImageView(res.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, &res.imageView);
         //createTextureSampler(&res.sampler);
 
         ///* This is not strictly necessary, a font can be any texture */

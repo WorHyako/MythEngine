@@ -21,6 +21,8 @@ namespace RHI::Vulkan
     {
         m_CurrentCommandBuffer = m_Device->getQueue(m_CommandListParameters.queueType)->getOrCreateCommandBuffer();
 
+        vkResetCommandBuffer(m_CurrentCommandBuffer->commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.pNext = nullptr;

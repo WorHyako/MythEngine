@@ -331,23 +331,14 @@ namespace RHI::Vulkan
 		Buffer(){}
 		virtual ~Buffer() override {}
 
+		BufferDesc desc;
+
 		VkBuffer		buffer;
 		VkDeviceSize	size;
 		VkDeviceMemory	memory;
 
 		/* Permanent mapping to CPU address space (see VulkanResources::addBuffer) */
 		void* ptr;
-	};
-
-	class VulkanImage final : public IImage
-	{
-	public:
-		VulkanImage(){}
-		virtual ~VulkanImage() override {}
-
-		VkImage image = nullptr;
-		VkDeviceMemory imageMemory = nullptr;
-		VkImageView imageView = nullptr;
 	};
 
 	// Aggregate structure for passing around the texture data
@@ -357,9 +348,13 @@ namespace RHI::Vulkan
 		Texture() {}
 		virtual ~Texture() override {}
 
+		TextureDesc desc;
+
 		VkFormat format;
 
-		VulkanImage image;
+		VkImage image = nullptr;
+		VkDeviceMemory imageMemory = nullptr;
+		VkImageView imageView = nullptr;
 		VkSampler sampler;
 
 		// Offscreen buffers require VK_IMAGE_LAYOUT_GENERAL && static textures have VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
@@ -532,7 +527,7 @@ namespace RHI::Vulkan
 
 	bool downloadImageData(Device& vkDev, VkImage& textureImage, uint32_t texWidth, uint32_t texHeight, VkFormat texFormat, uint32_t layerCount, void* imageData, VkImageLayout sourceImageLayout);
 
-	bool createDepthResources(Device& vkDev, uint32_t width, uint32_t height, VulkanImage& depth);
+	bool createDepthResources(Device& vkDev, uint32_t width, uint32_t height, Texture& depth);
 
 	bool createTexturedVertexBuffer(Device& vkDev, const char* filename, VkBuffer* storageBuffer, VkDeviceMemory* storageBufferMemory, size_t* vertexBufferSize, size_t* indexBufferSize);
 
@@ -692,7 +687,6 @@ namespace RHI::Vulkan
 			VkFormat texFormat,
 			uint32_t layerCount, VkImageCreateFlags flags);
 
-		void destroyVulkanImage(VulkanImage& image);
 		void destroyVulkanTexture(Texture& texture);
 
 		bool createTextureImage(const char* filename, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* outTexWidth = nullptr, uint32_t* outTexHeight = nullptr);

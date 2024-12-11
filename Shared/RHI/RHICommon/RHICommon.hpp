@@ -221,14 +221,20 @@ namespace RHI
         uint32_t depth = 1;
     };
 
-    class IImage : public IResource
-    {
-	    
-    };
-
     struct BufferDesc
     {
-	    
+        uint32_t size;
+        Format format = Format::UNKNOWN;
+
+        bool isIndexBuffer = false;
+        bool isVertexBuffer = false;
+        bool isStorageBuffer = false;
+
+        constexpr BufferDesc& setSize(uint32_t value) { size = value; return *this; }
+        constexpr BufferDesc& setFormat(Format value) { format = value; return *this; }
+        constexpr BufferDesc& setIndexBuffer(bool value) { isIndexBuffer = value; return *this; }
+        constexpr BufferDesc& setVertexBuffer(bool value) { isVertexBuffer = value; return *this; }
+        constexpr BufferDesc& setStorageBuffer(bool value) { isStorageBuffer = value; return *this; }
     };
 
     class IBuffer : public IResource
