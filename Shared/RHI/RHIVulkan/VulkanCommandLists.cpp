@@ -16,7 +16,6 @@ namespace RHI::Vulkan
 		
 	}
 
-
     void CommandList::beginSingleTimeCommands()
     {
         m_CurrentCommandBuffer = m_Device->getQueue(m_CommandListParameters.queueType)->getOrCreateCommandBuffer();

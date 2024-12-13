@@ -328,17 +328,22 @@ namespace RHI::Vulkan
 	class Buffer : public IBuffer
 	{
 	public:
-		Buffer(){}
-		virtual ~Buffer() override {}
+		Buffer(const VulkanContext& context)
+			: m_Context(context)
+		{}
+		virtual ~Buffer() override;
 
-		BufferDesc desc;
+		BufferDesc		desc = {};
 
-		VkBuffer		buffer;
-		VkDeviceSize	size;
-		VkDeviceMemory	memory;
+		VkBuffer		buffer = VK_NULL_HANDLE;
+		VkDeviceSize	size = 0u;
+		VkDeviceMemory	memory = VK_NULL_HANDLE;
 
 		/* Permanent mapping to CPU address space (see VulkanResources::addBuffer) */
-		void* ptr;
+		void* ptr = nullptr;
+
+	private:
+		const VulkanContext& m_Context;
 	};
 
 	// Aggregate structure for passing around the texture data
@@ -673,7 +678,7 @@ namespace RHI::Vulkan
 
 		ITexture* addRGBATexture(int texWidth, int texHeight, void* data);
 
-		bool createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory, VkImageCreateFlags flags = 0, uint32_t mipLevels = 1);
+		ITexture* createImage(const TextureDesc& desc);
 
 		bool createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView, VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D, uint32_t layerCount = 1, uint32_t mipLevels = 1);
 
@@ -681,8 +686,7 @@ namespace RHI::Vulkan
 
 		bool createDepthSampler(VkSampler* sampler);
 
-		bool createOffscreenImage(
-			VkImage& textureImage, VkDeviceMemory& textureImageMemory,
+		ITexture* createOffscreenImage(
 			uint32_t texWidth, uint32_t texHeight,
 			VkFormat texFormat,
 			uint32_t layerCount, VkImageCreateFlags flags);
@@ -693,24 +697,22 @@ namespace RHI::Vulkan
 
 		bool createMIPTextureImage(const char* filename, uint32_t mipLevels, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* width = nullptr, uint32_t* height = nullptr);
 
-		bool createCubeTextureImage(const char* filename, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* width = nullptr, uint32_t* height = nullptr);
+		ITexture* createCubeTextureImage(const char* filename, uint32_t* width = nullptr, uint32_t* height = nullptr);
 
-		bool createMIPCubeTextureImage(const char* filename, uint32_t mipLevels, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* width = nullptr, uint32_t* height = nullptr);
+		ITexture* createMIPCubeTextureImage(const char* filename, uint32_t mipLevels, uint32_t* width = nullptr, uint32_t* height = nullptr);
 
-		bool createTextureImageFromData(
-			VkImage& textureImage, VkDeviceMemory& textureImageMemory,
+		ITexture* createTextureImageFromData(
 			void* imageData, uint32_t texWidth, uint32_t texHeight,
 			VkFormat texFormat,
 			uint32_t layerCount = 1, VkImageCreateFlags flags = 0);
 
-		bool createMIPTextureImageFromData(
-			VkImage& textureImage, VkDeviceMemory& textureImageMemory,
+		ITexture* createMIPTextureImageFromData(
 			void* mipData, uint32_t mipLevels, uint32_t texWidth, uint32_t texHeight,
 			VkFormat texFormat,
 			uint32_t layerCount = 1, VkImageCreateFlags flags = 0);
 
 		/* VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL for real update of an existing texture */
-		bool updateTextureImage(VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t texWidth, uint32_t texHeight,
+		bool updateTextureImage(ITexture* texture,
 			VkFormat texFormat, uint32_t layerCount, const void* imageData, VkImageLayout sourceImageLayout = VK_IMAGE_LAYOUT_UNDEFINED);
 
 		VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
@@ -719,11 +721,11 @@ namespace RHI::Vulkan
 
 		VkFormat findDepthFormat();
 
-		bool createUniformBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize bufferSize);
+		IBuffer* createUniformBuffer(VkDeviceSize bufferSize);
 
-		bool createSharedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+		IBuffer* createSharedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 
-		bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+		IBuffer* createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 
 		IBuffer* addBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool createMapping = false);
 
@@ -753,7 +755,7 @@ namespace RHI::Vulkan
 		/* Allocate and upload vertex & index buffer pair */
 		IBuffer* addVertexBuffer(uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData);
 
-		size_t allocateVertexBuffer(VkBuffer* storageBuffer, VkDeviceMemory* storageBufferMemory, size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData);
+		IBuffer* allocateVertexBuffer(size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData);
 
 		/** Copy [data] to GPU device buffer */
 		void uploadBufferData(const VkDeviceMemory& bufferMemory, VkDeviceSize deviceOffset, const void* data, const size_t dataSize);

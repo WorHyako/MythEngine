@@ -9,8 +9,10 @@
 
 namespace RHI::Vulkan
 {
-    bool Device::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+	IBuffer* Device::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
     {
+        Buffer* buffer = new Buffer(m_Context);
+
         VkBufferCreateInfo bufferInfo{};
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         bufferInfo.pNext = nullptr;
@@ -21,10 +23,10 @@ namespace RHI::Vulkan
         bufferInfo.queueFamilyIndexCount = 0;
         bufferInfo.pQueueFamilyIndices = nullptr;
 
-        VK_CHECK(vkCreateBuffer(m_Context.device, &bufferInfo, nullptr, &buffer));
+        VK_CHECK(vkCreateBuffer(m_Context.device, &bufferInfo, nullptr, &buffer->buffer));
 
         VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(m_Context.device, buffer, &memRequirements);
+        vkGetBufferMemoryRequirements(m_Context.device, buffer->buffer, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -32,19 +34,21 @@ namespace RHI::Vulkan
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
-        VK_CHECK(vkAllocateMemory(m_Context.device, &allocInfo, nullptr, &bufferMemory));
+        VK_CHECK(vkAllocateMemory(m_Context.device, &allocInfo, nullptr, &buffer->memory));
 
-        vkBindBufferMemory(m_Context.device, buffer, bufferMemory, 0);
+        vkBindBufferMemory(m_Context.device, buffer->buffer, buffer->memory, 0);
 
-        return true;
+        return buffer;
     }
 
-    bool Device::createSharedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+    IBuffer* Device::createSharedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
     {
         uint32_t familyCount = static_cast<uint32_t>(m_DeviceQueueIndices.size());
 
         if (familyCount < 2)
-            return createBuffer(size, usage, properties, buffer, bufferMemory);
+            return createBuffer(size, usage, properties);
+
+        Buffer* buffer = new Buffer(m_Context);
 
         VkBufferCreateInfo bufferInfo{};
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -56,10 +60,10 @@ namespace RHI::Vulkan
         bufferInfo.queueFamilyIndexCount = static_cast<uint32_t>(m_DeviceQueueIndices.size());
         bufferInfo.pQueueFamilyIndices = (familyCount > 1) ? m_DeviceQueueIndices.data() : nullptr;
 
-        VK_CHECK(vkCreateBuffer(m_Context.device, &bufferInfo, nullptr, &buffer));
+        VK_CHECK(vkCreateBuffer(m_Context.device, &bufferInfo, nullptr, &buffer->buffer));
 
         VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(m_Context.device, buffer, &memRequirements);
+        vkGetBufferMemoryRequirements(m_Context.device, buffer->buffer, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -67,19 +71,18 @@ namespace RHI::Vulkan
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
-        VK_CHECK(vkAllocateMemory(m_Context.device, &allocInfo, nullptr, &bufferMemory));
+        VK_CHECK(vkAllocateMemory(m_Context.device, &allocInfo, nullptr, &buffer->memory));
 
-        vkBindBufferMemory(m_Context.device, buffer, bufferMemory, 0);
+        vkBindBufferMemory(m_Context.device, buffer->buffer, buffer->memory, 0);
 
-        return true;
+        return buffer;
     }
 
-    bool Device::createUniformBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize bufferSize)
+    IBuffer* Device::createUniformBuffer(VkDeviceSize bufferSize)
     {
         return createBuffer(bufferSize,
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            buffer, bufferMemory);
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     }
 
     void Device::uploadBufferData(const VkDeviceMemory& bufferMemory, VkDeviceSize deviceOffset, const void* data, const size_t dataSize)
@@ -104,13 +107,8 @@ namespace RHI::Vulkan
 
     IBuffer* Device::addBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool createMapping)
     {
-        Buffer* buffer = new Buffer();
-        buffer->buffer = VK_NULL_HANDLE;
-        buffer->size = 0;
-        buffer->memory = VK_NULL_HANDLE;
-        buffer->ptr = nullptr;
-
-        if (!createSharedBuffer(size, usage, properties, buffer->buffer, buffer->memory))
+		Buffer* buffer = dynamic_cast<Buffer*>(createSharedBuffer(size, usage, properties));
+        if (!buffer)
         {
             printf("Cannot allocate buffer\n");
             exit(EXIT_FAILURE);
@@ -129,39 +127,36 @@ namespace RHI::Vulkan
 
     IBuffer* Device::addVertexBuffer(uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData)
     {
-        Buffer* result = new Buffer();
-        result->size = allocateVertexBuffer(&result->buffer, &result->memory, vertexBufferSize, vertexData, indexBufferSize, indexData);
+        return allocateVertexBuffer(vertexBufferSize, vertexData, indexBufferSize, indexData);
         //m_Resources.allBuffers.push_back(result);
-        return result;
     }
 
-    size_t Device::allocateVertexBuffer(VkBuffer* storageBuffer, VkDeviceMemory* storageBufferMemory, size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData)
+    IBuffer* Device::allocateVertexBuffer(size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData)
     {
         VkDeviceSize bufferSize = vertexDataSize + indexDataSize;
 
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            stagingBuffer, stagingBufferMemory);
+        Buffer* stagingBuffer = dynamic_cast<Buffer*>(createBuffer(
+            bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 
         void* data;
-        vkMapMemory(m_Context.device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        vkMapMemory(m_Context.device, stagingBuffer->memory, 0, bufferSize, 0, &data);
         memcpy(data, vertexData, vertexDataSize);
         memcpy((unsigned char*)data + vertexDataSize, indexData, indexDataSize);
-        vkUnmapMemory(m_Context.device, stagingBufferMemory);
+        vkUnmapMemory(m_Context.device, stagingBuffer->memory);
 
-        createBuffer(
+        
+        Buffer* storageBuffer = dynamic_cast<Buffer*>(createBuffer(
             bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, *storageBuffer, *storageBufferMemory);
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+        storageBuffer->size = bufferSize;
 
-        // TODO:fix command list ussie
+        // TODO:fix command list issue
         //copyBuffer(vkDev, stagingBuffer, *storageBuffer, bufferSize);
 
-        vkDestroyBuffer(m_Context.device, stagingBuffer, nullptr);
-        vkFreeMemory(m_Context.device, stagingBufferMemory, nullptr);
+        delete stagingBuffer;
 
-        return bufferSize;
+        return storageBuffer;
     }
 
     /* Helper mesh-related functions */
@@ -266,4 +261,10 @@ namespace RHI::Vulkan
         },
             std::vector<unsigned int> { 0u, 1u, 2u, 0u, 3u, 2u });
     }
+
+    Buffer::~Buffer()
+	{
+        vkDestroyBuffer(m_Context.device, buffer, nullptr);
+        vkFreeMemory(m_Context.device, memory, nullptr);
+	}
 }

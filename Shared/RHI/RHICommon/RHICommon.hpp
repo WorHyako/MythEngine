@@ -5,6 +5,11 @@
 #include <cstdint>
 #include <vector>
 
+#define ENUM_CLASS_FLAG_OPERATORS(T) \
+    inline T operator & (T a, T b) { return T(uint8_t(a) & uint8_t(b)); } \
+    inline T operator | (T a, T b) { return T(uint8_t(a) | uint8_t(b)); } \
+    inline bool operator != (T a, uint8_t b) { return uint8_t(a) == b; }
+
 namespace RHI
 {
 	class ITexture;
@@ -94,6 +99,35 @@ namespace RHI
         BC7_UNORM_SRGB,
 
         COUNT,
+    };
+
+    enum class MemoryPropertiesBits : uint8_t
+    {
+        DEVICE_LOCAL_BIT = 0x00000001,
+        HOST_VISIBLE_BIT = 0x00000002,
+        HOST_COHERENT_BIT = 0x00000004,
+        HOST_CACHED_BIT = 0x00000008,
+        FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
+    };
+
+    ENUM_CLASS_FLAG_OPERATORS(MemoryPropertiesBits)
+
+    enum class CreateFlagBits : uint8_t
+    {
+        NONE_BIT = 0,
+        SPARSE_BINDING_BIT,
+        SPARSE_RESIDENCY_BIT,
+        SPARSE_ALIASED_BIT,
+        MUTABLE_FORMAT_BIT,
+        CUBE_COMPATIBLE_BIT,
+        ALIAS_BIT,
+        SPLIT_INSTANCE_BIND_REGIONS_BIT,
+        ARRAY_2D_COMPATIBLE_BIT,
+    	BLOCK_TEXEL_VIEW_COMPATIBLE_BIT,
+        EXTENDED_USAGE_BIT,
+        PROTECTED_BIT,
+        DISJOINT_BIT,
+        FLAG_BITS_MAX_ENUM
     };
 
     enum class CommandQueue : uint8_t
@@ -211,14 +245,19 @@ namespace RHI
         uint32_t width = 1;
         uint32_t height = 1;
         uint32_t depth = 1;
+        uint32_t mipLevels = 0;
+        Format format = Format::UNKNOWN;
+        MemoryPropertiesBits memoryProperties = MemoryPropertiesBits::DEVICE_LOCAL_BIT;
+        bool isLinearTiling = false;
+        CreateFlagBits flags = CreateFlagBits::NONE_BIT;
+        bool isShaderResource = false;
+        bool isRenderTarget = false;
+        bool isUAV = false;
     };
 
     class ITexture : public IResource
     {
     public:
-        uint32_t width;
-        uint32_t height;
-        uint32_t depth = 1;
     };
 
     struct BufferDesc
