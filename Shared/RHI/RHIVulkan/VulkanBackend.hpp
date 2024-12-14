@@ -342,6 +342,11 @@ namespace RHI::Vulkan
 		/* Permanent mapping to CPU address space (see VulkanResources::addBuffer) */
 		void* ptr = nullptr;
 
+		virtual const BufferDesc& getDesc() const override
+		{
+			return desc;
+		}
+
 	private:
 		const VulkanContext& m_Context;
 	};
@@ -350,8 +355,10 @@ namespace RHI::Vulkan
 	class Texture : public ITexture
 	{
 	public:
-		Texture() {}
-		virtual ~Texture() override {}
+		Texture(const VulkanContext& context)
+			: m_Context(context)
+		{}
+		virtual ~Texture() override;
 
 		TextureDesc desc;
 
@@ -364,6 +371,14 @@ namespace RHI::Vulkan
 
 		// Offscreen buffers require VK_IMAGE_LAYOUT_GENERAL && static textures have VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 		VkImageLayout desiredLayout;
+
+		virtual const TextureDesc& getDesc() const override
+		{
+			return desc;
+		}
+
+	private:
+		const VulkanContext& m_Context;
 	};
 
 	struct DescriptorInfo
@@ -668,7 +683,7 @@ namespace RHI::Vulkan
 		Texture createFontTexture(const char* fontFile);
 
 		ITexture* addColorTexture(int texWidth = 0, int texHeight = 0,
-			VkFormat colorFormat = VK_FORMAT_R8G8B8A8_UNORM,
+			Format colorFormat = Format::BGRA8_UNORM,
 			VkFilter minFilter = VK_FILTER_LINEAR, VkFilter maxFilter = VK_FILTER_LINEAR,
 			VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
@@ -676,22 +691,17 @@ namespace RHI::Vulkan
 
 		ITexture* addSolidRGBATexture(uint32_t color = 0xFFFFFFFF);
 
-		ITexture* addRGBATexture(int texWidth, int texHeight, void* data);
+		ITexture* addRGBATexture(TextureDesc& desc, void* data);
 
 		ITexture* createImage(const TextureDesc& desc);
 
-		bool createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* imageView, VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D, uint32_t layerCount = 1, uint32_t mipLevels = 1);
+		bool createImageView(Texture* texture, VkImageAspectFlags aspectFlags, VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D);
 
 		bool createTextureSampler(VkSampler* sampler, VkFilter minFilter = VK_FILTER_LINEAR, VkFilter magFilter = VK_FILTER_LINEAR, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
 		bool createDepthSampler(VkSampler* sampler);
 
-		ITexture* createOffscreenImage(
-			uint32_t texWidth, uint32_t texHeight,
-			VkFormat texFormat,
-			uint32_t layerCount, VkImageCreateFlags flags);
-
-		void destroyVulkanTexture(Texture& texture);
+		ITexture* createOffscreenImage(TextureDesc& desc);
 
 		bool createTextureImage(const char* filename, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* outTexWidth = nullptr, uint32_t* outTexHeight = nullptr);
 
@@ -702,18 +712,13 @@ namespace RHI::Vulkan
 		ITexture* createMIPCubeTextureImage(const char* filename, uint32_t mipLevels, uint32_t* width = nullptr, uint32_t* height = nullptr);
 
 		ITexture* createTextureImageFromData(
-			void* imageData, uint32_t texWidth, uint32_t texHeight,
-			VkFormat texFormat,
-			uint32_t layerCount = 1, VkImageCreateFlags flags = 0);
+			void* imageData, TextureDesc& desc);
 
 		ITexture* createMIPTextureImageFromData(
-			void* mipData, uint32_t mipLevels, uint32_t texWidth, uint32_t texHeight,
-			VkFormat texFormat,
-			uint32_t layerCount = 1, VkImageCreateFlags flags = 0);
+			void* mipData, TextureDesc& desc);
 
 		/* VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL for real update of an existing texture */
-		bool updateTextureImage(ITexture* texture,
-			VkFormat texFormat, uint32_t layerCount, const void* imageData, VkImageLayout sourceImageLayout = VK_IMAGE_LAYOUT_UNDEFINED);
+		bool updateTextureImage(ITexture* texture, const void* imageData, VkImageLayout sourceImageLayout = VK_IMAGE_LAYOUT_UNDEFINED);
 
 		VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 

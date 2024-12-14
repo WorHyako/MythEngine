@@ -130,6 +130,20 @@ namespace RHI
         FLAG_BITS_MAX_ENUM
     };
 
+    enum class TextureDimension : uint8_t
+    {
+        Unknown,
+        Texture1D,
+        Texture1DArray,
+        Texture2D,
+        Texture2DArray,
+        TextureCube,
+        TextureCubeArray,
+        Texture2DMS,
+        Texture2DMSArray,
+        Texture3D
+    };
+
     enum class CommandQueue : uint8_t
     {
         Graphics = 0,
@@ -240,24 +254,83 @@ namespace RHI
         virtual void* getWindowInterface() = 0;
     };
 
+    enum class SamplerFilter
+    {
+        NEAREST = 0,
+        LINEAR = 1,
+        MAX_ENUM = 0x7FFFFFFF
+    };
+
+    enum class SamplerAddressMode
+    {
+        REPEAT = 0,
+        MIRRORED_REPEAT = 1,
+        CLAMP_TO_EDGE = 2,
+        CLAMP_TO_BORDER = 3,
+        MIRROR_CLAMP_TO_EDGE = 4,
+    	MODE_MAX_ENUM = 0x7FFFFFFF
+    };
+
+    struct SamplerDesc
+    {
+        SamplerAddressMode addressU;
+        SamplerAddressMode addressV;
+        SamplerAddressMode addressW;
+        SamplerFilter minFilter = SamplerFilter::NEAREST;
+        SamplerFilter magFilter = SamplerFilter::NEAREST;
+
+        constexpr SamplerDesc& setAddressU(SamplerAddressMode value) { addressU = value; return *this; }
+        constexpr SamplerDesc& setAddressV(SamplerAddressMode value) { addressV = value; return *this; }
+        constexpr SamplerDesc& setAddressW(SamplerAddressMode value) { addressW = value; return *this; }
+        constexpr SamplerDesc& setMinFilter(SamplerFilter value) { minFilter = value; return *this; }
+        constexpr SamplerDesc& setMagFilter(SamplerFilter value) { magFilter = value; return *this; }
+    };
+
+    class ISampler : public IResource
+    {
+    public:
+        virtual SamplerDesc& getDesc() const = 0;
+    };
+
+    struct ImageUsage
+    {
+        bool isTransferSrc = false;
+        bool isTransferDst = false;
+        bool isShaderResource = false;
+        bool isRenderTarget = false;
+        bool isUAV = false;
+    };
+
     struct TextureDesc
     {
         uint32_t width = 1;
         uint32_t height = 1;
         uint32_t depth = 1;
         uint32_t mipLevels = 0;
+        uint32_t layerCount = 1;
         Format format = Format::UNKNOWN;
         MemoryPropertiesBits memoryProperties = MemoryPropertiesBits::DEVICE_LOCAL_BIT;
         bool isLinearTiling = false;
         CreateFlagBits flags = CreateFlagBits::NONE_BIT;
-        bool isShaderResource = false;
-        bool isRenderTarget = false;
-        bool isUAV = false;
+        TextureDimension dimension = TextureDimension::Unknown;
+
+        ImageUsage imageUsage = {};
+
+        TextureDesc& setWidth(uint32_t value) { width = value; return *this; }
+        TextureDesc& setHeight(uint32_t value) { height = value; return *this; }
+        TextureDesc& setDepth(uint32_t value) { depth = value; return *this; }
+        TextureDesc& setFormat(Format value) { format = value; return *this; }
+        TextureDesc& setIsTransferSrc(bool value) { imageUsage.isTransferSrc = value; return *this; }
+        TextureDesc& setIsTransferDst(bool value) { imageUsage.isTransferDst = value; return *this; }
+        TextureDesc& setIsShaderResource(bool value) { imageUsage.isShaderResource = value; return *this; }
+        TextureDesc& setIsRenderTarget(bool value) { imageUsage.isRenderTarget = value; return *this; }
+        TextureDesc& setIsUAV(bool value) { imageUsage.isUAV = value; return *this; }
     };
 
     class ITexture : public IResource
     {
     public:
+        virtual const TextureDesc& getDesc() const = 0;
     };
 
     struct BufferDesc
@@ -278,7 +351,8 @@ namespace RHI
 
     class IBuffer : public IResource
     {
-
+    public:
+        virtual const BufferDesc& getDesc() const = 0;
     };
 
     struct ShaderDesc
