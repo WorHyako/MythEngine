@@ -150,11 +150,11 @@ namespace RHI::Vulkan
 
         for (size_t i = 0; i < dsInfo.textures.size(); i++)
         {
-            Texture* t = dsInfo.textures[i].texture;
+            Texture* tex = dsInfo.textures[i].texture;
 
             imageDescriptors[i] = VkDescriptorImageInfo{
-                t->sampler,
-                t->image.imageView,
+                tex->sampler,
+                tex->imageView,
                 /* t.texture.layout */ VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
             };
 
@@ -169,11 +169,11 @@ namespace RHI::Vulkan
 
             for (size_t j = 0; j < dsInfo.textureArrays[ta].textures.size(); j++)
             {
-                Texture* t = dsInfo.textureArrays[ta].textures[j];
+                Texture* tex = dsInfo.textureArrays[ta].textures[j];
 
                 VkDescriptorImageInfo imageInfo = {
-                    t->sampler,
-                    t->image.imageView,
+                    tex->sampler,
+                    tex->imageView,
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                 };
 

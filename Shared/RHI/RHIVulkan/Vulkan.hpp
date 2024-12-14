@@ -17,4 +17,6 @@ namespace RHI::Vulkan
 	};
 
 	VkFormat convertFormat(RHI::Format format);
+
+	VkSamplerAddressMode convertSamplerAddressMode(SamplerAddressMode mode);
 }

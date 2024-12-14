@@ -16,6 +16,10 @@ namespace RHI::Vulkan
         vkDestroyImageView(m_Context.device, imageView, nullptr);
         vkDestroyImage(m_Context.device, image, nullptr);
         vkFreeMemory(m_Context.device, imageMemory, nullptr);
+    }
+
+    Sampler::~Sampler()
+    {
         vkDestroySampler(m_Context.device, sampler, nullptr);
     }
 
@@ -184,7 +188,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        createTextureSampler(&tex->sampler);
+         createTextureSampler();
         // TODO:fix allocation issue
         //m_Resources.allTextures.push_back(tex);
         return tex;
@@ -214,7 +218,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        createTextureSampler(&tex->sampler);
+        ISampler* sampler = createTextureSampler();
         // TODO:fix allocation issue
         //m_Resources.allTextures.push_back(tex);
 
@@ -239,7 +243,7 @@ namespace RHI::Vulkan
         }
 
         createImageView(tex, VK_IMAGE_ASPECT_COLOR_BIT);
-        createTextureSampler(&tex->sampler, minFilter, maxFilter, addressMode);
+        ISampler* sampler = createTextureSampler(minFilter, maxFilter, addressMode);
 
         // TODO:fix command list ussie
         //transitionImageLayout(tex->image, colorFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -275,7 +279,7 @@ namespace RHI::Vulkan
         // TODO:fix command list ussie
         //transitionImageLayout(tex->image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, layout/*VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL*/);
 
-        if (!createDepthSampler(&tex->sampler))
+        if (!createDepthSampler())
         {
             printf("Cannot create a depth sampler");
             exit(EXIT_FAILURE);
@@ -298,7 +302,7 @@ namespace RHI::Vulkan
         imageInfo.flags = pickImageFlag(desc);
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
         imageInfo.format = convertFormat(desc.format);
-        imageInfo.extent = VkExtent3D{ desc.width, desc.height, 1 };
+        imageInfo.extent = VkExtent3D{ desc.width, desc.height, desc.depth };
         imageInfo.mipLevels = desc.mipLevels;
         imageInfo.arrayLayers = (uint32_t)((pickImageFlag(desc) == VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) ? 6 : 1);
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -344,18 +348,18 @@ namespace RHI::Vulkan
         return (vkCreateImageView(m_Context.device, &viewInfo, nullptr, &texture->imageView) == VK_SUCCESS);
     }
 
-    bool Device::createTextureSampler(VkSampler* sampler, VkFilter minFilter, VkFilter magFilter, VkSamplerAddressMode addressMode)
+    ISampler* Device::createTextureSampler(const SamplerDesc& desc)
     {
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         samplerInfo.pNext = nullptr;
         samplerInfo.flags = 0;
-        samplerInfo.magFilter = magFilter;
-        samplerInfo.minFilter = minFilter;
+        samplerInfo.magFilter = desc.magFilter == SamplerFilter::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+        samplerInfo.minFilter = desc.minFilter == SamplerFilter::LINEAR ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
         samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.addressModeU = addressMode; // VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        samplerInfo.addressModeV = addressMode; // VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        samplerInfo.addressModeW = addressMode; // VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        samplerInfo.addressModeU = convertSamplerAddressMode(desc.addressU); // VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        samplerInfo.addressModeV = convertSamplerAddressMode(desc.addressV); // VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        samplerInfo.addressModeW = convertSamplerAddressMode(desc.addressW); // VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE VK_SAMPLER_ADDRESS_MODE_REPEAT,
         samplerInfo.mipLodBias = 0.0f;
         samplerInfo.anisotropyEnable = VK_FALSE;
         samplerInfo.maxAnisotropy = 1;
@@ -366,10 +370,18 @@ namespace RHI::Vulkan
         samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
         samplerInfo.unnormalizedCoordinates = VK_FALSE;
 
-        return (vkCreateSampler(m_Context.device, &samplerInfo, nullptr, sampler) == VK_SUCCESS);
+        Sampler* sampler = new Sampler(m_Context);
+
+        if(vkCreateSampler(m_Context.device, &samplerInfo, nullptr, &sampler->sampler) != VK_SUCCESS)
+        {
+            printf("Cannot create texture sampler\n");
+            exit(EXIT_FAILURE);
+        }
+
+        return sampler;
     }
 
-    bool Device::createDepthSampler(VkSampler* sampler)
+    ISampler* Device::createDepthSampler()
     {
         VkSamplerCreateInfo si{};
         si.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -386,7 +398,15 @@ namespace RHI::Vulkan
         si.maxLod = 1.0f;
         si.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 
-        return (vkCreateSampler(m_Context.device, &si, nullptr, sampler) == VK_SUCCESS);
+        Sampler* sampler = new Sampler(m_Context);
+
+        if(vkCreateSampler(m_Context.device, &si, nullptr, &sampler->sampler) != VK_SUCCESS)
+        {
+            printf("Cannot create depth sampler\n");
+            exit(EXIT_FAILURE);
+        }
+
+        return sampler;
     }
 
     /** Offscreen rendering helpers */
@@ -400,7 +420,7 @@ namespace RHI::Vulkan
         return createImage(desc);
     }
 
-    bool Device::createTextureImage(const char* filename, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* outTexWidth, uint32_t* outTexHeight)
+    ITexture* Device::createTextureImage(const char* filename)
     {
         int texWidth, texHeight, texChannels;
         stbi_uc* pixels = stbi_load(filename, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
@@ -411,20 +431,18 @@ namespace RHI::Vulkan
             return false;
         }
 
-        bool result = createTextureImageFromData(textureImage, textureImageMemory, pixels, texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM);
+        TextureDesc desc = {};
+        desc.setWidth(texWidth)
+            .setHeight(texHeight)
+            .setFormat(Format::RGBA8_UNORM);
+        ITexture* result = createTextureImageFromData( pixels, desc);
 
         stbi_image_free(pixels);
-
-        if (outTexWidth && outTexHeight)
-        {
-            *outTexWidth = (uint32_t)texWidth;
-            *outTexHeight = (uint32_t)texHeight;
-        }
 
         return result;
     }
 
-    bool Device::createMIPTextureImage(const char* filename, uint32_t mipLevels, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* width, uint32_t* height)
+    ITexture* Device::createMIPTextureImage(const char* filename, uint32_t mipLevels)
     {
         int texWidth, texHeight, texChannels;
         stbi_uc* pixels = stbi_load(filename, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
@@ -456,19 +474,16 @@ namespace RHI::Vulkan
             src = dst;
         }
 
-        bool result = createMIPTextureImageFromData(textureImage, textureImageMemory,
-            mipData.data(), mipLevels, texWidth, texHeight,
-            VK_FORMAT_R8G8B8A8_UNORM);
+        TextureDesc desc = {};
+        desc.setWidth(texWidth)
+            .setHeight(texHeight)
+			.setMipLevels(mipLevels)
+            .setFormat(Format::RGBA8_UNORM);
+        ITexture* result = createMIPTextureImageFromData(mipData.data(), desc);
 
         stbi_image_free(pixels);
 
-        if (width && height)
-        {
-            *width = texWidth;
-            *height = texHeight;
-        }
-
-        return true;
+        return result;
     }
 
     ITexture* Device::createCubeTextureImage(const char* filename, uint32_t* width, uint32_t* height)
@@ -498,10 +513,14 @@ namespace RHI::Vulkan
             *height = h;
         }
 
-        return createTextureImageFromData(
-            cube.data_.data(), cube.w_, cube.h_,
-            VK_FORMAT_R32G32B32A32_SFLOAT,
-            6, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+        TextureDesc desc = {};
+        desc.setWidth(cube.w_)
+            .setHeight(cube.h_)
+            .setFormat(Format::RGBA32_FLOAT)
+            .setLayerCount(6)
+            .setDimension(TextureDimension::TextureCube);
+
+        return createTextureImageFromData(cube.data_.data(), desc);
     }
 
     ITexture* Device::createMIPCubeTextureImage(const char* filename, uint32_t mipLevels, uint32_t* width, uint32_t* height)
@@ -581,10 +600,16 @@ namespace RHI::Vulkan
             *height = texHeight;
         }
 
+        TextureDesc desc = {};
+        desc.setWidth(faceSize)
+            .setHeight(faceSize)
+            .setFormat(Format::RGBA32_FLOAT)
+            .setMipLevels(mipLevels)
+            .setLayerCount(6)
+            .setDimension(TextureDimension::TextureCube);
+
         return createMIPTextureImageFromData(
-            mipCube.data(), mipLevels, faceSize, faceSize,
-            VK_FORMAT_R32G32B32A32_SFLOAT,
-            6, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+            mipCube.data(), desc);
     }
 
     ITexture* Device::createTextureImageFromData(
@@ -666,46 +691,46 @@ namespace RHI::Vulkan
     }
 
 
-    Texture Device::loadCubemap(const char* fileName, uint32_t mipLevels)
+    ITexture* Device::loadCubemap(const char* fileName, uint32_t mipLevels)
     {
-        Texture cubemap;
+        ITexture* tex = nullptr;
 
         uint32_t w = 0, h = 0;
 
         if (mipLevels > 1)
-            createMIPCubeTextureImage(fileName, mipLevels, cubemap.image, cubemap.imageMemory, &w, &h);
+            tex = createMIPCubeTextureImage(fileName, mipLevels, &w, &h);
         else
-            createCubeTextureImage(fileName, cubemap.image, cubemap.imageMemory, &w, &h);
+            tex = createCubeTextureImage(fileName, &w, &h);
 
-        createImageView(cubemap.image, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, &cubemap.imageView, VK_IMAGE_VIEW_TYPE_CUBE, 6, mipLevels);
-        createTextureSampler(&cubemap.sampler);
+        createImageView(tex, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_CUBE);
+        ISampler* sampler = createTextureSampler();
 
-        cubemap.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        tex.format = VK_FORMAT_R32G32B32A32_SFLOAT;
 
-        cubemap.desc.width = w;
-        cubemap.desc.height = h;
-        cubemap.desc.depth = 1;
+        tex.desc.width = w;
+        tex.desc.height = h;
+        tex.desc.depth = 1;
 
         // TODO:fix allocation issue
         //m_Resources.allTextures.push_back(cubemap);
 
-        // TODO: fix loading resources
-        //return cubemap;
-        return Texture();
+        return tex;
     }
 
-    Texture Device::loadKTX(const char* fileName)
+    ITexture* Device::loadKTX(const char* fileName)
     {
         gli::texture gliTex = gli::load_ktx(fileName);
         gli::tvec3<uint32_t> extent(gliTex.extent(0));
 
-        Texture ktx{};
-        ktx.desc.width = extent.x;
-        ktx.desc.height = extent.y;
-        ktx.desc.depth = 4;
+        TextureDesc desc = {};
+        desc.setWidth(extent.x)
+            .setHeight(extent.y)
+            .setWidth(4)
+            .setFormat(Format::RG16_FLOAT);
 
-        if (!createTextureImageFromData(ktx.image, ktx.imageMemory,
-            (uint8_t*)gliTex.data(0, 0, 0), ktx.desc.width, ktx.desc.height, VK_FORMAT_R16G16_SFLOAT))
+        ITexture* ktx = createTextureImageFromData((uint8_t*)gliTex.data(0, 0, 0), desc);
+
+        if (!ktx)
         {
             printf("ModelRenderer: failed to load BRDF LUT texture \n");
             exit(EXIT_FAILURE);
@@ -719,77 +744,83 @@ namespace RHI::Vulkan
 
         // TODO: fix loading resources
         //return ktx;
-        return Texture();
+        return ktx;
     }
 
-    Texture Device::loadTexture2D(const char* fileName)
+    ITexture* Device::loadTexture2D(const char* fileName)
     {
-        Texture tex;
-        if (!createTextureImage(fileName, tex.image, tex.imageMemory, &tex.desc.width, &tex.desc.height))
+        ITexture* tex = createTextureImage(fileName);
+        if (!tex)
         {
             printf("Cannot load %s 2D texture file\n", fileName);
             exit(EXIT_FAILURE);
         }
 
-        VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
         // TODO:fix command list ussie
         //transitionImageLayout(tex.image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        if (!createImageView(tex.image, format, VK_IMAGE_ASPECT_COLOR_BIT, &tex.imageView))
+        if (!createImageView(tex, VK_IMAGE_ASPECT_COLOR_BIT))
         {
             printf("Cannot create image view for 2d texture (%s)\n", fileName);
             exit(EXIT_FAILURE);
         }
 
-        createTextureSampler(&tex.sampler);
+        ISampler* sampler = createTextureSampler();
         // TODO:fix allocation issue
         //m_Resources.allTextures.push_back(tex);
         // TODO: fix loading resources
         //return tex;
-        return Texture();
+        return tex;
     }
 
 
-    Texture Device::createFontTexture(const char* fontFile)
+    ITexture* Device::createFontTexture(const char* fontFile)
     {
         // TODO: fix loading resources
-        //ImGuiIO& io = ImGui::GetIO();
-        //VulkanImage img{};
-        //img.image = VK_NULL_HANDLE;
-        //Texture res{};
-        //res.image = img;
+        ImGuiIO& io = ImGui::GetIO();
 
-        //// Build texture atlas
-        //ImFontConfig cfg = ImFontConfig();
-        //cfg.FontDataOwnedByAtlas = false;
-        //cfg.RasterizerMultiply = 1.5f;
-        //cfg.SizePixels = 768.0f / 32.0f;
-        //cfg.PixelSnapH = true;
-        //cfg.OversampleH = 4;
-        //cfg.OversampleV = 4;
-        //ImFont* Font = io.Fonts->AddFontFromFileTTF(fontFile, cfg.SizePixels, &cfg);
+        // Build texture atlas
+        ImFontConfig cfg = ImFontConfig();
+        cfg.FontDataOwnedByAtlas = false;
+        cfg.RasterizerMultiply = 1.5f;
+        cfg.SizePixels = 768.0f / 32.0f;
+        cfg.PixelSnapH = true;
+        cfg.OversampleH = 4;
+        cfg.OversampleV = 4;
+        ImFont* Font = io.Fonts->AddFontFromFileTTF(fontFile, cfg.SizePixels, &cfg);
 
 
-        //unsigned char* pixels = nullptr;
-        //int texWidth = 1, texHeight = 1;
-        //io.Fonts->GetTexDataAsRGBA32(&pixels, &texWidth, &texHeight);
+        unsigned char* pixels = nullptr;
+        int texWidth = 1, texHeight = 1;
+        io.Fonts->GetTexDataAsRGBA32(&pixels, &texWidth, &texHeight);
 
-        //if (!pixels || !createTextureImageFromData(res.image, res.imageMemory, pixels, texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM))
-        //{
-        //    printf("Failed to load texture\n"); fflush(stdout);
-        //    return res;
-        //}
+        if (!pixels)
+        {
+            printf("Failed to load texture\n"); fflush(stdout);
+            return nullptr;
+        }
 
-        //createImageView(res.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, &res.imageView);
-        //createTextureSampler(&res.sampler);
+        TextureDesc desc = {};
+        desc.setWidth(texWidth)
+            .setHeight(texHeight)
+            .setFormat(Format::RGBA8_UNORM);
+        ITexture* tex = createTextureImageFromData(pixels, desc);
+        if(!tex)
+        {
+            printf("Failed to create texture\n"); fflush(stdout);
+            return nullptr;
+        }
 
-        ///* This is not strictly necessary, a font can be any texture */
-        //io.Fonts->TexID = (ImTextureID)0;
-        //io.FontDefault = Font;
-        //io.DisplayFramebufferScale = ImVec2(1, 1);
+        createImageView(tex, VK_IMAGE_ASPECT_COLOR_BIT);
+        createTextureSampler();
+
+        /* This is not strictly necessary, a font can be any texture */
+        io.Fonts->TexID = (ImTextureID)0;
+        io.FontDefault = Font;
+        io.DisplayFramebufferScale = ImVec2(1, 1);
 
         //m_Resources.allTextures.push_back(res);
         //return res;
-        return Texture();
+        return tex;
     }
 }

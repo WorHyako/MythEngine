@@ -273,11 +273,11 @@ namespace RHI
 
     struct SamplerDesc
     {
-        SamplerAddressMode addressU;
-        SamplerAddressMode addressV;
-        SamplerAddressMode addressW;
-        SamplerFilter minFilter = SamplerFilter::NEAREST;
-        SamplerFilter magFilter = SamplerFilter::NEAREST;
+        SamplerAddressMode addressU = SamplerAddressMode::REPEAT;
+        SamplerAddressMode addressV = SamplerAddressMode::REPEAT;
+        SamplerAddressMode addressW = SamplerAddressMode::REPEAT;
+        SamplerFilter minFilter = SamplerFilter::LINEAR;
+        SamplerFilter magFilter = SamplerFilter::LINEAR;
 
         constexpr SamplerDesc& setAddressU(SamplerAddressMode value) { addressU = value; return *this; }
         constexpr SamplerDesc& setAddressV(SamplerAddressMode value) { addressV = value; return *this; }
@@ -289,7 +289,7 @@ namespace RHI
     class ISampler : public IResource
     {
     public:
-        virtual SamplerDesc& getDesc() const = 0;
+        virtual const SamplerDesc& getDesc() const = 0;
     };
 
     struct ImageUsage
@@ -312,14 +312,17 @@ namespace RHI
         MemoryPropertiesBits memoryProperties = MemoryPropertiesBits::DEVICE_LOCAL_BIT;
         bool isLinearTiling = false;
         CreateFlagBits flags = CreateFlagBits::NONE_BIT;
-        TextureDimension dimension = TextureDimension::Unknown;
+        TextureDimension dimension = TextureDimension::Texture2D;
 
         ImageUsage imageUsage = {};
 
         TextureDesc& setWidth(uint32_t value) { width = value; return *this; }
         TextureDesc& setHeight(uint32_t value) { height = value; return *this; }
         TextureDesc& setDepth(uint32_t value) { depth = value; return *this; }
+        TextureDesc& setMipLevels(uint32_t value) { mipLevels = value; return *this; }
+        TextureDesc& setLayerCount(uint32_t value) { layerCount = value; return *this; }
         TextureDesc& setFormat(Format value) { format = value; return *this; }
+        TextureDesc& setDimension(TextureDimension value) { dimension = value; return *this; }
         TextureDesc& setIsTransferSrc(bool value) { imageUsage.isTransferSrc = value; return *this; }
         TextureDesc& setIsTransferDst(bool value) { imageUsage.isTransferDst = value; return *this; }
         TextureDesc& setIsShaderResource(bool value) { imageUsage.isShaderResource = value; return *this; }

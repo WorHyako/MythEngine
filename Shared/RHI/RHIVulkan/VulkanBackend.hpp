@@ -351,6 +351,27 @@ namespace RHI::Vulkan
 		const VulkanContext& m_Context;
 	};
 
+	class Sampler : public ISampler
+	{
+	public:
+		Sampler(const VulkanContext& context)
+			: m_Context(context)
+		{}
+		virtual ~Sampler() override;
+
+		SamplerDesc desc;
+
+		virtual const SamplerDesc& getDesc() const override
+		{
+			return desc;
+		}
+
+		VkSampler sampler = VK_NULL_HANDLE;
+
+	private:
+		const VulkanContext& m_Context;
+	};
+
 	// Aggregate structure for passing around the texture data
 	class Texture : public ITexture
 	{
@@ -367,7 +388,6 @@ namespace RHI::Vulkan
 		VkImage image = nullptr;
 		VkDeviceMemory imageMemory = nullptr;
 		VkImageView imageView = nullptr;
-		VkSampler sampler;
 
 		// Offscreen buffers require VK_IMAGE_LAYOUT_GENERAL && static textures have VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 		VkImageLayout desiredLayout;
@@ -674,13 +694,13 @@ namespace RHI::Vulkan
 		virtual GraphicsAPI getGraphicsAPI() const override;
 
 		/* Resource Management*/
-		Texture loadTexture2D(const char* filename);
+		ITexture* loadTexture2D(const char* filename);
 
-		Texture loadCubemap(const char* fileName, uint32_t mipLevels = 1);
+		ITexture* loadCubemap(const char* fileName, uint32_t mipLevels = 1);
 
-		Texture loadKTX(const char* fileName);
+		ITexture* loadKTX(const char* fileName);
 
-		Texture createFontTexture(const char* fontFile);
+		ITexture* createFontTexture(const char* fontFile);
 
 		ITexture* addColorTexture(int texWidth = 0, int texHeight = 0,
 			Format colorFormat = Format::BGRA8_UNORM,
@@ -697,15 +717,15 @@ namespace RHI::Vulkan
 
 		bool createImageView(Texture* texture, VkImageAspectFlags aspectFlags, VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D);
 
-		bool createTextureSampler(VkSampler* sampler, VkFilter minFilter = VK_FILTER_LINEAR, VkFilter magFilter = VK_FILTER_LINEAR, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+		ISampler* createTextureSampler(const SamplerDesc& desc = SamplerDesc());
 
-		bool createDepthSampler(VkSampler* sampler);
+		ISampler* createDepthSampler();
 
 		ITexture* createOffscreenImage(TextureDesc& desc);
 
-		bool createTextureImage(const char* filename, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* outTexWidth = nullptr, uint32_t* outTexHeight = nullptr);
+		ITexture* createTextureImage(const char* filename);
 
-		bool createMIPTextureImage(const char* filename, uint32_t mipLevels, VkImage& textureImage, VkDeviceMemory& textureImageMemory, uint32_t* width = nullptr, uint32_t* height = nullptr);
+		ITexture* createMIPTextureImage(const char* filename, uint32_t mipLevels);
 
 		ITexture* createCubeTextureImage(const char* filename, uint32_t* width = nullptr, uint32_t* height = nullptr);
 

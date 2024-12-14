@@ -40,7 +40,7 @@ namespace RHI::Vulkan
         for (const auto& image : images)
         {
             Texture* texture = dynamic_cast<Texture*>(image);
-            attachments.push_back(texture->image.imageView);
+            attachments.push_back(texture->imageView);
         }
 
         VkFramebufferCreateInfo fbInfo{};
@@ -50,8 +50,8 @@ namespace RHI::Vulkan
         fbInfo.renderPass = rp->handle;
         fbInfo.attachmentCount = (uint32_t)attachments.size();
         fbInfo.pAttachments = attachments.data();
-        fbInfo.width = images[0]->width;
-        fbInfo.height = images[0]->height;
+        fbInfo.width = images[0]->getDesc().width;
+        fbInfo.height = images[0]->getDesc().height;
         fbInfo.layers = 1;
 
         if (vkCreateFramebuffer(m_Context.device, &fbInfo, nullptr, &fb->framebuffer) != VK_SUCCESS)
@@ -63,8 +63,8 @@ namespace RHI::Vulkan
         // TODO:fix allocation issue
         //m_Resources.allFramebuffers.push_back(fb->framebuffer);
         fb->renderPass = rp->handle;
-        fb->framebufferWidth = images[0]->width;
-        fb->framebufferHeight = images[0]->height;
+        fb->framebufferWidth = images[0]->getDesc().width;
+        fb->framebufferHeight = images[0]->getDesc().height;
         return fb;
     }
 
