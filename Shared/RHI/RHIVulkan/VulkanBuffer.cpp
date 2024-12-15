@@ -115,14 +115,16 @@ namespace RHI::Vulkan
         return createBuffer(desc);
     }
 
-    void Device::uploadBufferData(const VkDeviceMemory& bufferMemory, VkDeviceSize deviceOffset, const void* data, const size_t dataSize)
+    void Device::uploadBufferData(IBuffer* buffer, size_t deviceOffset, const void* data, const size_t dataSize)
     {
         EASY_FUNCTION()
 
+    	Buffer* buf = dynamic_cast<Buffer*>(buffer);
+
     	void* mappedData = nullptr;
-        vkMapMemory(m_Context.device, bufferMemory, deviceOffset, dataSize, 0, &mappedData);
+        vkMapMemory(m_Context.device, buf->memory, deviceOffset, dataSize, 0, &mappedData);
         memcpy(mappedData, data, dataSize);
-        vkUnmapMemory(m_Context.device, bufferMemory);
+        vkUnmapMemory(m_Context.device, buf->memory);
     }
 
     void Device::downloadBufferData(const VkDeviceMemory& bufferMemory, VkDeviceSize deviceOffset, void* outData, size_t dataSize)

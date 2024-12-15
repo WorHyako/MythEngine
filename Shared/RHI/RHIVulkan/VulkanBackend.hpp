@@ -698,7 +698,7 @@ namespace RHI::Vulkan
 			Format colorFormat = Format::BGRA8_UNORM,
 			const SamplerDesc& samplerDesc);
 
-		ITexture* addDepthTexture(int texWidth = 0, int texHeight = 0, VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		ITexture* addDepthTexture(IDevice* device, IRHICommandList* commandList, int texWidth = 0, int texHeight = 0, ImageLayout layout = ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
 		virtual ITexture* createImage(const TextureDesc& desc) override;
 
@@ -769,7 +769,7 @@ namespace RHI::Vulkan
 		IBuffer* allocateVertexBuffer(size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData);
 
 		/** Copy [data] to GPU device buffer */
-		void uploadBufferData(const VkDeviceMemory& bufferMemory, VkDeviceSize deviceOffset, const void* data, const size_t dataSize);
+		virtual void uploadBufferData(IBuffer* buffer, size_t deviceOffset, const void* data, const size_t dataSize) override;
 
 		/** Copy GPU device buffer data to [outData] */
 		void downloadBufferData(const VkDeviceMemory& bufferMemory, VkDeviceSize deviceOffset, void* outData, size_t dataSize);

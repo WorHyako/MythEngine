@@ -526,5 +526,6 @@ namespace RHI
         virtual IBuffer* createBuffer(const BufferDesc& desc) = 0;
         virtual IBuffer* createSharedBuffer(const BufferDesc& desc) = 0;
         virtual IBuffer* addBuffer(const BufferDesc& desc, bool createMapping = false) = 0;
+        virtual void uploadBufferData(IBuffer* buffer, size_t deviceOffset, const void* data, const size_t dataSize) = 0;
     };
 }

@@ -4,7 +4,5 @@
 
 namespace RenderUtils
 {
-	using namespace RHI;
-
 
 }

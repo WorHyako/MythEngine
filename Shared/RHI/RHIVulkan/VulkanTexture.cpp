@@ -23,18 +23,6 @@ namespace RHI::Vulkan
         vkDestroySampler(m_Context.device, sampler, nullptr);
     }
 
-    static void float24to32(int w, int h, const float* img24, float* img32)
-    {
-        const int numPixels = w * h;
-        for (int i = 0; i != numPixels; i++)
-        {
-            *img32++ = *img24++;
-            *img32++ = *img24++;
-            *img32++ = *img24++;
-            *img32++ = 1.0f;
-        }
-    }
-
     static VkImageCreateInfo fillImageInfo(const TextureDesc& desc)
     {
 	    
@@ -197,72 +185,6 @@ namespace RHI::Vulkan
         }
     }
 
-    ITexture* Device::addColorTexture(IRHICommandList* commandList, int texWidth, int texHeight, Format colorFormat, const SamplerDesc& samplerDesc)
-    {
-        const uint32_t w = (texWidth > 0) ? texWidth : m_DeviceDesc.framebufferWidth;
-        const uint32_t h = (texHeight > 0) ? texHeight : m_DeviceDesc.framebufferHeight;
-
-        TextureDesc desc = {};
-        desc.setWidth(w)
-            .setHeight(h)
-            .setFormat(colorFormat);
-        Texture* tex = dynamic_cast<Texture*>(createOffscreenImage(desc));
-
-        if (!tex)
-        {
-            printf("Cannot create color texture\n");
-            exit(EXIT_FAILURE);
-        }
-
-        createImageView(tex, ImageAspectFlagBits::COLOR_BIT);
-        ISampler* sampler = createTextureSampler(samplerDesc);
-
-        commandList->transitionImageLayout(tex, ImageLayout::UNDEFINED, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
-        // TODO:fix allocation issue
-        //m_Resources.allTextures.push_back(tex);
-
-        return tex;
-    }
-
-    ITexture* Device::addDepthTexture(int texWidth, int texHeight, VkImageLayout layout)
-    {
-        const uint32_t w = (texWidth > 0) ? texWidth : m_DeviceDesc.framebufferWidth;
-        const uint32_t h = (texHeight > 0) ? texHeight : m_DeviceDesc.framebufferHeight;
-
-        const VkFormat depthFormat = findDepthFormat();
-
-        TextureDesc desc = {};
-        desc.setWidth(w)
-            .setHeight(h)
-            .setFormat(depthFormat)
-            .setIsShaderResource(true)
-            .setIsRenderTarget(true);
-
-        Texture* tex = dynamic_cast<Texture*>(createImage(desc));
-
-        if (!tex)
-        {
-            printf("Cannot create depth texture\n");
-            exit(EXIT_FAILURE);
-        }
-
-        createImageView(tex, ImageAspectFlagBits::DEPTH_BIT);
-        // TODO:fix command list ussie
-        //transitionImageLayout(tex->image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, layout/*VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL*/);
-
-        ISampler* sampler = createDepthSampler();
-        if (!sampler)
-        {
-            printf("Cannot create a depth sampler");
-            exit(EXIT_FAILURE);
-        }
-
-        // TODO:fix allocation issue
-        //m_Resources.allTextures.push_back(tex);
-
-        return tex;
-    }
-
     ITexture* Device::createImage(const TextureDesc& desc)
     {
         Texture* tex = new Texture(m_Context);
@@ -394,132 +316,6 @@ namespace RHI::Vulkan
         return createImage(desc);
     }
 
-    ITexture* Device::createCubeTextureImage(const char* filename, uint32_t* width, uint32_t* height)
-    {
-        int w, h, comp;
-        const float* img = stbi_loadf(filename, &w, &h, &comp, 3);
-        std::vector<float> img32(w * h * 4);
-
-        float24to32(w, h, img, img32.data());
-
-        if (!img)
-        {
-            printf("Failed to load [%s] texture\n", filename); fflush(stdout);
-            return false;
-        }
-
-        stbi_image_free((void*)img);
-
-        Bitmap in(w, h, 4, eBitmapFormat_Float, img32.data());
-        Bitmap out = convertEquirectangularMapToVerticalCross(in);
-
-        Bitmap cube = convertVerticalCrossToCubeMapFaces(out);
-
-        if (width && height)
-        {
-            *width = w;
-            *height = h;
-        }
-
-        TextureDesc desc = {};
-        desc.setWidth(cube.w_)
-            .setHeight(cube.h_)
-            .setFormat(Format::RGBA32_FLOAT)
-            .setLayerCount(6)
-            .setDimension(TextureDimension::TextureCube);
-
-        return createTextureImageFromData(cube.data_.data(), desc);
-    }
-
-    ITexture* Device::createMIPCubeTextureImage(const char* filename, uint32_t mipLevels, uint32_t* width, uint32_t* height)
-    {
-        int comp;
-        int texWidth, texHeight;
-        const float* img = stbi_loadf(filename, &texWidth, &texHeight, &comp, 3);
-
-        if (!img) {
-            printf("Failed to load [%s] texture\n", filename); fflush(stdout);
-            return false;
-        }
-
-        uint32_t imageSize = texWidth * texHeight * 4;
-        uint32_t mipSize = imageSize * 6;
-
-        uint32_t w = texWidth, h = texHeight;
-        for (uint32_t i = 1; i < mipLevels; i++)
-        {
-            imageSize = w * h * 4;
-            w >>= 1;
-            h >>= 1;
-            mipSize += imageSize;
-        }
-
-        std::vector<float> mipData(mipSize);
-        float* src = mipData.data();
-        float* dst = mipData.data();
-
-        w = texWidth;
-        h = texHeight;
-        float24to32(w, h, img, dst);
-
-        for (uint32_t i = 1; i < mipLevels; i++)
-        {
-            imageSize = w * h * 4;
-            dst += w * h * 4;
-            stbir_resize_float_generic(
-                src, w, h, 0, dst, w / 2, h / 2, 0, 4,
-                STBIR_ALPHA_CHANNEL_NONE, 0, STBIR_EDGE_CLAMP, STBIR_FILTER_CUBICBSPLINE, STBIR_COLORSPACE_LINEAR, nullptr);
-
-            w >>= 1;
-            h >>= 1;
-            src = dst;
-        }
-
-        src = mipData.data();
-        dst = mipData.data();
-
-        std::vector<float> mipCube(mipSize * 6);
-        float* mip = mipCube.data();
-
-        w = texWidth;
-        h = texHeight;
-        uint32_t faceSize = w / 4;
-        for (uint32_t i = 0; i < mipLevels; i++)
-        {
-            Bitmap in(w, h, 4, eBitmapFormat_Float, src);
-            Bitmap out = convertEquirectangularMapToVerticalCross(in);
-            Bitmap cube = convertVerticalCrossToCubeMapFaces(out);
-
-            imageSize = faceSize * faceSize * 4;
-
-            memcpy(mip, cube.data_.data(), 6 * imageSize * sizeof(float));
-            mip += imageSize * 6;
-
-            src += w * h * 4;
-            w >>= 1;
-            h >>= 1;
-        }
-
-        stbi_image_free((void*)img);
-
-        if (width && height)
-        {
-            *width = texWidth;
-            *height = texHeight;
-        }
-
-        TextureDesc desc = {};
-        desc.setWidth(faceSize)
-            .setHeight(faceSize)
-            .setFormat(Format::RGBA32_FLOAT)
-            .setMipLevels(mipLevels)
-            .setLayerCount(6)
-            .setDimension(TextureDimension::TextureCube);
-
-        return createMIPTextureImageFromData(
-            mipCube.data(), desc);
-    }
-
     bool CommandList::updateTextureImage(ITexture* texture, const void* imageData, ImageLayout sourceImageLayout)
     {
         Texture* tex = dynamic_cast<Texture*>(texture);
@@ -535,7 +331,7 @@ namespace RHI::Vulkan
             .setMemoryProperties(MemoryPropertiesBits::HOST_VISIBLE_BIT | MemoryPropertiesBits::HOST_COHERENT_BIT);
         Buffer* stagingBuffer = dynamic_cast<Buffer*>(m_Device->createBuffer(stagingDesc));
 
-        m_Device->uploadBufferData(stagingBuffer->memory, 0, imageData, imageSize);
+        m_Device->uploadBufferData(stagingBuffer, 0, imageData, imageSize);
 
         transitionImageLayout(tex, sourceImageLayout, ImageLayout::TRANSFER_DST_OPTIMAL);
         copyBufferToImage(stagingBuffer, tex);
