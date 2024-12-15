@@ -100,21 +100,21 @@ namespace RHI::Vulkan
     {
         VkImageUsageFlags ret = 0;
 
-        if(desc.imageUsage.isTransferSrc)
+        if(desc.usage.isTransferSrc)
         {
             ret |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         }
-        if(desc.imageUsage.isTransferDst)
+        if(desc.usage.isTransferDst)
         {
             ret |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         }
 
         const VkFormat format = convertFormat(desc.format);
 
-        if (desc.imageUsage.isShaderResource)
+        if (desc.usage.isShaderResource)
             ret |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
-        if (desc.imageUsage.isRenderTarget)
+        if (desc.usage.isRenderTarget)
         {
             if (hasDepthComponent(format) || hasStencilComponent(format))
             {
@@ -125,32 +125,8 @@ namespace RHI::Vulkan
             }
         }
 
-        if (desc.imageUsage.isUAV)
+        if (desc.usage.isUAV)
             ret |= VK_IMAGE_USAGE_STORAGE_BIT;
-
-        return ret;
-    }
-
-    static VkMemoryPropertyFlags pickMemoryProperties(const TextureDesc& desc)
-    {
-        VkMemoryPropertyFlags ret = 0;
-
-        if((desc.memoryProperties & MemoryPropertiesBits::DEVICE_LOCAL_BIT) != 0)
-        {
-            ret |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        }
-        if((desc.memoryProperties & MemoryPropertiesBits::HOST_VISIBLE_BIT) != 0)
-        {
-            ret |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-        }
-        if ((desc.memoryProperties & MemoryPropertiesBits::HOST_CACHED_BIT) != 0)
-        {
-            ret |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-        }
-        if ((desc.memoryProperties & MemoryPropertiesBits::HOST_COHERENT_BIT) != 0)
-        {
-            ret |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        }
 
         return ret;
     }
@@ -322,7 +298,7 @@ namespace RHI::Vulkan
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.pNext = nullptr;
         allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, pickMemoryProperties(desc));
+        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, pickMemoryProperties(desc.memoryProperties));
 
         VK_CHECK(vkAllocateMemory(m_Context.device, &allocInfo, nullptr, &tex->imageMemory));
 
@@ -646,9 +622,11 @@ namespace RHI::Vulkan
             imageSize += w * h * bytesPerPixel * tex->getDesc().layerCount;
         }
 
-        Buffer* stagingBuffer = dynamic_cast<Buffer*>(createBuffer(
-            imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+        BufferDesc stagingDesc = BufferDesc{}
+            .setSize(imageSize)
+            .setIsTransferSrc(true)
+            .setMemoryProperties(MemoryPropertiesBits::HOST_VISIBLE_BIT | MemoryPropertiesBits::HOST_COHERENT_BIT);
+        Buffer* stagingBuffer = dynamic_cast<Buffer*>(createBuffer(stagingDesc));
 
         uploadBufferData(stagingBuffer->memory, 0, mipData, imageSize);
 
@@ -673,9 +651,11 @@ namespace RHI::Vulkan
         VkDeviceSize layerSize = tex->desc.width * tex->desc.height * bytesPerPixel;
         VkDeviceSize imageSize = layerSize * tex->desc.layerCount;
 
-        Buffer* stagingBuffer = dynamic_cast<Buffer*>(m_Device->createBuffer(
-            imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+        BufferDesc stagingDesc = BufferDesc{}
+            .setSize(imageSize)
+            .setIsTransferSrc(true)
+            .setMemoryProperties(MemoryPropertiesBits::HOST_VISIBLE_BIT | MemoryPropertiesBits::HOST_COHERENT_BIT);
+        Buffer* stagingBuffer = dynamic_cast<Buffer*>(m_Device->createBuffer(stagingDesc));
 
         m_Device->uploadBufferData(stagingBuffer->memory, 0, imageData, imageSize);
 

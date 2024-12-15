@@ -144,4 +144,28 @@ namespace RHI::Vulkan
 
         return c_ImageLayoutMapping[uint32_t(imageLayout)].vkImageLayout;
     }
+
+    VkMemoryPropertyFlags pickMemoryProperties(const MemoryPropertiesBits& memoryProperties)
+    {
+        VkMemoryPropertyFlags ret = 0;
+
+        if ((memoryProperties & MemoryPropertiesBits::DEVICE_LOCAL_BIT) != 0)
+        {
+            ret |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        }
+        if ((memoryProperties & MemoryPropertiesBits::HOST_VISIBLE_BIT) != 0)
+        {
+            ret |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        }
+        if ((memoryProperties & MemoryPropertiesBits::HOST_CACHED_BIT) != 0)
+        {
+            ret |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        }
+        if ((memoryProperties & MemoryPropertiesBits::HOST_COHERENT_BIT) != 0)
+        {
+            ret |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        }
+
+        return ret;
+    }
 }

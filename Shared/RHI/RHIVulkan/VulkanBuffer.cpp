@@ -9,7 +9,35 @@
 
 namespace RHI::Vulkan
 {
-	IBuffer* Device::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
+    static VkBufferUsageFlags pickBufferUsage(const BufferDesc& desc)
+    {
+        VkImageUsageFlags ret = 0;
+
+        if (desc.usage.isTransferSrc)
+            ret |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+        if (desc.usage.isTransferDst)
+            ret |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+    	if (desc.usage.isVertexBuffer)
+            ret |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+        if (desc.usage.isIndexBuffer)
+            ret |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+        if (desc.usage.isUniformBuffer)
+            ret |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+        if (desc.usage.isStorageBuffer)
+            ret |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+        if (desc.usage.isDrawIndirectBuffer)
+            ret |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+
+        return ret;
+    }
+
+	IBuffer* Device::createBuffer(const BufferDesc& desc)
     {
         Buffer* buffer = new Buffer(m_Context);
 
@@ -17,8 +45,8 @@ namespace RHI::Vulkan
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         bufferInfo.pNext = nullptr;
         bufferInfo.flags = 0;
-        bufferInfo.size = size;
-        bufferInfo.usage = usage;
+        bufferInfo.size = desc.size;
+        bufferInfo.usage = pickBufferUsage(desc);
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         bufferInfo.queueFamilyIndexCount = 0;
         bufferInfo.pQueueFamilyIndices = nullptr;
@@ -32,7 +60,7 @@ namespace RHI::Vulkan
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.pNext = nullptr;
         allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, pickMemoryProperties(desc.memoryProperties));
 
         VK_CHECK(vkAllocateMemory(m_Context.device, &allocInfo, nullptr, &buffer->memory));
 
@@ -41,12 +69,12 @@ namespace RHI::Vulkan
         return buffer;
     }
 
-    IBuffer* Device::createSharedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
+    IBuffer* Device::createSharedBuffer(const BufferDesc& desc)
     {
         uint32_t familyCount = static_cast<uint32_t>(m_DeviceQueueIndices.size());
 
         if (familyCount < 2)
-            return createBuffer(size, usage, properties);
+            return createBuffer(desc);
 
         Buffer* buffer = new Buffer(m_Context);
 
@@ -54,8 +82,8 @@ namespace RHI::Vulkan
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         bufferInfo.pNext = nullptr;
         bufferInfo.flags = 0;
-        bufferInfo.size = size;
-        bufferInfo.usage = usage;
+        bufferInfo.size = desc.size;
+        bufferInfo.usage = pickBufferUsage(desc);
         bufferInfo.sharingMode = (familyCount > 1) ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE;
         bufferInfo.queueFamilyIndexCount = static_cast<uint32_t>(m_DeviceQueueIndices.size());
         bufferInfo.pQueueFamilyIndices = (familyCount > 1) ? m_DeviceQueueIndices.data() : nullptr;
@@ -69,7 +97,7 @@ namespace RHI::Vulkan
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.pNext = nullptr;
         allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, pickMemoryProperties(desc.memoryProperties));
 
         VK_CHECK(vkAllocateMemory(m_Context.device, &allocInfo, nullptr, &buffer->memory));
 
@@ -80,9 +108,11 @@ namespace RHI::Vulkan
 
     IBuffer* Device::createUniformBuffer(VkDeviceSize bufferSize)
     {
-        return createBuffer(bufferSize,
-            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        BufferDesc desc = BufferDesc{}
+    		.setSize(bufferSize)
+            .setIsUniformBuffer(true)
+            .setMemoryProperties(MemoryPropertiesBits::HOST_VISIBLE_BIT | MemoryPropertiesBits::HOST_COHERENT_BIT);
+        return createBuffer(desc);
     }
 
     void Device::uploadBufferData(const VkDeviceMemory& bufferMemory, VkDeviceSize deviceOffset, const void* data, const size_t dataSize)
@@ -105,9 +135,9 @@ namespace RHI::Vulkan
         vkUnmapMemory(m_Context.device, bufferMemory);
     }
 
-    IBuffer* Device::addBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool createMapping)
+    IBuffer* Device::addBuffer(const BufferDesc& desc, bool createMapping)
     {
-		Buffer* buffer = dynamic_cast<Buffer*>(createSharedBuffer(size, usage, properties));
+		Buffer* buffer = dynamic_cast<Buffer*>(createSharedBuffer(desc));
         if (!buffer)
         {
             printf("Cannot allocate buffer\n");
@@ -115,7 +145,7 @@ namespace RHI::Vulkan
         }
         else
         {
-            buffer->size = size;
+            buffer->size = desc.size;
             //m_Resources.allBuffers.push_back(buffer);
         }
 
@@ -135,9 +165,11 @@ namespace RHI::Vulkan
     {
         VkDeviceSize bufferSize = vertexDataSize + indexDataSize;
 
-        Buffer* stagingBuffer = dynamic_cast<Buffer*>(createBuffer(
-            bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+        BufferDesc stagingDesc = BufferDesc{}
+            .setSize(bufferSize)
+            .setIsTransferSrc(true)
+            .setMemoryProperties(MemoryPropertiesBits::HOST_VISIBLE_BIT | MemoryPropertiesBits::HOST_COHERENT_BIT);
+        Buffer* stagingBuffer = dynamic_cast<Buffer*>(createBuffer(stagingDesc));
 
         void* data;
         vkMapMemory(m_Context.device, stagingBuffer->memory, 0, bufferSize, 0, &data);
@@ -145,10 +177,12 @@ namespace RHI::Vulkan
         memcpy((unsigned char*)data + vertexDataSize, indexData, indexDataSize);
         vkUnmapMemory(m_Context.device, stagingBuffer->memory);
 
-        
-        Buffer* storageBuffer = dynamic_cast<Buffer*>(createBuffer(
-            bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+        BufferDesc storageDesc = BufferDesc{}
+            .setSize(bufferSize)
+            .setIsTransferDst(true)
+            .setIsStorageBuffer(true)
+            .setMemoryProperties(MemoryPropertiesBits::DEVICE_LOCAL_BIT);
+        Buffer* storageBuffer = dynamic_cast<Buffer*>(createBuffer(storageDesc));
         storageBuffer->size = bufferSize;
 
         // TODO:fix command list issue

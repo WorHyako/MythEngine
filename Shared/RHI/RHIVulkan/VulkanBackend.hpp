@@ -742,11 +742,11 @@ namespace RHI::Vulkan
 
 		IBuffer* createUniformBuffer(VkDeviceSize bufferSize);
 
-		IBuffer* createSharedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+		virtual IBuffer* createSharedBuffer(const BufferDesc& desc) override;
 
-		IBuffer* createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+		virtual IBuffer* createBuffer(const BufferDesc& desc) override;
 
-		IBuffer* addBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool createMapping = false);
+		virtual IBuffer* addBuffer(const BufferDesc& desc, bool createMapping = false) override;
 
 		inline IBuffer* addUniformBuffer(VkDeviceSize bufferSize, bool createMapping = false)
 		{

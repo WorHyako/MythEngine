@@ -21,4 +21,6 @@ namespace RHI::Vulkan
 	VkSamplerAddressMode convertSamplerAddressMode(SamplerAddressMode mode);
 
 	VkImageLayout convertImageLayout(ImageLayout imageLayout);
+
+	VkMemoryPropertyFlags pickMemoryProperties(const MemoryPropertiesBits& memoryProperties);
 }

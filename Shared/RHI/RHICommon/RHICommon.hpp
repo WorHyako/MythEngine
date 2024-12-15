@@ -351,7 +351,7 @@ namespace RHI
         CreateFlagBits flags = CreateFlagBits::NONE_BIT;
         TextureDimension dimension = TextureDimension::Texture2D;
 
-        ImageUsage imageUsage = {};
+        ImageUsage usage = {};
 
         TextureDesc& setWidth(uint32_t value) { width = value; return *this; }
         TextureDesc& setHeight(uint32_t value) { height = value; return *this; }
@@ -360,11 +360,12 @@ namespace RHI
         TextureDesc& setLayerCount(uint32_t value) { layerCount = value; return *this; }
         TextureDesc& setFormat(Format value) { format = value; return *this; }
         TextureDesc& setDimension(TextureDimension value) { dimension = value; return *this; }
-        TextureDesc& setIsTransferSrc(bool value) { imageUsage.isTransferSrc = value; return *this; }
-        TextureDesc& setIsTransferDst(bool value) { imageUsage.isTransferDst = value; return *this; }
-        TextureDesc& setIsShaderResource(bool value) { imageUsage.isShaderResource = value; return *this; }
-        TextureDesc& setIsRenderTarget(bool value) { imageUsage.isRenderTarget = value; return *this; }
-        TextureDesc& setIsUAV(bool value) { imageUsage.isUAV = value; return *this; }
+        TextureDesc& setMemoryProperties(MemoryPropertiesBits value) { memoryProperties = value; return *this; }
+        TextureDesc& setIsTransferSrc(bool value) { usage.isTransferSrc = value; return *this; }
+        TextureDesc& setIsTransferDst(bool value) { usage.isTransferDst = value; return *this; }
+        TextureDesc& setIsShaderResource(bool value) { usage.isShaderResource = value; return *this; }
+        TextureDesc& setIsRenderTarget(bool value) { usage.isRenderTarget = value; return *this; }
+        TextureDesc& setIsUAV(bool value) { usage.isUAV = value; return *this; }
     };
 
     class ITexture : public IResource
@@ -373,20 +374,34 @@ namespace RHI
         virtual const TextureDesc& getDesc() const = 0;
     };
 
-    struct BufferDesc
+    struct BufferUsage
     {
-        uint32_t size;
-        Format format = Format::UNKNOWN;
-
+        bool isTransferSrc = false;
+        bool isTransferDst = false;
         bool isIndexBuffer = false;
         bool isVertexBuffer = false;
+        bool isUniformBuffer = false;
         bool isStorageBuffer = false;
+        bool isDrawIndirectBuffer = false;
+    };
 
-        constexpr BufferDesc& setSize(uint32_t value) { size = value; return *this; }
+    struct BufferDesc
+    {
+        uint64_t size;
+        Format format = Format::UNKNOWN;
+        MemoryPropertiesBits memoryProperties = MemoryPropertiesBits::DEVICE_LOCAL_BIT;
+        BufferUsage usage = {};
+
+        constexpr BufferDesc& setSize(uint64_t value) { size = value; return *this; }
         constexpr BufferDesc& setFormat(Format value) { format = value; return *this; }
-        constexpr BufferDesc& setIndexBuffer(bool value) { isIndexBuffer = value; return *this; }
-        constexpr BufferDesc& setVertexBuffer(bool value) { isVertexBuffer = value; return *this; }
-        constexpr BufferDesc& setStorageBuffer(bool value) { isStorageBuffer = value; return *this; }
+        constexpr BufferDesc& setMemoryProperties(MemoryPropertiesBits value) { memoryProperties = value; return *this; }
+        constexpr BufferDesc& setIsTransferSrc(bool value) { usage.isTransferSrc = value; return *this; }
+        constexpr BufferDesc& setIsTransferDst(bool value) { usage.isTransferDst = value; return *this; }
+        constexpr BufferDesc& setIsIndexBuffer(bool value) { usage.isIndexBuffer = value; return *this; }
+        constexpr BufferDesc& setIsVertexBuffer(bool value) { usage.isVertexBuffer = value; return *this; }
+        constexpr BufferDesc& setIsUniformBuffer(bool value) { usage.isUniformBuffer = value; return *this; }
+        constexpr BufferDesc& setIsStorageBuffer(bool value) { usage.isStorageBuffer = value; return *this; }
+        constexpr BufferDesc& setIsDrawIndirectBuffer(bool value) { usage.isDrawIndirectBuffer = value; return *this; }
     };
 
     class IBuffer : public IResource
@@ -508,5 +523,8 @@ namespace RHI
         virtual ITexture* createImage(const TextureDesc& desc) = 0;
         virtual ISampler* createTextureSampler(const SamplerDesc& desc = SamplerDesc());
         virtual ISampler* createDepthSampler() = 0;
+        virtual IBuffer* createBuffer(const BufferDesc& desc) = 0;
+        virtual IBuffer* createSharedBuffer(const BufferDesc& desc) = 0;
+        virtual IBuffer* addBuffer(const BufferDesc& desc, bool createMapping = false) = 0;
     };
 }
