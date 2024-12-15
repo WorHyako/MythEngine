@@ -131,17 +131,6 @@ namespace RHI
         FLAG_BITS_MAX_ENUM
     };
 
-    enum class ImageViewType {
-        TYPE_1D = 0,
-        TYPE_2D = 1,
-        TYPE_3D = 2,
-        TYPE_CUBE = 3,
-        TYPE_1D_ARRAY = 4,
-        TYPE_2D_ARRAY = 5,
-        TYPE_CUBE_ARRAY = 6,
-        TYPE_MAX_ENUM = 0x7FFFFFFF
-    };
-
     enum class ImageLayout {
         UNDEFINED = 0,
         GENERAL = 1,
@@ -162,6 +151,15 @@ namespace RHI
         ATTACHMENT_OPTIMAL = 16,
         COUNT = 17
     };
+
+    enum class ImageAspectFlagBits {
+        NONE = 0,
+        COLOR_BIT = 0x00000001,
+        DEPTH_BIT = 0x00000002,
+        STENCIL_BIT = 0x00000004,
+        MAX_ENUM = 0x7FFFFFFF
+    };
+    ENUM_CLASS_FLAG_OPERATORS(ImageAspectFlagBits)
 
     enum class TextureDimension : uint8_t
     {
@@ -227,6 +225,7 @@ namespace RHI
         virtual void transitionImageLayout(ITexture* texture, ImageLayout oldLayout, ImageLayout newLayout) = 0;
         virtual bool updateTextureImage(ITexture* texture, const void* imageData, ImageLayout sourceImageLayout = ImageLayout::UNDEFINED) = 0;
         virtual void copyBufferToImage(IBuffer* buffer, ITexture* texture) = 0;
+        virtual void copyMIPBufferToImage(IBuffer* buffer, ITexture* texture, uint32_t bytesPP) = 0;
     };
 
     class IInstance : public IResource
@@ -521,7 +520,8 @@ namespace RHI
         virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* framebuffer) = 0;
         virtual IShader* createShaderModule(const char* fileName) = 0;
         virtual ITexture* createImage(const TextureDesc& desc) = 0;
-        virtual ISampler* createTextureSampler(const SamplerDesc& desc = SamplerDesc());
+        virtual bool createImageView(ITexture* texture, ImageAspectFlagBits aspectFlags) = 0;
+        virtual ISampler* createTextureSampler(const SamplerDesc& desc = SamplerDesc()) = 0;
         virtual ISampler* createDepthSampler() = 0;
         virtual IBuffer* createBuffer(const BufferDesc& desc) = 0;
         virtual IBuffer* createSharedBuffer(const BufferDesc& desc) = 0;

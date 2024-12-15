@@ -248,19 +248,22 @@ namespace RHI::Vulkan
         vkCmdCopyBufferToImage(m_CurrentCommandBuffer->commandBuffer, buf->buffer, tex->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
     }
 
-    void CommandList::copyMIPBufferToImage(VkBuffer buffer, VkImage image, uint32_t mipLevels, uint32_t width, uint32_t height, uint32_t bytesPP, uint32_t layerCount)
+    void CommandList::copyMIPBufferToImage(IBuffer* buffer, ITexture* texture, uint32_t bytesPP)
     {
-        uint32_t w = width, h = height;
-        uint32_t offset = 0;
-        std::vector<VkBufferImageCopy> regions(mipLevels);
+        Buffer* buf = dynamic_cast<Buffer*>(buffer);
+        Texture* tex = dynamic_cast<Texture*>(texture);
 
-        for (uint32_t i = 0; i < mipLevels; i++)
+        uint32_t w = tex->getDesc().width, h = tex->getDesc().height;
+        uint32_t offset = 0;
+        std::vector<VkBufferImageCopy> regions(tex->getDesc().mipLevels);
+
+        for (uint32_t i = 0; i < tex->getDesc().mipLevels; i++)
         {
             VkImageSubresourceLayers subresource{};
             subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             subresource.mipLevel = i;
             subresource.baseArrayLayer = 0;
-            subresource.layerCount = layerCount;
+            subresource.layerCount = tex->getDesc().layerCount;
             VkBufferImageCopy region{};
             region.bufferOffset = offset;
             region.bufferRowLength = 0;
@@ -269,7 +272,7 @@ namespace RHI::Vulkan
             region.imageOffset = VkOffset3D{ 0, 0, 0 };
             region.imageExtent = VkExtent3D{ w, h, 1 };
 
-            offset += w * h * layerCount * bytesPP;
+            offset += w * h * tex->getDesc().layerCount * bytesPP;
 
             regions[i] = region;
 
@@ -277,7 +280,7 @@ namespace RHI::Vulkan
             h >>= 1;
         }
 
-        vkCmdCopyBufferToImage(m_CurrentCommandBuffer->commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, (uint32_t)regions.size(), regions.data());
+        vkCmdCopyBufferToImage(m_CurrentCommandBuffer->commandBuffer, buf->buffer, tex->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, (uint32_t)regions.size(), regions.data());
     }
 
     void CommandList::copyImageToBuffer(VkImage image, VkBuffer buffer, uint32_t width, uint32_t height, uint32_t layerCount)

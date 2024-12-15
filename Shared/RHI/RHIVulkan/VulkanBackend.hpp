@@ -694,27 +694,15 @@ namespace RHI::Vulkan
 		virtual GraphicsAPI getGraphicsAPI() const override;
 
 		/* Resource Management*/
-		ITexture* loadTexture2D(const char* filename);
-
-		ITexture* loadCubemap(const char* fileName, uint32_t mipLevels = 1);
-
-		ITexture* loadKTX(const char* fileName);
-
-		ITexture* createFontTexture(const char* fontFile);
-
 		ITexture* addColorTexture(IRHICommandList* commandList, int texWidth = 0, int texHeight = 0,
 			Format colorFormat = Format::BGRA8_UNORM,
 			const SamplerDesc& samplerDesc);
 
 		ITexture* addDepthTexture(int texWidth = 0, int texHeight = 0, VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-		ITexture* addSolidRGBATexture(uint32_t color = 0xFFFFFFFF);
-
-		ITexture* addRGBATexture(TextureDesc& desc, void* data);
-
 		virtual ITexture* createImage(const TextureDesc& desc) override;
 
-		bool createImageView(ITexture* texture, VkImageAspectFlags aspectFlags, VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D);
+		virtual bool createImageView(ITexture* texture, ImageAspectFlagBits aspectFlags) override;
 
 		virtual ISampler* createTextureSampler(const SamplerDesc& desc = SamplerDesc()) override;
 
@@ -722,17 +710,9 @@ namespace RHI::Vulkan
 
 		ITexture* createOffscreenImage(TextureDesc& desc);
 
-		ITexture* createTextureImage(const char* filename);
-
-		ITexture* createMIPTextureImage(const char* filename, uint32_t mipLevels);
-
 		ITexture* createCubeTextureImage(const char* filename, uint32_t* width = nullptr, uint32_t* height = nullptr);
 
 		ITexture* createMIPCubeTextureImage(const char* filename, uint32_t mipLevels, uint32_t* width = nullptr, uint32_t* height = nullptr);
-
-		ITexture* createTextureImageFromData(IRHICommandList* commandList, void* imageData, TextureDesc& desc);
-
-		ITexture* createMIPTextureImageFromData(void* mipData, TextureDesc& desc);
 
 		VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
@@ -748,27 +728,39 @@ namespace RHI::Vulkan
 
 		virtual IBuffer* addBuffer(const BufferDesc& desc, bool createMapping = false) override;
 
-		inline IBuffer* addUniformBuffer(VkDeviceSize bufferSize, bool createMapping = false)
+		inline IBuffer* addUniformBuffer(uint64_t bufferSize, bool createMapping = false)
 		{
-			return addBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, createMapping); /* for debugging we make it host-visible */
+			BufferDesc desc = BufferDesc{}
+				.setSize(bufferSize)
+				.setIsUniformBuffer(true)
+				.setMemoryProperties(MemoryPropertiesBits::HOST_VISIBLE_BIT | MemoryPropertiesBits::HOST_COHERENT_BIT); /* for debugging we make it host-visible */
+			return addBuffer(desc, createMapping);
 		}
 
 		inline IBuffer* addIndirectBuffer(VkDeviceSize bufferSize, bool createMapping = false) {
-			return addBuffer(bufferSize, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, // | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, createMapping); /* for debugging we make it host-visible */
+			BufferDesc desc = BufferDesc{}
+				.setSize(bufferSize)
+				.setIsDrawIndirectBuffer(true) // | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+				.setMemoryProperties(MemoryPropertiesBits::HOST_VISIBLE_BIT | MemoryPropertiesBits::HOST_COHERENT_BIT); /* for debugging we make it host-visible */
+			return addBuffer(desc, createMapping);
 		}
 
 		inline IBuffer* addStorageBuffer(VkDeviceSize bufferSize, bool createMapping = false)
 		{
-			return addBuffer(bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, createMapping); /* for debugging we make it host-visible */
+			BufferDesc desc = BufferDesc{}
+				.setSize(bufferSize)
+				.setIsStorageBuffer(true)
+				.setMemoryProperties(MemoryPropertiesBits::HOST_VISIBLE_BIT | MemoryPropertiesBits::HOST_COHERENT_BIT); /* for debugging we make it host-visible */
+			return addBuffer(desc, createMapping); /* for debugging we make it host-visible */
 		}
 
 		inline IBuffer* addLocalDeviceStorageBuffer(VkDeviceSize bufferSize, bool createMapping = false)
 		{
-			return addBuffer(bufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, createMapping); /* for debugging we make it host-visible */
+			BufferDesc desc = BufferDesc{}
+				.setSize(bufferSize)
+				.setIsStorageBuffer(true)
+				.setMemoryProperties(MemoryPropertiesBits::DEVICE_LOCAL_BIT);
+			return addBuffer(desc, createMapping);
 		}
 
 		/* Allocate and upload vertex & index buffer pair */
@@ -877,7 +869,7 @@ namespace RHI::Vulkan
 		virtual bool updateTextureImage(ITexture* texture, const void* imageData, ImageLayout sourceImageLayout = ImageLayout::UNDEFINED) override;
 
 		virtual void copyBufferToImage(IBuffer* buffer, ITexture* texture) override;
-		void copyMIPBufferToImage(VkBuffer buffer, VkImage image, uint32_t mipLevels, uint32_t width, uint32_t height, uint32_t bytesPP, uint32_t layerCount = 1);
+		virtual void copyMIPBufferToImage(IBuffer* buffer, ITexture* texture, uint32_t bytesPP) override;
 		void copyImageToBuffer(VkImage image, VkBuffer buffer, uint32_t width, uint32_t height, uint32_t layerCount = 1);
 
 		void beginRenderPass(Framebuffer* framebuffer);

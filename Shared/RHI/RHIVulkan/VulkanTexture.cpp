@@ -144,61 +144,57 @@ namespace RHI::Vulkan
         return ret;
     }
 
-    ITexture* Device::addRGBATexture(TextureDesc& desc, void* data)
+    static VkImageAspectFlags pickImageAspect(const ImageAspectFlagBits& imageAspect)
     {
-        desc.setFormat(Format::RGBA8_UNORM);
-    	Texture* tex = dynamic_cast<Texture*>(createTextureImageFromData(data, desc));
+        VkImageAspectFlags ret = VK_IMAGE_ASPECT_NONE;
 
-        if (!tex)
+        if((imageAspect & ImageAspectFlagBits::COLOR_BIT) != 0)
         {
-            printf("Cannot create solid texture\n");
-            exit(EXIT_FAILURE);
+            ret |= VK_IMAGE_ASPECT_COLOR_BIT;
+        }
+        if ((imageAspect & ImageAspectFlagBits::DEPTH_BIT) != 0)
+        {
+            ret |= VK_IMAGE_ASPECT_DEPTH_BIT;
+        }
+        if ((imageAspect & ImageAspectFlagBits::STENCIL_BIT) != 0)
+        {
+            ret |= VK_IMAGE_ASPECT_STENCIL_BIT;
         }
 
-        // TODO:fix command list ussie
-        //transitionImageLayout(tex->image, tex->format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-        if (!createImageView(tex, VK_IMAGE_ASPECT_COLOR_BIT))
-        {
-            printf("Cannot create image view for 2d texture\n");
-            exit(EXIT_FAILURE);
-        }
-
-         createTextureSampler();
-        // TODO:fix allocation issue
-        //m_Resources.allTextures.push_back(tex);
-        return tex;
+        return ret;
     }
 
-    ITexture* Device::addSolidRGBATexture(uint32_t color)
+    static VkImageViewType textureDimensionToImageViewType(TextureDimension dimension)
     {
-        TextureDesc desc = {};
-        desc.setWidth(1)
-            .setHeight(1)
-            .setDepth(1)
-            .setFormat(Format::RGBA8_UNORM);
-        Texture* tex = dynamic_cast<Texture*>(createTextureImageFromData(&color, desc));
-
-        if (!tex)
+        switch (dimension)
         {
-            printf("Cannot create solid texture\n");
-            exit(EXIT_FAILURE);
+        case TextureDimension::Texture1D:
+            return VK_IMAGE_VIEW_TYPE_1D;
+
+        case TextureDimension::Texture1DArray:
+            return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+
+        case TextureDimension::Texture2D:
+        case TextureDimension::Texture2DMS:
+            return VK_IMAGE_VIEW_TYPE_2D;
+
+        case TextureDimension::Texture2DArray:
+        case TextureDimension::Texture2DMSArray:
+            return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+
+        case TextureDimension::TextureCube:
+            return VK_IMAGE_VIEW_TYPE_CUBE;
+
+        case TextureDimension::TextureCubeArray:
+            return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+
+        case TextureDimension::Texture3D:
+            return VK_IMAGE_VIEW_TYPE_3D;
+
+        case TextureDimension::Unknown:
+        default:
+            return VK_IMAGE_VIEW_TYPE_2D;
         }
-
-        // TODO:fix command list issue
-        //transitionImageLayout(tex->image, tex->format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-        if (!createImageView(tex, VK_IMAGE_ASPECT_COLOR_BIT))
-        {
-            printf("Cannot create image view for solid texture\n");
-            exit(EXIT_FAILURE);
-        }
-
-        ISampler* sampler = createTextureSampler();
-        // TODO:fix allocation issue
-        //m_Resources.allTextures.push_back(tex);
-
-        return tex;
     }
 
     ITexture* Device::addColorTexture(IRHICommandList* commandList, int texWidth, int texHeight, Format colorFormat, const SamplerDesc& samplerDesc)
@@ -218,7 +214,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        createImageView(tex, VK_IMAGE_ASPECT_COLOR_BIT);
+        createImageView(tex, ImageAspectFlagBits::COLOR_BIT);
         ISampler* sampler = createTextureSampler(samplerDesc);
 
         commandList->transitionImageLayout(tex, ImageLayout::UNDEFINED, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
@@ -250,7 +246,7 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        createImageView(tex, VK_IMAGE_ASPECT_DEPTH_BIT);
+        createImageView(tex, ImageAspectFlagBits::DEPTH_BIT);
         // TODO:fix command list ussie
         //transitionImageLayout(tex->image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, layout/*VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL*/);
 
@@ -306,7 +302,7 @@ namespace RHI::Vulkan
         return tex;
     }
 
-    bool Device::createImageView(ITexture* texture, VkImageAspectFlags aspectFlags, VkImageViewType viewType)
+    bool Device::createImageView(ITexture* texture, ImageAspectFlagBits aspectFlags)
     {
         Texture* tex = dynamic_cast<Texture*>(texture);
 
@@ -315,9 +311,9 @@ namespace RHI::Vulkan
         viewInfo.pNext = nullptr;
         viewInfo.flags = 0;
         viewInfo.image = tex->image;
-        viewInfo.viewType = viewType;
+        viewInfo.viewType = textureDimensionToImageViewType(tex->desc.dimension);
         viewInfo.format = convertFormat(tex->desc.format);
-        viewInfo.subresourceRange.aspectMask = aspectFlags;
+        viewInfo.subresourceRange.aspectMask = pickImageAspect(aspectFlags);
         viewInfo.subresourceRange.baseMipLevel = 0;
         viewInfo.subresourceRange.levelCount = tex->desc.mipLevels;
         viewInfo.subresourceRange.baseArrayLayer = 0;
@@ -396,72 +392,6 @@ namespace RHI::Vulkan
             .setIsRenderTarget(true);
         desc.memoryProperties = MemoryPropertiesBits::DEVICE_LOCAL_BIT;
         return createImage(desc);
-    }
-
-    ITexture* Device::createTextureImage(const char* filename)
-    {
-        int texWidth, texHeight, texChannels;
-        stbi_uc* pixels = stbi_load(filename, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-
-        if (!pixels)
-        {
-            printf("Failed to load [%s] texture\n", filename); fflush(stdout);
-            return false;
-        }
-
-        TextureDesc desc = {};
-        desc.setWidth(texWidth)
-            .setHeight(texHeight)
-            .setFormat(Format::RGBA8_UNORM);
-        ITexture* result = createTextureImageFromData( pixels, desc);
-
-        stbi_image_free(pixels);
-
-        return result;
-    }
-
-    ITexture* Device::createMIPTextureImage(const char* filename, uint32_t mipLevels)
-    {
-        int texWidth, texHeight, texChannels;
-        stbi_uc* pixels = stbi_load(filename, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-
-        if (!pixels)
-        {
-            printf("Failed to load [%s] texture\n", filename); fflush(stdout);
-            return false;
-        }
-
-        uint32_t imgSize = texWidth * texHeight * texChannels;
-        uint32_t mipSize = (imgSize * 3) >> 1;
-        std::vector<uint8_t> mipData(mipSize);
-
-        uint8_t* dst = mipData.data();
-        uint8_t* src = dst;
-        memcpy(dst, pixels, imgSize);
-
-        uint32_t w = texWidth, h = texHeight;
-        for (uint32_t i = 1; i < mipLevels; i++)
-        {
-            dst += (w * h * texChannels) >> 2;
-
-            stbir_resize_uint8(src, w, h, 0,
-                dst, w / 2, h / 2, 0, texChannels);
-
-            w >>= 1;
-            h >>= 1;
-            src = dst;
-        }
-
-        TextureDesc desc = {};
-        desc.setWidth(texWidth)
-            .setHeight(texHeight)
-			.setMipLevels(mipLevels)
-            .setFormat(Format::RGBA8_UNORM);
-        ITexture* result = createMIPTextureImageFromData(mipData.data(), desc);
-
-        stbi_image_free(pixels);
-
-        return result;
     }
 
     ITexture* Device::createCubeTextureImage(const char* filename, uint32_t* width, uint32_t* height)
@@ -590,58 +520,6 @@ namespace RHI::Vulkan
             mipCube.data(), desc);
     }
 
-    ITexture* Device::createTextureImageFromData(IRHICommandList* commandList, void* imageData, TextureDesc& desc)
-    {
-        desc.setIsTransferDst(true)
-            .setIsShaderResource(true);
-        ITexture* tex = createImage(desc);
-
-        commandList->updateTextureImage(tex, imageData);
-
-        return tex;
-    }
-
-    ITexture* Device::createMIPTextureImageFromData(
-        void* mipData, TextureDesc& desc)
-    {
-        desc.setIsTransferDst(true)
-            .setIsShaderResource(true);
-        ITexture* tex = createImage(desc);
-
-        // now allocate staging buffer for all MIP levels
-        uint32_t bytesPerPixel = bytesPerTexFormat(convertFormat(tex->getDesc().format));
-
-        VkDeviceSize layerSize = tex->getDesc().width * tex->getDesc().height * bytesPerPixel;
-        VkDeviceSize imageSize = layerSize * tex->getDesc().layerCount;
-
-        uint32_t w = tex->getDesc().width, h = tex->getDesc().height;
-        for (uint32_t i = 1; i < tex->getDesc().mipLevels; i++)
-        {
-            w >>= 1;
-            h >>= 1;
-            imageSize += w * h * bytesPerPixel * tex->getDesc().layerCount;
-        }
-
-        BufferDesc stagingDesc = BufferDesc{}
-            .setSize(imageSize)
-            .setIsTransferSrc(true)
-            .setMemoryProperties(MemoryPropertiesBits::HOST_VISIBLE_BIT | MemoryPropertiesBits::HOST_COHERENT_BIT);
-        Buffer* stagingBuffer = dynamic_cast<Buffer*>(createBuffer(stagingDesc));
-
-        uploadBufferData(stagingBuffer->memory, 0, mipData, imageSize);
-
-        // TODO:fix command list ussie
-        //transitionImageLayout(textureImage, texFormat, VK_IMAGE_LAYOUT_UNDEFINED/*sourceImageLayout*/, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layerCount, mipLevels);
-        // TODO:fix command list ussie
-        //copyMIPBufferToImage(stagingBuffer, textureImage, mipLevels, texWidth, texHeight, bytesPerPixel, layerCount);
-        // TODO:fix command list ussie
-        //transitionImageLayout(textureImage, texFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, layerCount, mipLevels);
-
-        delete stagingBuffer;
-
-        return tex;
-    }
-
     bool CommandList::updateTextureImage(ITexture* texture, const void* imageData, ImageLayout sourceImageLayout)
     {
         Texture* tex = dynamic_cast<Texture*>(texture);
@@ -666,140 +544,5 @@ namespace RHI::Vulkan
         delete stagingBuffer;
 
         return true;
-    }
-
-
-    ITexture* Device::loadCubemap(const char* fileName, uint32_t mipLevels)
-    {
-        ITexture* tex = nullptr;
-
-        uint32_t w = 0, h = 0;
-
-        if (mipLevels > 1)
-            tex = createMIPCubeTextureImage(fileName, mipLevels, &w, &h);
-        else
-            tex = createCubeTextureImage(fileName, &w, &h);
-
-        createImageView(tex, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_CUBE);
-        ISampler* sampler = createTextureSampler();
-
-        TextureDesc desc = tex->getDesc();
-        desc.setWidth(w);
-        desc.setHeight(h);
-        Texture* texture = dynamic_cast<Texture*>(tex);
-        texture->desc = desc;
-
-        // TODO:fix allocation issue
-        //m_Resources.allTextures.push_back(cubemap);
-
-        return tex;
-    }
-
-    ITexture* Device::loadKTX(const char* fileName)
-    {
-        gli::texture gliTex = gli::load_ktx(fileName);
-        gli::tvec3<uint32_t> extent(gliTex.extent(0));
-
-        TextureDesc desc = {};
-        desc.setWidth(extent.x)
-            .setHeight(extent.y)
-            .setWidth(4)
-            .setFormat(Format::RG16_FLOAT);
-
-        ITexture* ktx = createTextureImageFromData((uint8_t*)gliTex.data(0, 0, 0), desc);
-
-        if (!ktx)
-        {
-            printf("ModelRenderer: failed to load BRDF LUT texture \n");
-            exit(EXIT_FAILURE);
-        }
-
-        createImageView(ktx, VK_IMAGE_ASPECT_COLOR_BIT);
-
-        SamplerDesc samplerDesc = {};
-        samplerDesc.setAddressAll(SamplerAddressMode::CLAMP_TO_EDGE);
-    	ISampler* sampler = createTextureSampler(samplerDesc);
-
-        // TODO:fix allocation issue
-        //m_Resources.allTextures.push_back(ktx);
-
-        return ktx;
-    }
-
-    ITexture* Device::loadTexture2D(const char* fileName)
-    {
-        ITexture* tex = createTextureImage(fileName);
-        if (!tex)
-        {
-            printf("Cannot load %s 2D texture file\n", fileName);
-            exit(EXIT_FAILURE);
-        }
-
-        // TODO:fix command list ussie
-        //transitionImageLayout(tex.image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-        if (!createImageView(tex, VK_IMAGE_ASPECT_COLOR_BIT))
-        {
-            printf("Cannot create image view for 2d texture (%s)\n", fileName);
-            exit(EXIT_FAILURE);
-        }
-
-        ISampler* sampler = createTextureSampler();
-        // TODO:fix allocation issue
-        //m_Resources.allTextures.push_back(tex);
-        // TODO: fix loading resources
-        //return tex;
-        return tex;
-    }
-
-
-    ITexture* Device::createFontTexture(const char* fontFile)
-    {
-        // TODO: fix loading resources
-        ImGuiIO& io = ImGui::GetIO();
-
-        // Build texture atlas
-        ImFontConfig cfg = ImFontConfig();
-        cfg.FontDataOwnedByAtlas = false;
-        cfg.RasterizerMultiply = 1.5f;
-        cfg.SizePixels = 768.0f / 32.0f;
-        cfg.PixelSnapH = true;
-        cfg.OversampleH = 4;
-        cfg.OversampleV = 4;
-        ImFont* Font = io.Fonts->AddFontFromFileTTF(fontFile, cfg.SizePixels, &cfg);
-
-
-        unsigned char* pixels = nullptr;
-        int texWidth = 1, texHeight = 1;
-        io.Fonts->GetTexDataAsRGBA32(&pixels, &texWidth, &texHeight);
-
-        if (!pixels)
-        {
-            printf("Failed to load texture\n"); fflush(stdout);
-            return nullptr;
-        }
-
-        TextureDesc desc = {};
-        desc.setWidth(texWidth)
-            .setHeight(texHeight)
-            .setFormat(Format::RGBA8_UNORM);
-        ITexture* tex = createTextureImageFromData(pixels, desc);
-        if(!tex)
-        {
-            printf("Failed to create texture\n"); fflush(stdout);
-            return nullptr;
-        }
-
-        createImageView(tex, VK_IMAGE_ASPECT_COLOR_BIT);
-        ISampler* sampler = createTextureSampler();
-
-        /* This is not strictly necessary, a font can be any texture */
-        io.Fonts->TexID = (ImTextureID)0;
-        io.FontDefault = Font;
-        io.DisplayFramebufferScale = ImVec2(1, 1);
-
-        //m_Resources.allTextures.push_back(res);
-        //return res;
-        return tex;
     }
 }
