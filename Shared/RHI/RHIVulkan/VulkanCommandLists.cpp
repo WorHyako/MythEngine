@@ -65,9 +65,16 @@ namespace RHI::Vulkan
         vkCmdCopyBuffer(m_CurrentCommandBuffer->commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
     }
 
-    void CommandList::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount, uint32_t mipLevels)
+    void CommandList::transitionImageLayout(ITexture* texture, ImageLayout oldLayout, ImageLayout newLayout)
     {
-        transitionImageLayoutCmd(image, format, oldLayout, newLayout, layerCount, mipLevels);
+        Texture* tex = dynamic_cast<Texture*>(texture);
+        transitionImageLayoutCmd(
+            tex->image,
+            convertFormat(tex->getDesc().format),
+            convertImageLayout(oldLayout),
+            convertImageLayout(newLayout),
+            tex->getDesc().layerCount,
+            tex->getDesc().mipLevels);
     }
 
     void CommandList::transitionImageLayoutCmd(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount, uint32_t mipLevels)
@@ -222,8 +229,11 @@ namespace RHI::Vulkan
             1, &barrier);
     }
 
-    void CommandList::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount)
+    void CommandList::copyBufferToImage(IBuffer* buffer, ITexture* texture)
     {
+        Texture* tex = dynamic_cast<Texture*>(texture);
+        Buffer* buf = dynamic_cast<Buffer*>(buffer);
+
         VkBufferImageCopy region{};
         region.bufferOffset = 0;
         region.bufferRowLength = 0;
@@ -231,11 +241,11 @@ namespace RHI::Vulkan
         region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         region.imageSubresource.mipLevel = 0;
         region.imageSubresource.baseArrayLayer = 0;
-        region.imageSubresource.layerCount = layerCount;
+        region.imageSubresource.layerCount = tex->getDesc().layerCount;
         region.imageOffset = VkOffset3D{ 0, 0, 0 };
-        region.imageExtent = VkExtent3D{ width, height, 1 };
+        region.imageExtent = VkExtent3D{ tex->getDesc().width, tex->getDesc().height, 1 };
 
-        vkCmdCopyBufferToImage(m_CurrentCommandBuffer->commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        vkCmdCopyBufferToImage(m_CurrentCommandBuffer->commandBuffer, buf->buffer, tex->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
     }
 
     void CommandList::copyMIPBufferToImage(VkBuffer buffer, VkImage image, uint32_t mipLevels, uint32_t width, uint32_t height, uint32_t bytesPP, uint32_t layerCount)

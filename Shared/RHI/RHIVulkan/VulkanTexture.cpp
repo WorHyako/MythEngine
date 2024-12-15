@@ -225,7 +225,7 @@ namespace RHI::Vulkan
         return tex;
     }
 
-    ITexture* Device::addColorTexture(int texWidth, int texHeight, Format colorFormat, VkFilter minFilter, VkFilter maxFilter, VkSamplerAddressMode addressMode)
+    ITexture* Device::addColorTexture(IRHICommandList* commandList, int texWidth, int texHeight, Format colorFormat, const SamplerDesc& samplerDesc)
     {
         const uint32_t w = (texWidth > 0) ? texWidth : m_DeviceDesc.framebufferWidth;
         const uint32_t h = (texHeight > 0) ? texHeight : m_DeviceDesc.framebufferHeight;
@@ -243,10 +243,9 @@ namespace RHI::Vulkan
         }
 
         createImageView(tex, VK_IMAGE_ASPECT_COLOR_BIT);
-        ISampler* sampler = createTextureSampler(minFilter, maxFilter, addressMode);
+        ISampler* sampler = createTextureSampler(samplerDesc);
 
-        // TODO:fix command list ussie
-        //transitionImageLayout(tex->image, colorFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        commandList->transitionImageLayout(tex, ImageLayout::UNDEFINED, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
         // TODO:fix allocation issue
         //m_Resources.allTextures.push_back(tex);
 
@@ -279,7 +278,8 @@ namespace RHI::Vulkan
         // TODO:fix command list ussie
         //transitionImageLayout(tex->image, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, layout/*VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL*/);
 
-        if (!createDepthSampler())
+        ISampler* sampler = createDepthSampler();
+        if (!sampler)
         {
             printf("Cannot create a depth sampler");
             exit(EXIT_FAILURE);
@@ -330,22 +330,24 @@ namespace RHI::Vulkan
         return tex;
     }
 
-    bool Device::createImageView(Texture* texture, VkImageAspectFlags aspectFlags, VkImageViewType viewType)
+    bool Device::createImageView(ITexture* texture, VkImageAspectFlags aspectFlags, VkImageViewType viewType)
     {
+        Texture* tex = dynamic_cast<Texture*>(texture);
+
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.pNext = nullptr;
         viewInfo.flags = 0;
-        viewInfo.image = texture->image;
+        viewInfo.image = tex->image;
         viewInfo.viewType = viewType;
-        viewInfo.format = convertFormat(texture->desc.format);
+        viewInfo.format = convertFormat(tex->desc.format);
         viewInfo.subresourceRange.aspectMask = aspectFlags;
         viewInfo.subresourceRange.baseMipLevel = 0;
-        viewInfo.subresourceRange.levelCount = texture->desc.mipLevels;
+        viewInfo.subresourceRange.levelCount = tex->desc.mipLevels;
         viewInfo.subresourceRange.baseArrayLayer = 0;
-        viewInfo.subresourceRange.layerCount = texture->desc.layerCount;
+        viewInfo.subresourceRange.layerCount = tex->desc.layerCount;
 
-        return (vkCreateImageView(m_Context.device, &viewInfo, nullptr, &texture->imageView) == VK_SUCCESS);
+        return (vkCreateImageView(m_Context.device, &viewInfo, nullptr, &tex->imageView) == VK_SUCCESS);
     }
 
     ISampler* Device::createTextureSampler(const SamplerDesc& desc)
@@ -612,14 +614,13 @@ namespace RHI::Vulkan
             mipCube.data(), desc);
     }
 
-    ITexture* Device::createTextureImageFromData(
-        void* imageData, TextureDesc& desc)
+    ITexture* Device::createTextureImageFromData(IRHICommandList* commandList, void* imageData, TextureDesc& desc)
     {
         desc.setIsTransferDst(true)
             .setIsShaderResource(true);
         ITexture* tex = createImage(desc);
 
-        updateTextureImage(tex, imageData);
+        commandList->updateTextureImage(tex, imageData);
 
         return tex;
     }
@@ -663,7 +664,7 @@ namespace RHI::Vulkan
         return tex;
     }
 
-    bool Device::updateTextureImage(ITexture* texture, const void* imageData, VkImageLayout sourceImageLayout)
+    bool CommandList::updateTextureImage(ITexture* texture, const void* imageData, ImageLayout sourceImageLayout)
     {
         Texture* tex = dynamic_cast<Texture*>(texture);
 
@@ -672,18 +673,15 @@ namespace RHI::Vulkan
         VkDeviceSize layerSize = tex->desc.width * tex->desc.height * bytesPerPixel;
         VkDeviceSize imageSize = layerSize * tex->desc.layerCount;
 
-        Buffer* stagingBuffer = dynamic_cast<Buffer*>(createBuffer(
+        Buffer* stagingBuffer = dynamic_cast<Buffer*>(m_Device->createBuffer(
             imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 
-        uploadBufferData(stagingBuffer->memory, 0, imageData, imageSize);
+        m_Device->uploadBufferData(stagingBuffer->memory, 0, imageData, imageSize);
 
-        // TODO:fix command list ussie
-        transitionImageLayout(tex->image, tex->desc.format, sourceImageLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, tex->desc.layerCount);
-        // TODO:fix command list ussie
-        copyBufferToImage(stagingBuffer, tex->image, static_cast<uint32_t>(tex->desc.width), static_cast<uint32_t>(tex->desc.height), tex->desc.layerCount);
-        // TODO:fix command list ussie
-        transitionImageLayout(tex->image, tex->desc.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, tex->desc.layerCount);
+        transitionImageLayout(tex, sourceImageLayout, ImageLayout::TRANSFER_DST_OPTIMAL);
+        copyBufferToImage(stagingBuffer, tex);
+        transitionImageLayout(tex, ImageLayout::TRANSFER_DST_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
         delete stagingBuffer;
 
@@ -705,11 +703,11 @@ namespace RHI::Vulkan
         createImageView(tex, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_CUBE);
         ISampler* sampler = createTextureSampler();
 
-        tex.format = VK_FORMAT_R32G32B32A32_SFLOAT;
-
-        tex.desc.width = w;
-        tex.desc.height = h;
-        tex.desc.depth = 1;
+        TextureDesc desc = tex->getDesc();
+        desc.setWidth(w);
+        desc.setHeight(h);
+        Texture* texture = dynamic_cast<Texture*>(tex);
+        texture->desc = desc;
 
         // TODO:fix allocation issue
         //m_Resources.allTextures.push_back(cubemap);
@@ -736,14 +734,15 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        createImageView(ktx.image, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, &ktx.imageView);
-        createTextureSampler(&ktx.sampler, VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+        createImageView(ktx, VK_IMAGE_ASPECT_COLOR_BIT);
+
+        SamplerDesc samplerDesc = {};
+        samplerDesc.setAddressAll(SamplerAddressMode::CLAMP_TO_EDGE);
+    	ISampler* sampler = createTextureSampler(samplerDesc);
 
         // TODO:fix allocation issue
         //m_Resources.allTextures.push_back(ktx);
 
-        // TODO: fix loading resources
-        //return ktx;
         return ktx;
     }
 
@@ -812,7 +811,7 @@ namespace RHI::Vulkan
         }
 
         createImageView(tex, VK_IMAGE_ASPECT_COLOR_BIT);
-        createTextureSampler();
+        ISampler* sampler = createTextureSampler();
 
         /* This is not strictly necessary, a font can be any texture */
         io.Fonts->TexID = (ImTextureID)0;

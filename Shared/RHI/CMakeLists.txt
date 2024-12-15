@@ -9,6 +9,7 @@ if(WIN32)
 	set(RHI_DX12 ON)
 	set(RHI_VulkanNew ON)
 	set(RHI ON)
+	set(RHI_Utils ON)
 endif ()
 
 list(APPEND Rhi_Source_File_Ext
@@ -55,6 +56,14 @@ if(${RHI_DX12})
     list(APPEND Rhi_Sources ${Rhi_DX12_Sources})
     list(APPEND Rhi_Include_Dir ${CMAKE_CURRENT_SOURCE_DIR}/DX12)
 endif()
+
+if(${RHI_Utils})
+	set(Rhi_Sources_Ext ${Rhi_Source_File_Ext})
+	list(TRANSFORM Rhi_Sources_Ext PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/RHIUtils)
+	file(GLOB_RECURSE Rhi_Utils_Sources ${Rhi_Sources_Ext})
+    list(APPEND Rhi_Sources ${Rhi_Utils_Sources})
+    list(APPEND Rhi_Include_Dir ${CMAKE_CURRENT_SOURCE_DIR}/RHIUtils)
+endif ()
 
 set(Rhi_Include_Dir ${Rhi_Include_Dir} PARENT_SCOPE)
 set(Rhi_Sources ${Rhi_Sources} PARENT_SCOPE)

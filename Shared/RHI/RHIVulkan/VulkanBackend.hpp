@@ -702,10 +702,9 @@ namespace RHI::Vulkan
 
 		ITexture* createFontTexture(const char* fontFile);
 
-		ITexture* addColorTexture(int texWidth = 0, int texHeight = 0,
+		ITexture* addColorTexture(IRHICommandList* commandList, int texWidth = 0, int texHeight = 0,
 			Format colorFormat = Format::BGRA8_UNORM,
-			VkFilter minFilter = VK_FILTER_LINEAR, VkFilter maxFilter = VK_FILTER_LINEAR,
-			VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+			const SamplerDesc& samplerDesc);
 
 		ITexture* addDepthTexture(int texWidth = 0, int texHeight = 0, VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
@@ -713,13 +712,13 @@ namespace RHI::Vulkan
 
 		ITexture* addRGBATexture(TextureDesc& desc, void* data);
 
-		ITexture* createImage(const TextureDesc& desc);
+		virtual ITexture* createImage(const TextureDesc& desc) override;
 
-		bool createImageView(Texture* texture, VkImageAspectFlags aspectFlags, VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D);
+		bool createImageView(ITexture* texture, VkImageAspectFlags aspectFlags, VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D);
 
-		ISampler* createTextureSampler(const SamplerDesc& desc = SamplerDesc());
+		virtual ISampler* createTextureSampler(const SamplerDesc& desc = SamplerDesc()) override;
 
-		ISampler* createDepthSampler();
+		virtual ISampler* createDepthSampler() override;
 
 		ITexture* createOffscreenImage(TextureDesc& desc);
 
@@ -731,14 +730,9 @@ namespace RHI::Vulkan
 
 		ITexture* createMIPCubeTextureImage(const char* filename, uint32_t mipLevels, uint32_t* width = nullptr, uint32_t* height = nullptr);
 
-		ITexture* createTextureImageFromData(
-			void* imageData, TextureDesc& desc);
+		ITexture* createTextureImageFromData(IRHICommandList* commandList, void* imageData, TextureDesc& desc);
 
-		ITexture* createMIPTextureImageFromData(
-			void* mipData, TextureDesc& desc);
-
-		/* VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL for real update of an existing texture */
-		bool updateTextureImage(ITexture* texture, const void* imageData, VkImageLayout sourceImageLayout = VK_IMAGE_LAYOUT_UNDEFINED);
+		ITexture* createMIPTextureImageFromData(void* mipData, TextureDesc& desc);
 
 		VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
@@ -876,10 +870,13 @@ namespace RHI::Vulkan
 		virtual void endSingleTimeCommands() override;
 
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-		void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount = 1, uint32_t mipLevels = 1);
+		virtual void transitionImageLayout(ITexture* texture, ImageLayout oldLayout, ImageLayout newLayout) override;
 		void transitionImageLayoutCmd(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount = 1, uint32_t mipLevels = 1);
 
-		void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount = 1);
+		/* VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL for real update of an existing texture */
+		virtual bool updateTextureImage(ITexture* texture, const void* imageData, ImageLayout sourceImageLayout = ImageLayout::UNDEFINED) override;
+
+		virtual void copyBufferToImage(IBuffer* buffer, ITexture* texture) override;
 		void copyMIPBufferToImage(VkBuffer buffer, VkImage image, uint32_t mipLevels, uint32_t width, uint32_t height, uint32_t bytesPP, uint32_t layerCount = 1);
 		void copyImageToBuffer(VkImage image, VkBuffer buffer, uint32_t width, uint32_t height, uint32_t layerCount = 1);
 

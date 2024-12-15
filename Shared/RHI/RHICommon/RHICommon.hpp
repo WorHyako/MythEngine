@@ -12,6 +12,7 @@
 
 namespace RHI
 {
+    class IBuffer;
 	class ITexture;
     class IGraphicsPipeline;
 	class IDevice;
@@ -130,6 +131,38 @@ namespace RHI
         FLAG_BITS_MAX_ENUM
     };
 
+    enum class ImageViewType {
+        TYPE_1D = 0,
+        TYPE_2D = 1,
+        TYPE_3D = 2,
+        TYPE_CUBE = 3,
+        TYPE_1D_ARRAY = 4,
+        TYPE_2D_ARRAY = 5,
+        TYPE_CUBE_ARRAY = 6,
+        TYPE_MAX_ENUM = 0x7FFFFFFF
+    };
+
+    enum class ImageLayout {
+        UNDEFINED = 0,
+        GENERAL = 1,
+        COLOR_ATTACHMENT_OPTIMAL = 2,
+        DEPTH_STENCIL_ATTACHMENT_OPTIMAL = 3,
+        DEPTH_STENCIL_READ_ONLY_OPTIMAL = 4,
+        SHADER_READ_ONLY_OPTIMAL = 5,
+        TRANSFER_SRC_OPTIMAL = 6,
+        TRANSFER_DST_OPTIMAL = 7,
+        PREINITIALIZED = 8,
+        DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL = 9,
+        DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL = 10,
+        DEPTH_ATTACHMENT_OPTIMAL = 11,
+        DEPTH_READ_ONLY_OPTIMAL = 12,
+        STENCIL_ATTACHMENT_OPTIMAL = 13,
+        STENCIL_READ_ONLY_OPTIMAL = 14,
+        READ_ONLY_OPTIMAL = 15,
+        ATTACHMENT_OPTIMAL = 16,
+        COUNT = 17
+    };
+
     enum class TextureDimension : uint8_t
     {
         Unknown,
@@ -191,6 +224,9 @@ namespace RHI
         virtual void endSingleTimeCommands() = 0;
         virtual void draw(const DrawArguments& args) = 0;
         virtual void setGraphicsState(const GraphicsState& state) = 0;
+        virtual void transitionImageLayout(ITexture* texture, ImageLayout oldLayout, ImageLayout newLayout) = 0;
+        virtual bool updateTextureImage(ITexture* texture, const void* imageData, ImageLayout sourceImageLayout = ImageLayout::UNDEFINED) = 0;
+        virtual void copyBufferToImage(IBuffer* buffer, ITexture* texture) = 0;
     };
 
     class IInstance : public IResource
@@ -282,6 +318,7 @@ namespace RHI
         constexpr SamplerDesc& setAddressU(SamplerAddressMode value) { addressU = value; return *this; }
         constexpr SamplerDesc& setAddressV(SamplerAddressMode value) { addressV = value; return *this; }
         constexpr SamplerDesc& setAddressW(SamplerAddressMode value) { addressW = value; return *this; }
+        constexpr SamplerDesc& setAddressAll(SamplerAddressMode value) { addressU = addressV = addressW = value; return *this; }
         constexpr SamplerDesc& setMinFilter(SamplerFilter value) { minFilter = value; return *this; }
         constexpr SamplerDesc& setMagFilter(SamplerFilter value) { magFilter = value; return *this; }
     };
@@ -468,5 +505,8 @@ namespace RHI
         virtual IFramebuffer* createFramebuffer(IRenderPass* renderPass, const std::vector<ITexture*>& images) = 0;
         virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* framebuffer) = 0;
         virtual IShader* createShaderModule(const char* fileName) = 0;
+        virtual ITexture* createImage(const TextureDesc& desc) = 0;
+        virtual ISampler* createTextureSampler(const SamplerDesc& desc = SamplerDesc());
+        virtual ISampler* createDepthSampler() = 0;
     };
 }
