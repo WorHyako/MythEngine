@@ -13,9 +13,9 @@ namespace RHI::Vulkan
 
         for (const auto& b : dsInfo.buffers)
         {
-            if (b.dInfo.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+            if (b.dInfo.type == DescriptorType::UNIFORM_BUFFER)
                 uniformBufferCount++;
-            if (b.dInfo.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+            if (b.dInfo.type == DescriptorType::STORAGE_BUFFER  )
                 storageBufferCount++;
         }
 
@@ -150,7 +150,7 @@ namespace RHI::Vulkan
 
         for (size_t i = 0; i < dsInfo.textures.size(); i++)
         {
-            Texture* tex = dsInfo.textures[i].texture;
+            Texture* tex = dynamic_cast<Texture*>(dsInfo.textures[i].texture);
 
             imageDescriptors[i] = VkDescriptorImageInfo{
                 tex->sampler,
@@ -169,7 +169,7 @@ namespace RHI::Vulkan
 
             for (size_t j = 0; j < dsInfo.textureArrays[ta].textures.size(); j++)
             {
-                Texture* tex = dsInfo.textureArrays[ta].textures[j];
+                Texture* tex = dynamic_cast<Texture*>(dsInfo.textureArrays[ta].textures[j]);
 
                 VkDescriptorImageInfo imageInfo = {
                     tex->sampler,

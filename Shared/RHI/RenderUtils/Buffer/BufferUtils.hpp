@@ -9,12 +9,14 @@ namespace RenderUtils
 
 	RHI::IBuffer* allocateVertexBuffer(RHI::IDevice* device, RHI::IRHICommandList* commandList, size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData);
 
-	std::pair<BufferAttachment, BufferAttachment> makeMeshBuffers(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
+	std::pair<RHI::BufferAttachment, RHI::BufferAttachment> makeMeshBuffers(RHI::IDevice* device, RHI::IRHICommandList* commandList, const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
 
-	std::pair<BufferAttachment, BufferAttachment> loadMeshToBuffer(const char* filename, bool useTextureCoordinates, bool useNormals,
+	std::pair<RHI::BufferAttachment, RHI::BufferAttachment> loadMeshToBuffer(
+		RHI::IDevice* device, RHI::IRHICommandList* commandList, 
+		const char* filename, bool useTextureCoordinates, bool useNormals,
 		std::vector<float>& vertices,
 		std::vector<unsigned int>& indices);
 
-	std::pair<BufferAttachment, BufferAttachment> createPlaneBuffer_XZ(float sx, float sz);
-	std::pair<BufferAttachment, BufferAttachment> createPlaneBuffer_XY(float sx, float sy);
+	std::pair<RHI::BufferAttachment, RHI::BufferAttachment> createPlaneBuffer_XZ(RHI::IDevice* device, RHI::IRHICommandList* commandList, float sx, float sz);
+	std::pair<RHI::BufferAttachment, RHI::BufferAttachment> createPlaneBuffer_XY(RHI::IDevice* device, RHI::IRHICommandList* commandList, float sx, float sy);
 }

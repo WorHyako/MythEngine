@@ -102,7 +102,34 @@ namespace RHI
         COUNT,
     };
 
-    enum class MemoryPropertiesBits : uint8_t
+    uint32_t bytesPerTexFormat(Format fmt)
+    {
+        switch (fmt)
+        {
+        case Format::R8_SINT:
+        case Format::R8_UNORM:
+            return 1;
+        case Format::R16_FLOAT:
+            return 2;
+        case Format::RG16_FLOAT:
+            return 4;
+        case Format::RG16_SNORM:
+            return 4;
+        case Format::BGRA8_UNORM:
+            return 4;
+        case Format::RGBA8_UNORM:
+            return 4;
+        case Format::RGBA16_FLOAT:
+            return 4 * sizeof(uint16_t);
+        case Format::RGBA32_FLOAT:
+            return 4 * sizeof(float);
+        default:
+            break;
+        }
+        return 0;
+    }
+
+    enum class MemoryPropertiesBits : uint32_t
     {
         DEVICE_LOCAL_BIT = 0x00000001,
         HOST_VISIBLE_BIT = 0x00000002,
@@ -173,6 +200,64 @@ namespace RHI
         Texture2DMS,
         Texture2DMSArray,
         Texture3D
+    };
+
+    enum class DescriptorType {
+        SAMPLER = 0,
+        COMBINED_IMAGE_SAMPLER = 1,
+        SAMPLED_IMAGE = 2,
+        STORAGE_IMAGE = 3,
+        UNIFORM_TEXEL_BUFFER = 4,
+        STORAGE_TEXEL_BUFFER = 5,
+        UNIFORM_BUFFER = 6,
+        STORAGE_BUFFER = 7,
+        UNIFORM_BUFFER_DYNAMIC = 8,
+        STORAGE_BUFFER_DYNAMIC = 9,
+        INPUT_ATTACHMENT = 10,
+        MAX_ENUM = 0x7FFFFFFF
+    };
+
+    enum class ShaderStageFlagBits : uint32_t {
+        VERTEX_BIT = 0x00000001,
+        TESSELLATION_CONTROL_BIT = 0x00000002,
+        TESSELLATION_EVALUATION_BIT = 0x00000004,
+        GEOMETRY_BIT = 0x00000008,
+        FRAGMENT_BIT = 0x00000010,
+        COMPUTE_BIT = 0x00000020,
+        ALL_GRAPHICS = 0x0000001F,
+        ALL = 0x7FFFFFFF,
+        FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
+    };
+
+    ENUM_CLASS_FLAG_OPERATORS(ShaderStageFlagBits)
+
+    struct DescriptorInfo
+    {
+        DescriptorType type = DescriptorType::MAX_ENUM;
+        ShaderStageFlagBits shaderStageFlags = ShaderStageFlagBits::VERTEX_BIT;
+    };
+
+    struct BufferAttachment
+    {
+        DescriptorInfo  dInfo;
+
+        IBuffer* buffer;
+        uint32_t        offset;
+        uint32_t        size;
+    };
+
+    struct TextureAttachment
+    {
+        DescriptorInfo  dInfo;
+
+        ITexture* texture;
+    };
+
+    struct TextureArrayAttachment
+    {
+        DescriptorInfo  dInfo;
+
+        std::vector<ITexture*>  textures;
     };
 
     enum class CommandQueue : uint8_t

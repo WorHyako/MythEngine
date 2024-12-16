@@ -28,14 +28,11 @@ namespace RenderUtils
 
     ITexture* addColorTexture(IDevice* device, IRHICommandList* commandList, int texWidth, int texHeight, Format colorFormat, const SamplerDesc& samplerDesc)
     {
-        const uint32_t w = (texWidth > 0) ? texWidth : m_DeviceDesc.framebufferWidth;
-        const uint32_t h = (texHeight > 0) ? texHeight : m_DeviceDesc.framebufferHeight;
-
         TextureDesc desc = {};
-        desc.setWidth(w)
-            .setHeight(h)
+        desc.setWidth(texWidth)
+            .setHeight(texHeight)
             .setFormat(colorFormat);
-        ITexture* tex = dynamic_cast<ITexture*>(createOffscreenImage(desc));
+        ITexture* tex = dynamic_cast<ITexture*>(createOffscreenImage(device, commandList, desc));
 
         if (!tex)
         {
@@ -55,14 +52,11 @@ namespace RenderUtils
 
     ITexture* addDepthTexture(IDevice* device, IRHICommandList* commandList, int texWidth, int texHeight, ImageLayout layout)
     {
-        const uint32_t w = (texWidth > 0) ? texWidth : m_DeviceDesc.framebufferWidth;
-        const uint32_t h = (texHeight > 0) ? texHeight : m_DeviceDesc.framebufferHeight;
-
         const VkFormat depthFormat = findDepthFormat();
 
         TextureDesc desc = {};
-        desc.setWidth(w)
-            .setHeight(h)
+        desc.setWidth(texWidth)
+            .setHeight(texHeight)
             .setFormat(depthFormat)
             .setIsShaderResource(true)
             .setIsRenderTarget(true);
@@ -186,7 +180,7 @@ namespace RenderUtils
         ITexture* tex = device->createImage(desc);
 
         // now allocate staging buffer for all MIP levels
-        uint32_t bytesPerPixel = bytesPerTexFormat(convertFormat(tex->getDesc().format));
+        uint32_t bytesPerPixel = bytesPerTexFormat(tex->getDesc().format);
 
         size_t layerSize = tex->getDesc().width * tex->getDesc().height * bytesPerPixel;
         size_t imageSize = layerSize * tex->getDesc().layerCount;

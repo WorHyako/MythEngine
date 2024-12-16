@@ -415,10 +415,10 @@ namespace RHI::Vulkan
                 exit(EXIT_FAILURE);
             }
             Vulkan::Texture* texture = new Texture();
-            texture->image.image = m_SwapchainImages[i];
-            texture->image.imageView = m_SwapchainImageViews[i];
-            texture->width = m_DeviceParams.backBufferWidth;
-            texture->height = m_DeviceParams.backBufferHeight;
+            texture->image = m_SwapchainImages[i];
+            texture->imageView = m_SwapchainImageViews[i];
+            texture->desc.width = m_DeviceParams.backBufferWidth;
+            texture->desc.height = m_DeviceParams.backBufferHeight;
             m_SwapchainTextures.push_back(texture);
         }
 
@@ -859,33 +859,6 @@ namespace RHI::Vulkan
                 return i;
         }
 
-        return 0;
-    }
-
-    uint32_t bytesPerTexFormat(VkFormat fmt)
-    {
-        switch (fmt)
-        {
-        case VK_FORMAT_R8_SINT:
-        case VK_FORMAT_R8_UNORM:
-            return 1;
-        case VK_FORMAT_R16_SFLOAT:
-            return 2;
-        case VK_FORMAT_R16G16_SFLOAT:
-            return 4;
-        case VK_FORMAT_R16G16_SNORM:
-            return 4;
-        case VK_FORMAT_B8G8R8A8_UNORM:
-            return 4;
-        case VK_FORMAT_R8G8B8A8_UNORM:
-            return 4;
-        case VK_FORMAT_R16G16B16A16_SFLOAT:
-            return 4 * sizeof(uint16_t);
-        case VK_FORMAT_R32G32B32A32_SFLOAT:
-            return 4 * sizeof(float);
-        default:
-            break;
-        }
         return 0;
     }
 }

@@ -1,7 +1,9 @@
 #include <RHI/RenderUtils/Buffer/BufferUtils.hpp>
 
-#include "assimp/cimport.h"
-#include "assimp/mesh.h"
+#include <assimp/scene.h>
+#include <assimp/cimport.h>
+#include <assimp/postprocess.h>
+#include <assimp/version.h>
 
 namespace RenderUtils
 {
@@ -13,7 +15,7 @@ namespace RenderUtils
         //m_Resources.allBuffers.push_back(result);
     }
 
-    IBuffer* allocateVertexBuffer(RHI::IDevice* device, RHI::IRHICommandList* commandList, size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData)
+    IBuffer* allocateVertexBuffer(IDevice* device, IRHICommandList* commandList, size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData)
     {
         size_t bufferSize = vertexDataSize + indexDataSize;
 
@@ -35,7 +37,6 @@ namespace RenderUtils
             .setIsStorageBuffer(true)
             .setMemoryProperties(MemoryPropertiesBits::DEVICE_LOCAL_BIT);
         IBuffer* storageBuffer = device->createBuffer(storageDesc);
-        storageBuffer->size = bufferSize;
 
         commandList->copyBuffer(stagingBuffer, storageBuffer, bufferSize);
 
@@ -45,28 +46,30 @@ namespace RenderUtils
     }
 
     /* Helper mesh-related functions */
-    std::pair<BufferAttachment, BufferAttachment> Device::makeMeshBuffers(const std::vector<float>& vertices, const std::vector<unsigned>& indices)
+    std::pair<BufferAttachment, BufferAttachment> makeMeshBuffers(IDevice* device, IRHICommandList* commandList, const std::vector<float>& vertices, const std::vector<unsigned>& indices)
     {
         const uint32_t indexBufferSize = uint32_t(indices.size() * sizeof(int));
         const uint32_t vertexBufferSize = uint32_t(vertices.size() * sizeof(float));
 
-        IBuffer* storageBuffer = addVertexBuffer(indexBufferSize, indices.data(), vertexBufferSize, vertices.data());
+        IBuffer* storageBuffer = addVertexBuffer(device, commandList, indexBufferSize, indices.data(), vertexBufferSize, vertices.data());
 
         BufferAttachment vertexBufferAttachment{};
-        vertexBufferAttachment.dInfo = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT };
+        vertexBufferAttachment.dInfo = { DescriptorType::STORAGE_BUFFER, ShaderStageFlagBits::VERTEX_BIT };
         vertexBufferAttachment.buffer = storageBuffer;
         vertexBufferAttachment.offset = 0;
         vertexBufferAttachment.size = vertexBufferSize;
         BufferAttachment indexBufferAttachment{};
-        indexBufferAttachment.dInfo = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT };
+        indexBufferAttachment.dInfo = { DescriptorType::STORAGE_BUFFER, ShaderStageFlagBits::VERTEX_BIT };
         indexBufferAttachment.buffer = storageBuffer;
         indexBufferAttachment.offset = vertexBufferSize;
         indexBufferAttachment.size = indexBufferSize;
 
-        return { vertexBufferAttachment, indexBufferAttachment };
+        return std::pair{vertexBufferAttachment, indexBufferAttachment};
     }
 
-    std::pair<BufferAttachment, BufferAttachment> Device::loadMeshToBuffer(
+    std::pair<BufferAttachment, BufferAttachment> loadMeshToBuffer(
+        IDevice* device,
+        IRHICommandList* commandList,
         const char* filename,
         bool useTextureCoordinates,
         bool useNormals,
@@ -78,8 +81,7 @@ namespace RenderUtils
         if (!scene || !scene->HasMeshes())
         {
             printf("Unable to load %s\n", filename);
-            //Buffer nullBuffer{ VK_NULL_HANDLE, 0, VK_NULL_HANDLE };
-            Buffer* nullBuffer = nullptr;
+            IBuffer* nullBuffer = nullptr;
 
             return std::pair{ BufferAttachment { DescriptorInfo {} , nullBuffer } , BufferAttachment { DescriptorInfo {}, nullBuffer } };
         }
@@ -120,12 +122,13 @@ namespace RenderUtils
         const uint32_t vertexBufferSize = static_cast<uint32_t>(sizeof(float) * vertices.size());
         const uint32_t indexBufferSize = static_cast<uint32_t>(sizeof(unsigned int) * indices.size());
 
-        return makeMeshBuffers(vertices, indices);
+        return makeMeshBuffers(device, commandList, vertices, indices);
     }
 
-    std::pair<BufferAttachment, BufferAttachment> Device::createPlaneBuffer_XZ(float sx, float sz)
+    std::pair<BufferAttachment, BufferAttachment> createPlaneBuffer_XZ(IDevice* device, IRHICommandList* commandList, float sx, float sz)
     {
         return makeMeshBuffers(
+            device, commandList,
             std::vector<float> {
             -sx, 0, -sz, 0, 0, 0, 1, 0,
                 +sx, 0, -sz, 1, 0, 0, 1, 0,
@@ -135,9 +138,10 @@ namespace RenderUtils
             std::vector<unsigned int> { 0u, 1u, 2u, 0u, 3u, 2u });
     }
 
-    std::pair<BufferAttachment, BufferAttachment> Device::createPlaneBuffer_XY(float sx, float sy)
+    std::pair<BufferAttachment, BufferAttachment> createPlaneBuffer_XY(IDevice* device, IRHICommandList* commandList, float sx, float sy)
     {
         return makeMeshBuffers(
+            device, commandList,
             std::vector<float> {
             -sx, -sy, 0, 0, 0, 0, 0, 1,
                 +sx, -sy, 0, 1, 0, 0, 0, 1,

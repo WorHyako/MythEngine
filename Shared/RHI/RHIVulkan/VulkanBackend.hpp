@@ -401,61 +401,32 @@ namespace RHI::Vulkan
 		const VulkanContext& m_Context;
 	};
 
-	struct DescriptorInfo
-	{
-		VkDescriptorType type;
-		VkShaderStageFlags shaderStageFlags;
-	};
-
-	struct BufferAttachment
-	{
-		DescriptorInfo  dInfo;
-
-		IBuffer*         buffer;
-		uint32_t        offset;
-		uint32_t        size;
-	};
-
-	struct TextureAttachment
-	{
-		DescriptorInfo  dInfo;
-
-		Texture*      texture;
-	};
-
-	struct TextureArrayAttachment
-	{
-		DescriptorInfo  dInfo;
-
-		std::vector<Texture*>  textures;
-	};
-
-	inline TextureAttachment makeTextureAttachment(Texture* tex, VkShaderStageFlags shaderStageFlags)
+	inline TextureAttachment makeTextureAttachment(ITexture* tex, ShaderStageFlagBits shaderStageFlags)
 	{
 		TextureAttachment textureAttachment{};
-		textureAttachment.dInfo.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		textureAttachment.dInfo.type = DescriptorType::COMBINED_IMAGE_SAMPLER;
 		textureAttachment.dInfo.shaderStageFlags = shaderStageFlags;
 		textureAttachment.texture = tex;
 
 		return textureAttachment;
 	}
 
-	inline TextureAttachment fsTextureAttachment(Texture* tex)
+	inline TextureAttachment fsTextureAttachment(ITexture* tex)
 	{
-		return makeTextureAttachment(tex, VK_SHADER_STAGE_FRAGMENT_BIT);
+		return makeTextureAttachment(tex, ShaderStageFlagBits::FRAGMENT_BIT);
 	}
 
-	inline TextureArrayAttachment fsTextureArrayAttachment(const std::vector<Texture*>& textures)
+	inline TextureArrayAttachment fsTextureArrayAttachment(const std::vector<ITexture*>& textures)
 	{
 		TextureArrayAttachment textureArrayAttachment{};
-		textureArrayAttachment.dInfo.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		textureArrayAttachment.dInfo.shaderStageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		textureArrayAttachment.dInfo.type = DescriptorType::COMBINED_IMAGE_SAMPLER;
+		textureArrayAttachment.dInfo.shaderStageFlags = ShaderStageFlagBits::FRAGMENT_BIT;
 		textureArrayAttachment.textures = textures;
 
 		return textureArrayAttachment;
 	}
 
-	inline BufferAttachment makeBufferAttachment(Buffer* buffer, uint32_t offset, uint32_t size, VkDescriptorType type, VkShaderStageFlags shaderStageFlags)
+	inline BufferAttachment makeBufferAttachment(IBuffer* buffer, uint32_t offset, uint32_t size, DescriptorType type, ShaderStageFlagBits shaderStageFlags)
 	{
 		BufferAttachment bufferAttachment{};
 		bufferAttachment.dInfo = { type, shaderStageFlags };
@@ -465,14 +436,14 @@ namespace RHI::Vulkan
 		return bufferAttachment;
 	}
 
-	inline BufferAttachment uniformBufferAttachment(Buffer* buffer, uint32_t offset, uint32_t size, VkShaderStageFlags shaderStageFlags)
+	inline BufferAttachment uniformBufferAttachment(IBuffer* buffer, uint32_t offset, uint32_t size, ShaderStageFlagBits shaderStageFlags)
 	{
-		return makeBufferAttachment(buffer, offset, size, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, shaderStageFlags);
+		return makeBufferAttachment(buffer, offset, size, DescriptorType::UNIFORM_BUFFER, shaderStageFlags);
 	}
 
-	inline BufferAttachment storageBufferAttachment(Buffer* buffer, uint32_t offset, uint32_t size, VkShaderStageFlags shaderStageFlags)
+	inline BufferAttachment storageBufferAttachment(Buffer* buffer, uint32_t offset, uint32_t size, ShaderStageFlagBits shaderStageFlags)
 	{
-		return makeBufferAttachment(buffer, offset, size, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, shaderStageFlags);
+		return makeBufferAttachment(buffer, offset, size, DescriptorType::STORAGE_BUFFER, shaderStageFlags);
 	}
 
 	/** An aggregate structure with all the data for descriptor set (or descriptor set layout) allocation */
@@ -562,8 +533,6 @@ namespace RHI::Vulkan
 	VkResult findSuitablePhysicalDevice(VkInstance instance, std::function<bool(VkPhysicalDevice)> selector, VkPhysicalDevice* physicalDevice);
 
 	uint32_t findQueueFamilies(VkPhysicalDevice device, VkQueueFlags desiredFlags);
-
-	uint32_t bytesPerTexFormat(VkFormat fmt);
 
 	bool downloadImageData(Device& vkDev, VkImage& textureImage, uint32_t texWidth, uint32_t texHeight, VkFormat texFormat, uint32_t layerCount, void* imageData, VkImageLayout sourceImageLayout);
 

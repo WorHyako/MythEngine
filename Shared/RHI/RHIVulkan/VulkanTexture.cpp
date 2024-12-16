@@ -309,7 +309,7 @@ namespace RHI::Vulkan
     {
         Texture* tex = dynamic_cast<Texture*>(texture);
 
-        uint32_t bytesPerPixel = bytesPerTexFormat(convertFormat(tex->desc.format));
+        uint32_t bytesPerPixel = bytesPerTexFormat(tex->desc.format);
 
         VkDeviceSize layerSize = tex->desc.width * tex->desc.height * bytesPerPixel;
         VkDeviceSize imageSize = layerSize * tex->desc.layerCount;
