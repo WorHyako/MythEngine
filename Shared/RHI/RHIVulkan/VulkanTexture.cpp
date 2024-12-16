@@ -305,17 +305,6 @@ namespace RHI::Vulkan
         return sampler;
     }
 
-    /** Offscreen rendering helpers */
-    ITexture* Device::createOffscreenImage(TextureDesc& desc)
-    {
-        desc.setIsTransferSrc(true)
-            .setIsTransferDst(true)
-            .setIsShaderResource(true)
-            .setIsRenderTarget(true);
-        desc.memoryProperties = MemoryPropertiesBits::DEVICE_LOCAL_BIT;
-        return createImage(desc);
-    }
-
     bool CommandList::updateTextureImage(ITexture* texture, const void* imageData, ImageLayout sourceImageLayout)
     {
         Texture* tex = dynamic_cast<Texture*>(texture);

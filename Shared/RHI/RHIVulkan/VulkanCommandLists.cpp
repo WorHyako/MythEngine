@@ -55,7 +55,7 @@ namespace RHI::Vulkan
     }
 
 
-    void CommandList::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+    void CommandList::copyBuffer(IBuffer* srcBuffer, IBuffer* dstBuffer, size_t size)
     {
         VkBufferCopy copyRegion{};
         copyRegion.srcOffset = 0;

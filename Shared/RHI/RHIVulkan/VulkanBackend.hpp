@@ -693,13 +693,6 @@ namespace RHI::Vulkan
 
 		virtual GraphicsAPI getGraphicsAPI() const override;
 
-		/* Resource Management*/
-		ITexture* addColorTexture(IRHICommandList* commandList, int texWidth = 0, int texHeight = 0,
-			Format colorFormat = Format::BGRA8_UNORM,
-			const SamplerDesc& samplerDesc);
-
-		ITexture* addDepthTexture(IDevice* device, IRHICommandList* commandList, int texWidth = 0, int texHeight = 0, ImageLayout layout = ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
 		virtual ITexture* createImage(const TextureDesc& desc) override;
 
 		virtual bool createImageView(ITexture* texture, ImageAspectFlagBits aspectFlags) override;
@@ -707,12 +700,6 @@ namespace RHI::Vulkan
 		virtual ISampler* createTextureSampler(const SamplerDesc& desc = SamplerDesc()) override;
 
 		virtual ISampler* createDepthSampler() override;
-
-		ITexture* createOffscreenImage(TextureDesc& desc);
-
-		ITexture* createCubeTextureImage(const char* filename, uint32_t* width = nullptr, uint32_t* height = nullptr);
-
-		ITexture* createMIPCubeTextureImage(const char* filename, uint32_t mipLevels, uint32_t* width = nullptr, uint32_t* height = nullptr);
 
 		VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
@@ -762,11 +749,6 @@ namespace RHI::Vulkan
 				.setMemoryProperties(MemoryPropertiesBits::DEVICE_LOCAL_BIT);
 			return addBuffer(desc, createMapping);
 		}
-
-		/* Allocate and upload vertex & index buffer pair */
-		IBuffer* addVertexBuffer(uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData);
-
-		IBuffer* allocateVertexBuffer(size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData);
 
 		/** Copy [data] to GPU device buffer */
 		virtual void uploadBufferData(IBuffer* buffer, size_t deviceOffset, const void* data, const size_t dataSize) override;
@@ -818,16 +800,6 @@ namespace RHI::Vulkan
 
 		std::vector<VkFramebuffer> addFramebuffers(VkRenderPass renderPass, VkImageView depthView = VK_NULL_HANDLE);
 
-		/**  Helper functions for small Chapter 8/9 demos */
-		std::pair<BufferAttachment, BufferAttachment> makeMeshBuffers(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
-
-		std::pair<BufferAttachment, BufferAttachment> loadMeshToBuffer(const char* filename, bool useTextureCoordinates, bool useNormals,
-			std::vector<float>& vertices,
-			std::vector<unsigned int>& indices);
-
-		std::pair<BufferAttachment, BufferAttachment> createPlaneBuffer_XZ(float sx, float sz);
-		std::pair<BufferAttachment, BufferAttachment> createPlaneBuffer_XY(float sx, float sy);
-
 		virtual IShader* createShaderModule(const char* fileName) override;
 
 		virtual IRHICommandList* createCommandList(const CommandListParameters& params) override;
@@ -861,7 +833,7 @@ namespace RHI::Vulkan
 		virtual void beginSingleTimeCommands() override;
 		virtual void endSingleTimeCommands() override;
 
-		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+		virtual void copyBuffer(IBuffer* srcBuffer, IBuffer* dstBuffer, size_t size) override;
 		virtual void transitionImageLayout(ITexture* texture, ImageLayout oldLayout, ImageLayout newLayout) override;
 		void transitionImageLayoutCmd(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount = 1, uint32_t mipLevels = 1);
 

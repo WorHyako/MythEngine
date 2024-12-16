@@ -91,6 +91,17 @@ namespace RenderUtils
         return tex;
     }
 
+    /** Offscreen rendering helpers */
+    ITexture* createOffscreenImage(IDevice* device, IRHICommandList* commandList, TextureDesc& desc)
+    {
+        desc.setIsTransferSrc(true)
+            .setIsTransferDst(true)
+            .setIsShaderResource(true)
+            .setIsRenderTarget(true);
+        desc.memoryProperties = MemoryPropertiesBits::DEVICE_LOCAL_BIT;
+        return device->createImage(desc);
+    }
+
     ITexture* createTextureImage(IDevice* device, IRHICommandList* commandList, const char* filename)
     {
         int texWidth, texHeight, texChannels;

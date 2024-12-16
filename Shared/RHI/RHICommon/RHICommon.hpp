@@ -226,6 +226,7 @@ namespace RHI
         virtual bool updateTextureImage(ITexture* texture, const void* imageData, ImageLayout sourceImageLayout = ImageLayout::UNDEFINED) = 0;
         virtual void copyBufferToImage(IBuffer* buffer, ITexture* texture) = 0;
         virtual void copyMIPBufferToImage(IBuffer* buffer, ITexture* texture, uint32_t bytesPP) = 0;
+        virtual void copyBuffer(IBuffer* srcBuffer, IBuffer* dstBuffer, size_t size) = 0;
     };
 
     class IInstance : public IResource
