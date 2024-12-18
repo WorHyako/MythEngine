@@ -674,7 +674,7 @@ namespace RHI::Vulkan
 
 		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
-		VkFormat findDepthFormat();
+		virtual Format findDepthFormat() override;
 
 		IBuffer* createUniformBuffer(VkDeviceSize bufferSize);
 
@@ -721,6 +721,8 @@ namespace RHI::Vulkan
 
 		/** Copy [data] to GPU device buffer */
 		virtual void uploadBufferData(IBuffer* buffer, size_t deviceOffset, const void* data, const size_t dataSize) override;
+		virtual void uploadVertexIndexBufferData(IBuffer* buffer, size_t deviceOffset, size_t vertexDataSize, const void* vertexData,
+			size_t indexDataSize, const void* indexData, const size_t dataSize) override;
 
 		/** Copy GPU device buffer data to [outData] */
 		void downloadBufferData(const VkDeviceMemory& bufferMemory, VkDeviceSize deviceOffset, void* outData, size_t dataSize);

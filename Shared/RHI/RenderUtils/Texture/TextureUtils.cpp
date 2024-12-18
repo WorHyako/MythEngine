@@ -52,12 +52,10 @@ namespace RenderUtils
 
     ITexture* addDepthTexture(IDevice* device, IRHICommandList* commandList, int texWidth, int texHeight, ImageLayout layout)
     {
-        const VkFormat depthFormat = findDepthFormat();
-
-        TextureDesc desc = {};
+    	TextureDesc desc = {};
         desc.setWidth(texWidth)
             .setHeight(texHeight)
-            .setFormat(depthFormat)
+            .setFormat(device->findDepthFormat())
             .setIsShaderResource(true)
             .setIsRenderTarget(true);
 
@@ -428,11 +426,11 @@ namespace RenderUtils
         device->createImageView(tex, ImageAspectFlagBits::COLOR_BIT);
         ISampler* sampler = device->createTextureSampler();
 
-        TextureDesc desc = tex->getDesc();
+        /*TextureDesc desc = tex->getDesc();
         desc.setWidth(w);
         desc.setHeight(h);
         ITexture* texture = dynamic_cast<ITexture*>(tex);
-        texture->desc = desc;
+        texture->desc = desc;*/
 
         // TODO:fix allocation issue
         //m_Resources.allTextures.push_back(cubemap);

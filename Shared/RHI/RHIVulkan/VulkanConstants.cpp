@@ -168,4 +168,68 @@ namespace RHI::Vulkan
 
         return ret;
     }
+
+    VkDescriptorType convertDescriptorType(DescriptorType type)
+    {
+        assert(type < RHI::DescriptorType::MAX_ENUM);
+
+        switch (type)
+        {
+        case DescriptorType::SAMPLER: return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case DescriptorType::COMBINED_IMAGE_SAMPLER: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        case DescriptorType::SAMPLED_IMAGE: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        case DescriptorType::STORAGE_IMAGE: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        case DescriptorType::UNIFORM_TEXEL_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+        case DescriptorType::STORAGE_TEXEL_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+        case DescriptorType::UNIFORM_BUFFER: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case DescriptorType::STORAGE_BUFFER: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        case DescriptorType::UNIFORM_BUFFER_DYNAMIC: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        case DescriptorType::STORAGE_BUFFER_DYNAMIC: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+        case DescriptorType::INPUT_ATTACHMENT: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        default:
+            return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+        }
+    }
+
+    VkShaderStageFlags pickShaderStage(ShaderStageFlagBits stages)
+    {
+        assert(stages < RHI::ShaderStageFlagBits::MAX_ENUM);
+
+        VkShaderStageFlags ret = 0;
+
+        if((stages & ShaderStageFlagBits::VERTEX_BIT) != 0)
+        {
+            ret |= VK_SHADER_STAGE_VERTEX_BIT;
+        }
+        if ((stages & ShaderStageFlagBits::TESSELLATION_CONTROL_BIT) != 0)
+        {
+            ret |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+        }
+        if ((stages & ShaderStageFlagBits::TESSELLATION_EVALUATION_BIT) != 0)
+        {
+            ret |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+        }
+        if ((stages & ShaderStageFlagBits::GEOMETRY_BIT) != 0)
+        {
+            ret |= VK_SHADER_STAGE_GEOMETRY_BIT;
+        }
+        if ((stages & ShaderStageFlagBits::FRAGMENT_BIT) != 0)
+        {
+            ret |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        }
+        if ((stages & ShaderStageFlagBits::COMPUTE_BIT) != 0)
+        {
+            ret |= VK_SHADER_STAGE_COMPUTE_BIT;
+        }
+        if ((stages & ShaderStageFlagBits::ALL_GRAPHICS) != 0)
+        {
+            ret |= VK_SHADER_STAGE_ALL_GRAPHICS;
+        }
+        if ((stages & ShaderStageFlagBits::ALL) != 0)
+        {
+            ret |= VK_SHADER_STAGE_ALL;
+        }
+
+        return ret;
+    }
 }

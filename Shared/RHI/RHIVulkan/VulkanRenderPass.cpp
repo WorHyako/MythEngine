@@ -1,5 +1,6 @@
 #include <RHI/RHIVulkan/VulkanBackend.hpp>
 #include <array>
+#include <format>
 
 namespace RHI::Vulkan
 {
@@ -183,7 +184,7 @@ namespace RHI::Vulkan
     {
         VkAttachmentDescription depthAttachment{};
         depthAttachment.flags = 0;
-        depthAttachment.format = findDepthFormat();
+        depthAttachment.format = convertFormat(findDepthFormat());
         depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
         depthAttachment.loadOp = ci.clearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;

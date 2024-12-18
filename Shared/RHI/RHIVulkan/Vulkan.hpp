@@ -23,4 +23,8 @@ namespace RHI::Vulkan
 	VkImageLayout convertImageLayout(ImageLayout imageLayout);
 
 	VkMemoryPropertyFlags pickMemoryProperties(const MemoryPropertiesBits& memoryProperties);
+
+	VkDescriptorType convertDescriptorType(DescriptorType type);
+
+	VkShaderStageFlags pickShaderStage(ShaderStageFlagBits stages);
 }

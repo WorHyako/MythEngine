@@ -57,12 +57,15 @@ namespace RHI::Vulkan
 
     void CommandList::copyBuffer(IBuffer* srcBuffer, IBuffer* dstBuffer, size_t size)
     {
+        Buffer* srcBuf = dynamic_cast<Buffer*>(srcBuffer);
+        Buffer* dstBuf = dynamic_cast<Buffer*>(dstBuffer);
+
         VkBufferCopy copyRegion{};
         copyRegion.srcOffset = 0;
         copyRegion.dstOffset = 0;
         copyRegion.size = size;
 
-        vkCmdCopyBuffer(m_CurrentCommandBuffer->commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+        vkCmdCopyBuffer(m_CurrentCommandBuffer->commandBuffer, srcBuf->buffer, dstBuf->buffer, 1, &copyRegion);
     }
 
     void CommandList::transitionImageLayout(ITexture* texture, ImageLayout oldLayout, ImageLayout newLayout)
