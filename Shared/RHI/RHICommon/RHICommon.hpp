@@ -14,6 +14,7 @@ namespace RHI
 {
     class IBuffer;
 	class ITexture;
+    class ISampler;
     class IGraphicsPipeline;
 	class IDevice;
     class IFramebuffer;
@@ -226,7 +227,7 @@ namespace RHI
         COMPUTE_BIT = 0x00000020,
         ALL_GRAPHICS = 0x0000001F,
         ALL = 0x7FFFFFFF,
-        FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
+        MAX_ENUM = 0x7FFFFFFF
     };
 
     ENUM_CLASS_FLAG_OPERATORS(ShaderStageFlagBits)
@@ -241,7 +242,7 @@ namespace RHI
     {
         DescriptorInfo  dInfo;
 
-        IBuffer* buffer;
+        IBuffer* buffer = nullptr;
         uint32_t        offset;
         uint32_t        size;
     };
@@ -250,7 +251,8 @@ namespace RHI
     {
         DescriptorInfo  dInfo;
 
-        ITexture* texture;
+        ITexture* texture = nullptr;
+        ISampler* sampler = nullptr;
     };
 
     struct TextureArrayAttachment
@@ -613,5 +615,8 @@ namespace RHI
         virtual IBuffer* createSharedBuffer(const BufferDesc& desc) = 0;
         virtual IBuffer* addBuffer(const BufferDesc& desc, bool createMapping = false) = 0;
         virtual void uploadBufferData(IBuffer* buffer, size_t deviceOffset, const void* data, const size_t dataSize) = 0;
+        virtual void uploadVertexIndexBufferData(IBuffer* buffer, size_t deviceOffset, size_t vertexDataSize, const void* vertexData,
+            size_t indexDataSize, const void* indexData, const size_t dataSize) = 0;
+        virtual Format findDepthFormat() = 0;
     };
 }

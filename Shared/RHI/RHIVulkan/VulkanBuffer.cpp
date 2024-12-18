@@ -127,6 +127,20 @@ namespace RHI::Vulkan
         vkUnmapMemory(m_Context.device, buf->memory);
     }
 
+    void Device::uploadVertexIndexBufferData(IBuffer* buffer, size_t deviceOffset, size_t vertexDataSize, const void* vertexData,
+        size_t indexDataSize, const void* indexData, const size_t dataSize)
+    {
+        EASY_FUNCTION()
+
+    	Buffer* buf = dynamic_cast<Buffer*>(buffer);
+
+        void* mappedData = nullptr;
+        vkMapMemory(m_Context.device, buf->memory, deviceOffset, dataSize, 0, &mappedData);
+        memcpy(mappedData, vertexData, vertexDataSize);
+        memcpy((unsigned char*)mappedData + vertexDataSize, indexData, indexDataSize);
+        vkUnmapMemory(m_Context.device, buf->memory);
+    }
+
     void Device::downloadBufferData(const VkDeviceMemory& bufferMemory, VkDeviceSize deviceOffset, void* outData, size_t dataSize)
     {
         EASY_FUNCTION()

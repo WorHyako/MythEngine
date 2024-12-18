@@ -4,6 +4,7 @@
 #include <assimp/cimport.h>
 #include <assimp/postprocess.h>
 #include <assimp/version.h>
+#include <glad/vulkan.h>
 
 namespace RenderUtils
 {
@@ -25,11 +26,7 @@ namespace RenderUtils
             .setMemoryProperties(MemoryPropertiesBits::HOST_VISIBLE_BIT | MemoryPropertiesBits::HOST_COHERENT_BIT);
         IBuffer* stagingBuffer = device->createBuffer(stagingDesc);
 
-        void* data;
-        vkMapMemory(m_Context.device, stagingBuffer->memory, 0, bufferSize, 0, &data);
-        memcpy(data, vertexData, vertexDataSize);
-        memcpy((unsigned char*)data + vertexDataSize, indexData, indexDataSize);
-        vkUnmapMemory(m_Context.device, stagingBuffer->memory);
+        device->uploadVertexIndexBufferData(stagingBuffer, 0, vertexDataSize, vertexData, indexDataSize, indexData, bufferSize);
 
         BufferDesc storageDesc = BufferDesc{}
             .setSize(bufferSize)

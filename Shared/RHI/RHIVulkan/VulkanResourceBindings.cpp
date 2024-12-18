@@ -63,17 +63,17 @@ namespace RHI::Vulkan
 
         for (const auto& b : dsInfo.buffers)
         {
-            bindings.push_back(descriptorSetLayoutBinding(bindingIdx++, b.dInfo.type, b.dInfo.shaderStageFlags));
+            bindings.push_back(descriptorSetLayoutBinding(bindingIdx++, convertDescriptorType(b.dInfo.type), pickShaderStage(b.dInfo.shaderStageFlags)));
         }
 
         for (const auto& i : dsInfo.textures)
         {
-            bindings.push_back(descriptorSetLayoutBinding(bindingIdx++, i.dInfo.type /*VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER*/, i.dInfo.shaderStageFlags));
+            bindings.push_back(descriptorSetLayoutBinding(bindingIdx++, convertDescriptorType(i.dInfo.type) /*VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER*/, pickShaderStage(i.dInfo.shaderStageFlags)));
         }
 
         for (const auto& t : dsInfo.textureArrays)
         {
-            bindings.push_back(descriptorSetLayoutBinding(bindingIdx++, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, t.dInfo.shaderStageFlags, static_cast<uint32_t>(t.textures.size())));
+            bindings.push_back(descriptorSetLayoutBinding(bindingIdx++, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, pickShaderStage(t.dInfo.shaderStageFlags), static_cast<uint32_t>(t.textures.size())));
         }
 
         /*const VkDescriptorSetLayoutBindingFlagsCreateInfoEXT setLayoutBindingFlags = {
@@ -145,15 +145,16 @@ namespace RHI::Vulkan
                 (b.size > 0) ? b.size : VK_WHOLE_SIZE
             };
 
-            descriptorWrites.push_back(bufferWriteDescriptorSet(ds, &bufferDescriptors[i], bindingIdx++, b.dInfo.type));
+            descriptorWrites.push_back(bufferWriteDescriptorSet(ds, &bufferDescriptors[i], bindingIdx++, convertDescriptorType(b.dInfo.type)));
         }
 
         for (size_t i = 0; i < dsInfo.textures.size(); i++)
         {
             Texture* tex = dynamic_cast<Texture*>(dsInfo.textures[i].texture);
+            Sampler* sampler = dynamic_cast<Sampler*>(dsInfo.textures[i].sampler);
 
             imageDescriptors[i] = VkDescriptorImageInfo{
-                tex->sampler,
+                sampler->sampler,
                 tex->imageView,
                 /* t.texture.layout */ VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
             };
@@ -170,9 +171,10 @@ namespace RHI::Vulkan
             for (size_t j = 0; j < dsInfo.textureArrays[ta].textures.size(); j++)
             {
                 Texture* tex = dynamic_cast<Texture*>(dsInfo.textureArrays[ta].textures[j]);
+                Sampler* sampler = dynamic_cast<Sampler*>(dsInfo.textures[ta].sampler);
 
                 VkDescriptorImageInfo imageInfo = {
-                    tex->sampler,
+                    sampler->sampler,
                     tex->imageView,
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                 };
