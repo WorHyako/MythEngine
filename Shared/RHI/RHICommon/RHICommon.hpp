@@ -262,6 +262,14 @@ namespace RHI
         std::vector<ITexture*>  textures;
     };
 
+    /** An aggregate structure with all the data for descriptor set (or descriptor set layout) allocation */
+    struct DescriptorSetInfo
+    {
+        std::vector<BufferAttachment>       buffers;
+        std::vector<TextureAttachment>      textures;
+        std::vector<TextureArrayAttachment> textureArrays;
+    };
+
     struct VertexInputBindingDesc
     {
         uint32_t binding = 0u;
@@ -284,7 +292,7 @@ namespace RHI
         VertexInputAttributeDesc& setFormat(Format value) { format = value; return *this; }
     };
 
-    struct IInputLayout
+    class IInputLayout
     {
     public:
         virtual uint32_t getNumAttributes() const = 0;
@@ -292,6 +300,30 @@ namespace RHI
 
         virtual uint32_t getNumBindings() const = 0;
         virtual const VertexInputBindingDesc* getVertexBindingDesc(uint32_t index) const = 0;
+    };
+
+    struct VertexBufferBinding
+    {
+        IBuffer* buffer = nullptr;
+        uint32_t bindingSlot = 0;
+        size_t offset = 0;
+    };
+
+    struct IndexBufferBinding
+    {
+        IBuffer* buffer = nullptr;
+        size_t offset = 0;
+        bool index32BitType = false;
+    };
+
+    class IBindingLayout
+    {
+	    
+    };
+
+    class IBindingSet : public IResource
+    {
+	    
     };
 
     enum class CommandQueue : uint8_t
@@ -314,6 +346,10 @@ namespace RHI
     {
         IGraphicsPipeline* pipeline = nullptr;
         IFramebuffer* framebuffer = nullptr;
+
+        std::vector<IBindingSet*> bindingSets;
+        std::vector<VertexBufferBinding> vertexBufferBindings;
+        IndexBufferBinding indexBufferBinding;
 
         GraphicsState& setPipeline(IGraphicsPipeline* value) { pipeline = value; return *this; }
         GraphicsState& setFramebuffer(IFramebuffer* value) { framebuffer = value; return *this; }
@@ -641,6 +677,7 @@ namespace RHI
         virtual IFramebuffer* createFramebuffer(IRenderPass* renderPass, const std::vector<ITexture*>& images) = 0;
         virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* framebuffer) = 0;
         virtual IShader* createShaderModule(const char* fileName) = 0;
+        virtual IBindingSet* createBindingSet(const DescriptorSetInfo& dsInfo, uint32_t dSetCount);
         virtual ITexture* createImage(const TextureDesc& desc) = 0;
         virtual bool createImageView(ITexture* texture, ImageAspectFlagBits aspectFlags) = 0;
         virtual ISampler* createTextureSampler(const SamplerDesc& desc = SamplerDesc()) = 0;

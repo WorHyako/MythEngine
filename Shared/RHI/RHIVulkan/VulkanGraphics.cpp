@@ -188,9 +188,8 @@ namespace RHI::Vulkan
         tessellationState.flags = 0;
         tessellationState.patchControlPoints = pipeInfo.patchControlPoints;
 
-        VkPipelineLayout pipelineLayout;
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
-        createPipelineLayout(descriptorSetLayouts, &pipelineLayout);
+        createPipelineLayout(descriptorSetLayouts, &pso->pipelineLayout);
 
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -205,7 +204,7 @@ namespace RHI::Vulkan
         pipelineInfo.pDepthStencilState = pipeInfo.useDepth ? &depthStencil : nullptr;
         pipelineInfo.pColorBlendState = &colorBlending;
         pipelineInfo.pDynamicState = pipeInfo.dynamicScissorState ? &dynamicState : nullptr;
-        pipelineInfo.layout = pipelineLayout;
+        pipelineInfo.layout = pso->pipelineLayout;
         pipelineInfo.renderPass = fb->renderPass;
         pipelineInfo.subpass = 0;
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -324,5 +323,30 @@ namespace RHI::Vulkan
         beginRenderPass(fb);
 
         vkCmdBindPipeline(m_CurrentCommandBuffer->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
+
+        std::vector<VkBuffer> vertexBuffers;
+        std::vector<VkDeviceSize> vertexBuffersOffsets{};
+        vertexBuffers.reserve(state.vertexBufferBindings.size());
+        vertexBuffersOffsets.reserve(state.vertexBufferBindings.size());
+        uint32_t maxVertexBufferIndex = 0;
+        for(auto& vertexBinding : state.vertexBufferBindings)
+        {
+	        if(Buffer* vertexBuffer = dynamic_cast<Buffer*>(vertexBinding.buffer))
+	        {
+                vertexBuffers.push_back(vertexBuffer->buffer);
+                vertexBuffersOffsets.push_back(vertexBinding.offset);
+                maxVertexBufferIndex = max(vertexBinding.bindingSlot, maxVertexBufferIndex);
+	        }
+        }
+        vkCmdBindVertexBuffers(m_CurrentCommandBuffer->commandBuffer, 0,
+            maxVertexBufferIndex + 1, vertexBuffers.data(), vertexBuffersOffsets.data()); 
+
+        Buffer* indexBuf = dynamic_cast<Buffer*>(state.indexBufferBinding.buffer);
+        vkCmdBindIndexBuffer(m_CurrentCommandBuffer->commandBuffer,
+            indexBuf->buffer, state.indexBufferBinding.offset,
+            state.indexBufferBinding.index32BitType ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
+
+        GraphicsPipeline* pso = dynamic_cast<GraphicsPipeline*>(state.pipeline);
+        bindBindingSets(VK_PIPELINE_BIND_POINT_GRAPHICS, pso->pipelineLayout, state.bindingSets);
     }
 }

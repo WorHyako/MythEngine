@@ -2,7 +2,7 @@
 
 namespace RHI::Vulkan
 {
-    VkDescriptorPool Device::addDescriptorPool(const DescriptorSetInfo& dsInfo, uint32_t dSetCount)
+    VkDescriptorPool Device::createDescriptorPool(const DescriptorSetInfo& dsInfo, uint32_t dSetCount)
     {
         uint32_t uniformBufferCount = 0;
         uint32_t storageBufferCount = 0;
@@ -48,12 +48,12 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        m_Resources.allDPools.push_back(descriptorPool);
+        //m_Resources.allDPools.push_back(descriptorPool);
         return descriptorPool;
     }
 
 
-    VkDescriptorSetLayout Device::addDescriptorSetLayout(const DescriptorSetInfo& dsInfo)
+    VkDescriptorSetLayout Device::createDescriptorSetLayout(const DescriptorSetInfo& dsInfo)
     {
         VkDescriptorSetLayout descriptorSetLayout;
 
@@ -95,28 +95,33 @@ namespace RHI::Vulkan
             exit(EXIT_FAILURE);
         }
 
-        m_Resources.allDSLayouts.push_back(descriptorSetLayout);
+        //m_Resources.allDSLayouts.push_back(descriptorSetLayout);
         return descriptorSetLayout;
     }
 
-    VkDescriptorSet Device::addDescriptorSet(VkDescriptorPool descriptorPool, VkDescriptorSetLayout dsLayout)
+    IBindingSet* Device::createDescriptorSet(const DescriptorSetInfo& dsInfo, uint32_t dSetCount)
     {
-        VkDescriptorSet descriptorSet;
+        BindingSet* bindingSet = new BindingSet(m_Context);
+        bindingSet->descriptorPool = createDescriptorPool(dsInfo);
+
+        VkDescriptorSetLayout dsLayout = createDescriptorSetLayout(dsInfo);
 
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.pNext = nullptr;
-        allocInfo.descriptorPool = descriptorPool;
+        allocInfo.descriptorPool = bindingSet->descriptorPool;
         allocInfo.descriptorSetCount = 1;
         allocInfo.pSetLayouts = &dsLayout;
 
-        if (vkAllocateDescriptorSets(m_Context.device, &allocInfo, &descriptorSet) != VK_SUCCESS)
+        if (vkAllocateDescriptorSets(m_Context.device, &allocInfo, &bindingSet->descriptorSet) != VK_SUCCESS)
         {
             printf("Cannot allocate descriptor set\n");
             exit(EXIT_FAILURE);
         }
 
-        return descriptorSet;
+        updateDescriptorSet(bindingSet->descriptorSet, dsInfo);
+
+        return bindingSet;
     }
 
     /*
@@ -201,5 +206,36 @@ namespace RHI::Vulkan
         }
 
         vkUpdateDescriptorSets(m_Context.device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+    }
+
+
+    void CommandList::bindBindingSets(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, const std::vector<IBindingSet*> bindingSets)
+    {
+        std::vector<VkDescriptorSet> descriptorSets;
+        descriptorSets.reserve(bindingSets.size());
+        
+        for(IBindingSet* bindingSet : bindingSets)
+        {
+            if(BindingSet* binding = dynamic_cast<BindingSet*>(bindingSet))
+            {
+                descriptorSets.push_back(binding->descriptorSet);
+            }
+        }
+
+        vkCmdBindDescriptorSets(m_CurrentCommandBuffer->commandBuffer, bindPoint, pipelineLayout, 0, uint32_t(descriptorSets.size()), descriptorSets.data() , 0, nullptr);
+    }
+
+    BindingSet::BindingSet(const VulkanContext& context)
+	    : m_Context(context)
+    {}
+
+    BindingSet::~BindingSet()
+    {
+	    if(descriptorPool)
+	    {
+            vkDestroyDescriptorPool(m_Context.device, descriptorPool, nullptr);
+            descriptorPool = VkDescriptorPool();
+            descriptorSet = VkDescriptorSet();
+	    }
     }
 }

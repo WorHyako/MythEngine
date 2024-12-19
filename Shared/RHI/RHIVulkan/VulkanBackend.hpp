@@ -122,9 +122,9 @@ namespace RHI::Vulkan
 		VkPhysicalDevice physicalDevice;
 		VkDevice device;
 		VkQueue graphicsQueue;
+		VkDescriptorPool descriptorPool;
 
 		VulkanInstance vulkanInstance;
-		//Device vkDev;
 		VulkanContextExtensions ctxExtensions;
 		VulkanContextFeatures ctxFeatures;
 	};
@@ -518,8 +518,6 @@ namespace RHI::Vulkan
 
 	VkResult createSemaphore(VkDevice device, VkSemaphore* outSemaphore);
 
-	bool createDescriptorPool(Device& vkDev, uint32_t uniformBufferCount, uint32_t storageBufferCount, uint32_t samplerCount, VkDescriptorPool* descriptorPool);
-
 	bool isDeviceSuitable(VkPhysicalDevice device);
 
 	SwapchainSupportDetails querySwapchainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
@@ -651,11 +649,25 @@ namespace RHI::Vulkan
 		virtual const VertexInputBindingDesc* getVertexBindingDesc(uint32_t index) const override;
 	};
 
+	class BindingSet : public IBindingSet
+	{
+	public:
+		VkDescriptorPool descriptorPool;
+		VkDescriptorSet descriptorSet;
+
+		BindingSet(const VulkanContext& context);
+		virtual ~BindingSet();
+
+	private:
+		const VulkanContext& m_Context;
+	};
+
 	class GraphicsPipeline : public IGraphicsPipeline
 	{
 	public:
 		GraphicsPipelineDesc desc = {};
 		VkPipeline pipeline;
+		VkPipelineLayout pipelineLayout;
 
 		explicit GraphicsPipeline(const VulkanContext& context)
 			: m_Context(context)
@@ -775,11 +787,11 @@ namespace RHI::Vulkan
 		VkResult createComputePipeline(VkShaderModule computeShader, VkPipelineLayout pipelineLayout, VkPipeline* pipeline);
 
 		/* Calculate the descriptor pool size from the list of buffers and textures */
-		VkDescriptorPool addDescriptorPool(const DescriptorSetInfo& dsInfo, uint32_t dSetCount = 1);
+		VkDescriptorPool createDescriptorPool(const DescriptorSetInfo& dsInfo, uint32_t dSetCount = 1);
 
-		VkDescriptorSetLayout addDescriptorSetLayout(const DescriptorSetInfo& dsInfo);
+		VkDescriptorSetLayout createDescriptorSetLayout(const DescriptorSetInfo& dsInfo);
 
-		VkDescriptorSet addDescriptorSet(VkDescriptorPool descriptorPool, VkDescriptorSetLayout dsLayout);
+		IBindingSet* createDescriptorSet(const DescriptorSetInfo& dsInfo, uint32_t dSetCount);
 
 		void updateDescriptorSet(VkDescriptorSet ds, const DescriptorSetInfo& dsInfo);
 
@@ -837,6 +849,8 @@ namespace RHI::Vulkan
 		void endRenderPass();
 		void setGraphicsState(const GraphicsState& state) override;
 		void draw(const DrawArguments& args) override;
+
+		void bindBindingSets(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, const std::vector<IBindingSet*> bindings);
 
 		TrackedCommandBufferPtr getCurrentCommandBuffer() const { return m_CurrentCommandBuffer; }
 
