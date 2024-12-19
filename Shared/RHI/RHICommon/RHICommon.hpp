@@ -262,6 +262,38 @@ namespace RHI
         std::vector<ITexture*>  textures;
     };
 
+    struct VertexInputBindingDesc
+    {
+        uint32_t binding = 0u;
+        uint32_t stride = 0u;
+
+        VertexInputBindingDesc& setBinding(uint32_t value) { binding = value; return *this; }
+        VertexInputBindingDesc& setStride(uint32_t value) { stride = value; return *this; }
+    };
+
+    struct VertexInputAttributeDesc
+    {
+        uint32_t    location = 0u;
+        uint32_t    binding = 0u;
+        Format      format = Format::UNKNOWN;
+        uint32_t    offset = 0u;
+
+        VertexInputAttributeDesc& setLocation(uint32_t value) { location = value; return *this; }
+        VertexInputAttributeDesc& setBinding(uint32_t value) { binding = value; return *this; }
+        VertexInputAttributeDesc& setOffset(uint32_t value) { offset = value; return *this; }
+        VertexInputAttributeDesc& setFormat(Format value) { format = value; return *this; }
+    };
+
+    struct IInputLayout
+    {
+    public:
+        virtual uint32_t getNumAttributes() const = 0;
+        virtual const VertexInputAttributeDesc* getVertexAttributeDesc(uint32_t index) const = 0;
+
+        virtual uint32_t getNumBindings() const = 0;
+        virtual const VertexInputBindingDesc* getVertexBindingDesc(uint32_t index) const = 0;
+    };
+
     enum class CommandQueue : uint8_t
     {
         Graphics = 0,
@@ -574,6 +606,7 @@ namespace RHI
     struct GraphicsPipelineDesc
     {
         PrimitiveType primType = PrimitiveType::TriangleList;
+        IInputLayout* inputLayout = nullptr;
 
         IShader* VS = nullptr;
         IShader* HS = nullptr;
@@ -585,6 +618,7 @@ namespace RHI
         GraphicsPipelineInfo pipelineInfo;
 
         GraphicsPipelineDesc& setPrimType(PrimitiveType value) { primType = value; return *this; }
+        GraphicsPipelineDesc& setInputLayout(IInputLayout* value) { inputLayout = value; return *this; }
         GraphicsPipelineDesc& setVertexShader(IShader* value) { VS = value; return *this; }
         GraphicsPipelineDesc& setTessallationControlShader(IShader* value) { HS = value; return *this; }
         GraphicsPipelineDesc& setTessallationEvaluationShader(IShader* value) { DS = value; return *this; }

@@ -14,6 +14,8 @@ namespace RHI::Vulkan
 		virtual VkSemaphore getQueueSemaphore(CommandQueue queueID) = 0;
 		virtual void queueWaitForSemaphore(CommandQueue waitQueueID, VkSemaphore semaphore, uint64_t value) = 0;
 		virtual void queueSignalSemaphore(CommandQueue executionQueueID, VkSemaphore semaphore, uint64_t value) = 0;
+
+		virtual ITexture* createTextureForNative(VkImage* image, VkImageView* imageView, ImageAspectFlagBits aspectFlags, const TextureDesc& desc) = 0;
 	};
 
 	VkFormat convertFormat(RHI::Format format);

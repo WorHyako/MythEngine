@@ -141,4 +141,30 @@ namespace RHI::Vulkan
 
         return shader;
     }
+
+    uint32_t InputLayout::getNumAttributes() const
+    {
+        return inputAttributeDesc.size();
+    }
+
+    const VertexInputAttributeDesc* InputLayout::getVertexAttributeDesc(uint32_t index) const
+    {
+        if (index < uint32_t(inputAttributeDesc.size()))
+            return &inputAttributeDesc[index];
+        else
+            return nullptr;
+    }
+
+    uint32_t InputLayout::getNumBindings() const
+    {
+        return inputBindingDesc.size();
+    }
+
+    const VertexInputBindingDesc* InputLayout::getVertexBindingDesc(uint32_t index) const
+    {
+        if (index < uint32_t(inputBindingDesc.size()))
+            return &inputBindingDesc[index];
+        else
+            return nullptr;
+    }
 }

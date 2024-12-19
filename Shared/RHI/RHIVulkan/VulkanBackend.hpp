@@ -635,6 +635,22 @@ namespace RHI::Vulkan
 		const VulkanContext& m_Context;
 	};
 
+	class InputLayout : public IInputLayout
+	{
+	public:
+		std::vector<VertexInputAttributeDesc> inputAttributeDesc;
+		std::vector<VertexInputBindingDesc> inputBindingDesc;
+
+		std::vector <VkVertexInputBindingDescription> bindingDescriptions = {};
+		std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {};
+
+		virtual uint32_t getNumAttributes() const override;
+		virtual const VertexInputAttributeDesc* getVertexAttributeDesc(uint32_t index) const override;
+
+		virtual uint32_t getNumBindings() const override;
+		virtual const VertexInputBindingDesc* getVertexBindingDesc(uint32_t index) const override;
+	};
+
 	class GraphicsPipeline : public IGraphicsPipeline
 	{
 	public:
@@ -669,6 +685,8 @@ namespace RHI::Vulkan
 		virtual ISampler* createTextureSampler(const SamplerDesc& desc = SamplerDesc()) override;
 
 		virtual ISampler* createDepthSampler() override;
+
+		virtual ITexture* createTextureForNative(VkImage* image, VkImageView* imageView, ImageAspectFlagBits aspectFlags, const TextureDesc& desc) override;
 
 		VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 

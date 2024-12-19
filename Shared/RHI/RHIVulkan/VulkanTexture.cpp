@@ -341,4 +341,12 @@ namespace RHI::Vulkan
 
         return true;
     }
+
+    ITexture* Device::createTextureForNative(VkImage* image, VkImageView* imageView, ImageAspectFlagBits aspectFlags, const TextureDesc& desc)
+    {
+        Texture* tex = new Texture(m_Context);
+        tex->desc = desc;
+        tex->image = *image;
+        createImageView(tex, aspectFlags);
+    }
 }

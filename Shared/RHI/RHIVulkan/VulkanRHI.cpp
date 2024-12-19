@@ -409,16 +409,12 @@ namespace RHI::Vulkan
         Vulkan::Device* device = dynamic_cast<Vulkan::Device*>(m_Device);
         for (unsigned i = 0; i < imageCount; i++)
         {
-            if (!device->createImageView(m_SwapchainImages[i], VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, &m_SwapchainImageViews[i]))
-            {
-                printf("Cannot create swapchain image view\n");
-                exit(EXIT_FAILURE);
-            }
-            Vulkan::Texture* texture = new Texture();
-            texture->image = m_SwapchainImages[i];
-            texture->imageView = m_SwapchainImageViews[i];
-            texture->desc.width = m_DeviceParams.backBufferWidth;
-            texture->desc.height = m_DeviceParams.backBufferHeight;
+            TextureDesc desc = {};
+            desc.setWidth(m_DeviceParams.backBufferWidth)
+                .setHeight(m_DeviceParams.backBufferHeight)
+                .setFormat(Format::BGRA8_UNORM);
+            ITexture* texture = device->createTextureForNative(&m_SwapchainImages[i], &m_SwapchainImageViews[i], ImageAspectFlagBits::COLOR_BIT, desc);
+
             m_SwapchainTextures.push_back(texture);
         }
 

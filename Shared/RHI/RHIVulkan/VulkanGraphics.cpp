@@ -14,45 +14,31 @@ namespace RHI::Vulkan
         numShaders++;
     }
 
-    struct Vertex {
-        glm::vec3 pos;
-        glm::vec3 color;
-        glm::vec2 texCoord;
+    static VkVertexInputBindingDescription getBindingDescription(const VertexInputBindingDesc& description) {
+        VkVertexInputBindingDescription bindingDescription{};
+        bindingDescription.binding = description.binding;
+        bindingDescription.stride = description.stride;
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-        static VkVertexInputBindingDescription getBindingDescription() {
-            VkVertexInputBindingDescription bindingDescription{};
-            bindingDescription.binding = 0;
-            bindingDescription.stride = sizeof(Vertex);
-            bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        return bindingDescription;
+    }
 
-            return bindingDescription;
+    static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions(IInputLayout* inputLayout) {
+        std::vector<VkVertexInputAttributeDescription> attributeDescriptions{};
+        attributeDescriptions.reserve(inputLayout->getNumAttributes());
+
+        for(uint32_t idx = 0; idx < inputLayout->getNumAttributes(); idx++)
+        {
+            const VertexInputAttributeDesc& description = *inputLayout->getVertexAttributeDesc(idx);
+            VkVertexInputAttributeDescription& attributeDescription = attributeDescriptions[idx];
+            attributeDescription.binding = description.binding;
+            attributeDescription.location = description.location;
+            attributeDescription.format = convertFormat(description.format);
+            attributeDescription.offset = description.offset;
         }
 
-        static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-            std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
-
-            attributeDescriptions[0].binding = 0;
-            attributeDescriptions[0].location = 0;
-            attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-            attributeDescriptions[1].binding = 0;
-            attributeDescriptions[1].location = 1;
-            attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-            attributeDescriptions[2].binding = 0;
-            attributeDescriptions[2].location = 2;
-            attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-            attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-            return attributeDescriptions;
-        }
-
-        bool operator==(const Vertex& other) const {
-            return pos == other.pos && color == other.color && texCoord == other.texCoord;
-        }
-    };
+        return attributeDescriptions;
+    }
 
     IGraphicsPipeline* Device::createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* framebuffer)
     {
@@ -111,8 +97,8 @@ namespace RHI::Vulkan
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-        auto bindingDescription = Vertex::getBindingDescription();
-        auto attributeDescriptions = Vertex::getAttributeDescriptions();
+        auto bindingDescription = getBindingDescription(*desc.inputLayout->getVertexBindingDesc(0));
+        auto attributeDescriptions = getAttributeDescriptions(desc.inputLayout);
 
         vertexInputInfo.vertexBindingDescriptionCount = 1;
         vertexInputInfo.pVertexBindingDescriptions = &bindingDescription; // optional
