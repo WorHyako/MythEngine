@@ -17,6 +17,13 @@ public:
 private:
 	RHI::IShader* m_VertexShader = nullptr;
 	RHI::IShader* m_PixelShader = nullptr;
+	RHI::IBuffer* m_ConstantBuffer = nullptr;
+	RHI::IBuffer* m_VertexBuffer = nullptr;
+	RHI::IBuffer* m_IndexBuffer = nullptr;
+	RHI::ITexture* m_Texture = nullptr;
+	RHI::IInputLayout* m_InputLayout = nullptr;
+	RHI::IBindingLayout* m_BindingLayout = nullptr;
+	RHI::IBindingSet* m_BindingSets[];
 	RHI::IGraphicsPipeline* m_GraphicsPipeline = nullptr;
 	RHI::IRHICommandList* m_CommandList = nullptr;
 };

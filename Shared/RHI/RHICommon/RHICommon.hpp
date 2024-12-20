@@ -292,7 +292,7 @@ namespace RHI
         VertexInputAttributeDesc& setFormat(Format value) { format = value; return *this; }
     };
 
-    class IInputLayout
+    class IInputLayout : public IResource
     {
     public:
         virtual uint32_t getNumAttributes() const = 0;
@@ -677,7 +677,8 @@ namespace RHI
         virtual IFramebuffer* createFramebuffer(IRenderPass* renderPass, const std::vector<ITexture*>& images) = 0;
         virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* framebuffer) = 0;
         virtual IShader* createShaderModule(const char* fileName) = 0;
-        virtual IBindingSet* createBindingSet(const DescriptorSetInfo& dsInfo, uint32_t dSetCount);
+        virtual IBindingSet* createDescriptorSet(const DescriptorSetInfo& dsInfo, uint32_t dSetCount) = 0;
+        virtual IInputLayout* createInputLayout(const VertexInputAttributeDesc* attributes, const VertexInputBindingDesc* bindings) = 0;
         virtual ITexture* createImage(const TextureDesc& desc) = 0;
         virtual bool createImageView(ITexture* texture, ImageAspectFlagBits aspectFlags) = 0;
         virtual ISampler* createTextureSampler(const SamplerDesc& desc = SamplerDesc()) = 0;

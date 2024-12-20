@@ -2,6 +2,25 @@
 
 namespace RHI::Vulkan
 {
+    IInputLayout* Device::createInputLayout(const VertexInputAttributeDesc* attributes, const VertexInputBindingDesc* bindings)
+    {
+        InputLayout* inputLayout = new InputLayout();
+        const uint32_t attributesCount = sizeof(attributes);
+        inputLayout->inputAttributeDesc.reserve(attributesCount);
+        for(uint32_t i = 0; i < attributesCount; ++i)
+        {
+            inputLayout->inputAttributeDesc.push_back(attributes[i]);
+        }
+
+        const uint32_t bindingsCount = sizeof(bindings);
+        for (uint32_t i = 0; i < bindingsCount; ++i)
+        {
+            inputLayout->inputBindingDesc.push_back(bindings[i]);
+        }
+
+        return inputLayout;
+    }
+
     VkDescriptorPool Device::createDescriptorPool(const DescriptorSetInfo& dsInfo, uint32_t dSetCount)
     {
         uint32_t uniformBufferCount = 0;

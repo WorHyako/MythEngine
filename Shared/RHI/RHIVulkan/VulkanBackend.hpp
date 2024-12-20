@@ -446,14 +446,6 @@ namespace RHI::Vulkan
 		return makeBufferAttachment(buffer, offset, size, DescriptorType::STORAGE_BUFFER, shaderStageFlags);
 	}
 
-	/** An aggregate structure with all the data for descriptor set (or descriptor set layout) allocation */
-	struct DescriptorSetInfo
-	{
-		std::vector<BufferAttachment>       buffers;
-		std::vector<TextureAttachment>      textures;
-		std::vector<TextureArrayAttachment> textureArrays;
-	};
-
 	void CHECK(bool check, const char* fileName, int lineNumber);
 
 	bool setupDebugCallbacks(VkInstance instance, VkDebugUtilsMessengerEXT* messenger, VkDebugReportCallbackEXT* reportCallback);
@@ -791,7 +783,9 @@ namespace RHI::Vulkan
 
 		VkDescriptorSetLayout createDescriptorSetLayout(const DescriptorSetInfo& dsInfo);
 
-		IBindingSet* createDescriptorSet(const DescriptorSetInfo& dsInfo, uint32_t dSetCount);
+		virtual IBindingSet* createDescriptorSet(const DescriptorSetInfo& dsInfo, uint32_t dSetCount) override;
+
+		virtual IInputLayout* createInputLayout(const VertexInputAttributeDesc* attributes, const VertexInputBindingDesc* bindings) override;
 
 		void updateDescriptorSet(VkDescriptorSet ds, const DescriptorSetInfo& dsInfo);
 
