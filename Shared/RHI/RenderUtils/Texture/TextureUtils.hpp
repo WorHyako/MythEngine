@@ -13,7 +13,7 @@ namespace RenderUtils
 	RHI::ITexture* addColorTexture(
 		RHI::IDevice* device, RHI::IRHICommandList* commandList,
 		int texWidth = 0, int texHeight = 0, RHI::Format colorFormat = RHI::Format::BGRA8_UNORM,
-		const RHI::SamplerDesc& samplerDesc);
+		const RHI::SamplerDesc& samplerDesc = {});
 	RHI::ITexture* addDepthTexture(
 		RHI::IDevice* device, RHI::IRHICommandList* commandList,
 		int texWidth = 0, int texHeight = 0,

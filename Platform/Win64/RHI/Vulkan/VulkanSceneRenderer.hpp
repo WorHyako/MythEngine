@@ -1,7 +1,8 @@
 #pragma once
+
 #include <Renderer/RendererInterface.hpp>
 
-#include "VulkanResources.hpp"
+constexpr uint32_t c_NumViews = 4;
 
 class VulkanSceneRenderer : public mythSystem::RendererInterface
 {
@@ -21,9 +22,10 @@ private:
 	RHI::IBuffer* m_VertexBuffer = nullptr;
 	RHI::IBuffer* m_IndexBuffer = nullptr;
 	RHI::ITexture* m_Texture = nullptr;
+	RHI::ISampler* m_Sampler = nullptr;
 	RHI::IInputLayout* m_InputLayout = nullptr;
 	RHI::IBindingLayout* m_BindingLayout = nullptr;
-	RHI::IBindingSet* m_BindingSets[];
+	RHI::IBindingSet* m_BindingSets[c_NumViews];
 	RHI::IGraphicsPipeline* m_GraphicsPipeline = nullptr;
 	RHI::IRHICommandList* m_CommandList = nullptr;
 };

@@ -171,6 +171,21 @@ namespace RHI::Vulkan
         return buffer;
     }
 
+    void CommandList::writeBuffer(IBuffer* srcBuffer, size_t size, const void* data)
+    {
+    	BufferDesc stagingDesc = BufferDesc{}
+            .setSize(size)
+            .setIsTransferSrc(true)
+            .setMemoryProperties(MemoryPropertiesBits::HOST_VISIBLE_BIT | MemoryPropertiesBits::HOST_COHERENT_BIT);
+        IBuffer* stagingBuffer = m_Device->createBuffer(stagingDesc);
+
+        m_Device->uploadBufferData(stagingBuffer, 0, data, size);
+
+        copyBuffer(stagingBuffer, srcBuffer, size);
+
+        delete stagingBuffer;
+    }
+
     Buffer::~Buffer()
 	{
         vkDestroyBuffer(m_Context.device, buffer, nullptr);

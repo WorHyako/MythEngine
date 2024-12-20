@@ -97,7 +97,7 @@ namespace RHI::Vulkan
 
         VkAttachmentDescription depthAttachment{};
         depthAttachment.flags = 0;
-        depthAttachment.format = useDepth ? findDepthFormat() : VK_FORMAT_D32_SFLOAT;
+        depthAttachment.format = useDepth ? convertFormat(findDepthFormat()) : VK_FORMAT_D32_SFLOAT;
         depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
         depthAttachment.loadOp = offscreenInt ? VK_ATTACHMENT_LOAD_OP_LOAD : (ci.clearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD);
         depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;

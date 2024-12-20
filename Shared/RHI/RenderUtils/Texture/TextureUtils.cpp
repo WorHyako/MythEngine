@@ -102,7 +102,7 @@ namespace RenderUtils
         if (!pixels)
         {
             printf("Failed to load [%s] texture\n", filename); fflush(stdout);
-            return false;
+            return nullptr;
         }
 
         TextureDesc desc = {};
@@ -135,7 +135,7 @@ namespace RenderUtils
         if (!pixels)
         {
             printf("Failed to load [%s] texture\n", filename); fflush(stdout);
-            return false;
+            return nullptr;
         }
 
         uint32_t imgSize = texWidth * texHeight * texChannels;
@@ -298,7 +298,7 @@ namespace RenderUtils
         if (!img)
         {
             printf("Failed to load [%s] texture\n", filename); fflush(stdout);
-            return false;
+            return nullptr;
         }
 
         stbi_image_free((void*)img);
@@ -332,7 +332,7 @@ namespace RenderUtils
 
         if (!img) {
             printf("Failed to load [%s] texture\n", filename); fflush(stdout);
-            return false;
+            return nullptr;
         }
 
         uint32_t imageSize = texWidth * texHeight * 4;

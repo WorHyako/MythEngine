@@ -6,6 +6,9 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/mat4x4.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <Texture/TextureUtils.hpp>
 
@@ -55,8 +58,6 @@ static const uint32_t g_Indices[] = {
 	16, 17, 18,  16, 19, 17, // top face
 	20, 21, 22,  20, 23, 21, // bottom face
 };
-
-constexpr uint32_t c_NumViews = 4;
 
 // This example uses a single large constant buffer with multiple views to draw multiple versions of the same model.
 	// The alignment and size of partially bound constant buffers must be a multiple of 256 bytes,
@@ -119,6 +120,7 @@ bool VulkanSceneRenderer::initializeRender()
 
 		RHI::CommandListParameters commandListParams = { RHI::CommandQueue::Graphics };
 		m_CommandList = m_Device->createCommandList(commandListParams);
+		m_CommandList->beginSingleTimeCommands();
 		m_CommandLists.push_back(m_CommandList);
 
 		RHI::BufferDesc vertexBufferDesc = {};
@@ -128,9 +130,9 @@ bool VulkanSceneRenderer::initializeRender()
 			.setIsTransferDst(true);
 		m_VertexBuffer = m_Device->createBuffer(vertexBufferDesc);
 
-		m_CommandList->beginTrackingBufferState(m_VertexBuffer, nvrhi::ResourceStates::CopyDest);
-		m_CommandList->writeBuffer(m_VertexBuffer, g_Vertices, sizeof(g_Vertices));
-		m_CommandList->setPermanentBufferState(m_VertexBuffer, nvrhi::ResourceStates::VertexBuffer);
+		//m_CommandList->beginTrackingBufferState(m_VertexBuffer, nvrhi::ResourceStates::CopyDest);
+		m_CommandList->writeBuffer(m_VertexBuffer, sizeof(g_Vertices), g_Vertices);
+		//m_CommandList->setPermanentBufferState(m_VertexBuffer, nvrhi::ResourceStates::VertexBuffer);
 
 		RHI::BufferDesc indexBufferDesc;
 		indexBufferDesc
@@ -139,11 +141,12 @@ bool VulkanSceneRenderer::initializeRender()
 			.setIsTransferDst(true);
 		m_IndexBuffer = m_Device->createBuffer(indexBufferDesc);
 
-		m_CommandList->beginTrackingBufferState(m_IndexBuffer, nvrhi::ResourceStates::CopyDest);
-		m_CommandList->writeBuffer(m_IndexBuffer, g_Indices, sizeof(g_Indices));
-		m_CommandList->setPermanentBufferState(m_IndexBuffer, nvrhi::ResourceStates::IndexBuffer);
+		//m_CommandList->beginTrackingBufferState(m_IndexBuffer, nvrhi::ResourceStates::CopyDest);
+		m_CommandList->writeBuffer(m_IndexBuffer, sizeof(g_Indices), g_Indices);
+		//m_CommandList->setPermanentBufferState(m_IndexBuffer, nvrhi::ResourceStates::IndexBuffer);
 
-		m_Texture = RenderUtils::loadTexture2D(m_Device, m_CommandList, );
+		m_Texture = RenderUtils::loadTexture2D(m_Device, m_CommandList, (FilesystemUtilities::GetResourcesDir() + "textures/container2.png").c_str());
+		m_Sampler = m_Device->createTextureSampler();
 
 		m_CommandList->endSingleTimeCommands();
 		m_Device->executeCommandLists(m_CommandLists, m_CommandLists.size(), RHI::CommandQueue::Graphics);
@@ -152,20 +155,22 @@ bool VulkanSceneRenderer::initializeRender()
 		// The different binding sets use different slices of the same constant buffer.
 		for (uint32_t viewIndex = 0; viewIndex < c_NumViews; ++viewIndex)
 		{
-			RHI::BindingSetDesc bindingSetDesc;
-			bindingSetDesc.bindings = {
-				// Note: using viewIndex to construct a buffer range.
-				nvrhi::BindingSetItem::ConstantBuffer(0, m_ConstantBuffer, nvrhi::BufferRange(sizeof(ConstantBufferEntry) * viewIndex, sizeof(ConstantBufferEntry))),
-				// Texutre and sampler are the same for all model views.
-				nvrhi::BindingSetItem::Texture_SRV(0, m_Texture),
-				nvrhi::BindingSetItem::Sampler(0, commonPasses.m_AnisotropicWrapSampler)
-			};
+			RHI::BufferAttachment bufferAttachment = {};
+			bufferAttachment
+				.setDescriptorInfo(RHI::DescriptorInfo{RHI::DescriptorType::UNIFORM_BUFFER, RHI::ShaderStageFlagBits::VERTEX_BIT})
+				.setBuffer(m_ConstantBuffer)
+				.setSize(sizeof(ConstantBufferEntry))
+				.setOffset(0);
 
-			// Create the binding layout (if it's empty -- so, on the first iteration) and the binding set.
-			if (!nvrhi::utils::CreateBindingSetAndLayout(GetDevice(), nvrhi::ShaderType::All, 0, bindingSetDesc, m_BindingLayout, m_BindingSets[viewIndex]))
-			{
-				return false;
-			}
+			RHI::TextureAttachment textureAttachment = {};
+			textureAttachment
+				.setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::COMBINED_IMAGE_SAMPLER, RHI::ShaderStageFlagBits::FRAGMENT_BIT })
+				.setTexture(m_Texture)
+				.setSampler(m_Sampler);
+
+			RHI::DescriptorSetInfo dsInfos = {.buffers = {bufferAttachment}, .textures = {textureAttachment}};
+
+			m_BindingSets[viewIndex] = m_Device->createDescriptorSet(dsInfos, 1);
 		}
 
 		return true;
@@ -186,15 +191,18 @@ void VulkanSceneRenderer::composeFrame()
 
 bool VulkanSceneRenderer::renderScene()
 {
+	RHI::IFramebuffer* framebuffer = m_DynamicRHI->GetFramebuffer(m_DynamicRHI->GetCurrentBackBufferIndex());
+
 	if(!m_GraphicsPipeline)
 	{
 		RHI::GraphicsPipelineDesc pipelineDesc;
 		pipelineDesc.VS = m_VertexShader;
 		pipelineDesc.PS = m_PixelShader;
+		pipelineDesc.inputLayout = m_InputLayout;
 		pipelineDesc.primType = RHI::PrimitiveType::TriangleList;
 		pipelineDesc.pipelineInfo.useDepth = true;
 
-		m_GraphicsPipeline = m_Device->createGraphicsPipeline(pipelineDesc, m_DynamicRHI->GetFramebuffer(m_DynamicRHI->GetCurrentBackBufferIndex()));
+		m_GraphicsPipeline = m_Device->createGraphicsPipeline(pipelineDesc, framebuffer);
 	}
 
     //updateBuffers(imageIndex);
@@ -205,6 +213,13 @@ bool VulkanSceneRenderer::renderScene()
 
 	// Fill out the constant buffer slices for multiple views of the model.
 	ConstantBufferEntry modelConstants[c_NumViews];
+	for (uint32_t viewIndex = 0; viewIndex < c_NumViews; ++viewIndex)
+	{
+		glm::mat4 view = glm::lookAt(glm::vec3(3.0f, 3.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		glm::mat4 projection = glm::perspective(glm::radians(60.0f), float(framebuffer->framebufferWidth) / float(framebuffer->framebufferHeight), 0.1f, 10.0f);
+		glm::mat4 viewProjMatrix = projection * view;
+		modelConstants[viewIndex].viewProjMatrix = viewProjMatrix;
+	}
 
 	//m_CommandList->
 
@@ -216,9 +231,33 @@ bool VulkanSceneRenderer::renderScene()
 	RHI::DrawArguments drawArgs = {};
 	drawArgs.vertexCount = 3;
 	m_CommandList->draw(drawArgs);
-    m_CommandList->endSingleTimeCommands();
 
-    m_Device->executeCommandLists(m_CommandLists, m_CommandLists.size(), RHI::CommandQueue::Graphics);
+	for (uint32_t viewIndex = 0; viewIndex < c_NumViews; ++viewIndex)
+	{
+		RHI::GraphicsState state;
+		// Pick the right binding set for this view.
+		state.bindingSets = { m_BindingSets[viewIndex] };
+		state.indexBufferBinding = { m_IndexBuffer, 0, 1 };
+		// Bind the vertex buffers in reverse order to test the RHI implementation of binding slots
+		state.vertexBufferBindings = {
+			{ m_VertexBuffer, 1, offsetof(Vertex, uv) },
+			{ m_VertexBuffer, 0, offsetof(Vertex, position) }
+		};
+		state.pipeline = m_GraphicsPipeline;
+		state.framebuffer = framebuffer;
+
+		// Update the pipeline, bindings, and other state.
+		m_CommandList->setGraphicsState(state);
+
+		// Draw the model.
+		RHI::DrawArguments drawArgs = {};
+		drawArgs.vertexCount = sizeof(g_Indices);
+		m_CommandList->drawIndexed(drawArgs);
+	}
+
+	m_CommandList->endSingleTimeCommands();
+
+	m_Device->executeCommandLists(m_CommandLists, m_CommandLists.size(), RHI::CommandQueue::Graphics);
 
 	return true;
 }

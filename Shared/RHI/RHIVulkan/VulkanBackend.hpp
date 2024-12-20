@@ -829,6 +829,7 @@ namespace RHI::Vulkan
 		virtual void endSingleTimeCommands() override;
 
 		virtual void copyBuffer(IBuffer* srcBuffer, IBuffer* dstBuffer, size_t size) override;
+		virtual void writeBuffer(IBuffer* srcBuffer, size_t size, const void* data) override;
 		virtual void transitionImageLayout(ITexture* texture, ImageLayout oldLayout, ImageLayout newLayout) override;
 		void transitionImageLayoutCmd(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount = 1, uint32_t mipLevels = 1);
 
@@ -843,6 +844,7 @@ namespace RHI::Vulkan
 		void endRenderPass();
 		void setGraphicsState(const GraphicsState& state) override;
 		void draw(const DrawArguments& args) override;
+		void drawIndexed(const DrawArguments& args) override;
 
 		void bindBindingSets(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, const std::vector<IBindingSet*> bindings);
 

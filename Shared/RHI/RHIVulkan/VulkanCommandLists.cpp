@@ -315,4 +315,16 @@ namespace RHI::Vulkan
             args.startVertexLocation,
             args.startInstanceLocation);
 	}
+
+    void CommandList::drawIndexed(const DrawArguments& args)
+    {
+        assert(m_CurrentCommandBuffer);
+
+        vkCmdDrawIndexed(m_CurrentCommandBuffer->commandBuffer,
+            args.vertexCount,
+            args.instanceCount,
+            args.startIndexLocation,
+            args.startVertexLocation,
+            args.startInstanceLocation);
+    }
 }

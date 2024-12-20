@@ -348,5 +348,7 @@ namespace RHI::Vulkan
         tex->desc = desc;
         tex->image = *image;
         createImageView(tex, aspectFlags);
+
+        return tex;
     }
 }

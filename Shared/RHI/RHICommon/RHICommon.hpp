@@ -8,7 +8,7 @@
 #define ENUM_CLASS_FLAG_OPERATORS(T) \
     inline T operator & (T a, T b) { return T(uint8_t(a) & uint8_t(b)); } \
     inline T operator | (T a, T b) { return T(uint8_t(a) | uint8_t(b)); } \
-    inline bool operator != (T a, uint8_t b) { return uint8_t(a) == b; }
+    inline bool operator != (T a, uint8_t b) { return uint8_t(a) != b; }
 
 namespace RHI
 {
@@ -103,7 +103,7 @@ namespace RHI
         COUNT,
     };
 
-    uint32_t bytesPerTexFormat(Format fmt)
+    inline uint32_t bytesPerTexFormat(Format fmt)
     {
         switch (fmt)
         {
@@ -245,6 +245,11 @@ namespace RHI
         IBuffer* buffer = nullptr;
         uint32_t        offset;
         uint32_t        size;
+
+        BufferAttachment& setDescriptorInfo(const DescriptorInfo& value) { dInfo = value; return *this; }
+        BufferAttachment& setBuffer(IBuffer* value) { buffer = value; return *this; }
+        BufferAttachment& setOffset(uint32_t value) { offset = value; return *this; }
+        BufferAttachment& setSize(uint32_t value) { size = value; return *this; }
     };
 
     struct TextureAttachment
@@ -253,6 +258,10 @@ namespace RHI
 
         ITexture* texture = nullptr;
         ISampler* sampler = nullptr;
+
+        TextureAttachment& setDescriptorInfo(const DescriptorInfo& value) { dInfo = value; return *this; }
+        TextureAttachment& setTexture(ITexture* value) { texture = value; return *this; }
+        TextureAttachment& setSampler(ISampler* value) { sampler = value; return *this; }
     };
 
     struct TextureArrayAttachment
@@ -376,12 +385,14 @@ namespace RHI
         virtual void beginSingleTimeCommands() = 0;
         virtual void endSingleTimeCommands() = 0;
         virtual void draw(const DrawArguments& args) = 0;
+        virtual void drawIndexed(const DrawArguments& args) = 0;
         virtual void setGraphicsState(const GraphicsState& state) = 0;
         virtual void transitionImageLayout(ITexture* texture, ImageLayout oldLayout, ImageLayout newLayout) = 0;
         virtual bool updateTextureImage(ITexture* texture, const void* imageData, ImageLayout sourceImageLayout = ImageLayout::UNDEFINED) = 0;
         virtual void copyBufferToImage(IBuffer* buffer, ITexture* texture) = 0;
         virtual void copyMIPBufferToImage(IBuffer* buffer, ITexture* texture, uint32_t bytesPP) = 0;
         virtual void copyBuffer(IBuffer* srcBuffer, IBuffer* dstBuffer, size_t size) = 0;
+        virtual void writeBuffer(IBuffer* srcBuffer, size_t size, const void* data) = 0;
     };
 
     class IInstance : public IResource
