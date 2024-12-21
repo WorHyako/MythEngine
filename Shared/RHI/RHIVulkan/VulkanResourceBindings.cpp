@@ -5,14 +5,14 @@ namespace RHI::Vulkan
     IInputLayout* Device::createInputLayout(const VertexInputAttributeDesc* attributes, const VertexInputBindingDesc* bindings)
     {
         InputLayout* inputLayout = new InputLayout();
-        const uint32_t attributesCount = sizeof(attributes);
+        const uint32_t attributesCount = 2; sizeof(attributes) / sizeof(VertexInputAttributeDesc);
         inputLayout->inputAttributeDesc.reserve(attributesCount);
         for(uint32_t i = 0; i < attributesCount; ++i)
         {
             inputLayout->inputAttributeDesc.push_back(attributes[i]);
         }
 
-        const uint32_t bindingsCount = sizeof(bindings);
+        const uint32_t bindingsCount = sizeof(bindings) / sizeof(VertexInputBindingDesc);
         for (uint32_t i = 0; i < bindingsCount; ++i)
         {
             inputLayout->inputBindingDesc.push_back(bindings[i]);
@@ -72,8 +72,10 @@ namespace RHI::Vulkan
     }
 
 
-    VkDescriptorSetLayout Device::createDescriptorSetLayout(const DescriptorSetInfo& dsInfo)
+    IBindingLayout* Device::createDescriptorSetLayout(const DescriptorSetInfo& dsInfo)
     {
+        BindingLayout* bindingLayout = new BindingLayout();
+
         VkDescriptorSetLayout descriptorSetLayout;
 
         uint32_t bindingIdx = 0;
@@ -115,22 +117,24 @@ namespace RHI::Vulkan
         }
 
         //m_Resources.allDSLayouts.push_back(descriptorSetLayout);
-        return descriptorSetLayout;
+        bindingLayout->descriptorSetLayout = descriptorSetLayout;
+
+        return bindingLayout;
     }
 
-    IBindingSet* Device::createDescriptorSet(const DescriptorSetInfo& dsInfo, uint32_t dSetCount)
+    IBindingSet* Device::createDescriptorSet(const DescriptorSetInfo& dsInfo, uint32_t dSetCount, IBindingLayout* bindingLayout)
     {
         BindingSet* bindingSet = new BindingSet(m_Context);
         bindingSet->descriptorPool = createDescriptorPool(dsInfo);
 
-        VkDescriptorSetLayout dsLayout = createDescriptorSetLayout(dsInfo);
+        BindingLayout* dsLayout = dynamic_cast<BindingLayout*>(bindingLayout);
 
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.pNext = nullptr;
         allocInfo.descriptorPool = bindingSet->descriptorPool;
         allocInfo.descriptorSetCount = 1;
-        allocInfo.pSetLayouts = &dsLayout;
+        allocInfo.pSetLayouts = &dsLayout->descriptorSetLayout;
 
         if (vkAllocateDescriptorSets(m_Context.device, &allocInfo, &bindingSet->descriptorSet) != VK_SUCCESS)
         {

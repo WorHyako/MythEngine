@@ -325,9 +325,9 @@ namespace RHI
         bool index32BitType = false;
     };
 
-    class IBindingLayout
+    class IBindingLayout : public IResource
     {
-	    
+    public:
     };
 
     class IBindingSet : public IResource
@@ -384,6 +384,7 @@ namespace RHI
     public:
         virtual void beginSingleTimeCommands() = 0;
         virtual void endSingleTimeCommands() = 0;
+        virtual void queueWaitIdle() = 0;
         virtual void draw(const DrawArguments& args) = 0;
         virtual void drawIndexed(const DrawArguments& args) = 0;
         virtual void setGraphicsState(const GraphicsState& state) = 0;
@@ -434,6 +435,7 @@ namespace RHI
         virtual bool Present() = 0;
         virtual void BackBufferResized();
         virtual ITexture* GetBackBuffer(uint32_t index) = 0;
+        virtual ITexture* GetDepthBuffer() = 0;
         virtual uint32_t GetCurrentBackBufferIndex() = 0;
         virtual uint32_t GetBackBufferCount() = 0;
         virtual IFramebuffer* GetFramebuffer(uint32_t index) = 0;
@@ -509,7 +511,7 @@ namespace RHI
         uint32_t width = 1;
         uint32_t height = 1;
         uint32_t depth = 1;
-        uint32_t mipLevels = 0;
+        uint32_t mipLevels = 1;
         uint32_t layerCount = 1;
         Format format = Format::UNKNOWN;
         MemoryPropertiesBits memoryProperties = MemoryPropertiesBits::DEVICE_LOCAL_BIT;
@@ -654,6 +656,8 @@ namespace RHI
     {
         PrimitiveType primType = PrimitiveType::TriangleList;
         IInputLayout* inputLayout = nullptr;
+        std::vector<IBindingLayout*> bindingLayouts;
+
 
         IShader* VS = nullptr;
         IShader* HS = nullptr;
@@ -688,7 +692,8 @@ namespace RHI
         virtual IFramebuffer* createFramebuffer(IRenderPass* renderPass, const std::vector<ITexture*>& images) = 0;
         virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* framebuffer) = 0;
         virtual IShader* createShaderModule(const char* fileName) = 0;
-        virtual IBindingSet* createDescriptorSet(const DescriptorSetInfo& dsInfo, uint32_t dSetCount) = 0;
+        virtual IBindingLayout* createDescriptorSetLayout(const DescriptorSetInfo& dsInfo) = 0;
+        virtual IBindingSet* createDescriptorSet(const DescriptorSetInfo& dsInfo, uint32_t dSetCount, IBindingLayout* bindingLayout) = 0;
         virtual IInputLayout* createInputLayout(const VertexInputAttributeDesc* attributes, const VertexInputBindingDesc* bindings) = 0;
         virtual ITexture* createImage(const TextureDesc& desc) = 0;
         virtual bool createImageView(ITexture* texture, ImageAspectFlagBits aspectFlags) = 0;

@@ -11,7 +11,7 @@ namespace RHI::Vulkan
 {
     static VkBufferUsageFlags pickBufferUsage(const BufferDesc& desc)
     {
-        VkImageUsageFlags ret = 0;
+        VkBufferUsageFlags ret = 0;
 
         if (desc.usage.isTransferSrc)
             ret |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -183,7 +183,7 @@ namespace RHI::Vulkan
 
         copyBuffer(stagingBuffer, srcBuffer, size);
 
-        delete stagingBuffer;
+        //delete stagingBuffer;
     }
 
     Buffer::~Buffer()

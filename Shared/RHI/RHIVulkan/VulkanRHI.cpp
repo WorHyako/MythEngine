@@ -2,6 +2,8 @@
 #include <glm/ext/scalar_common.hpp>
 #include <RHI/RHIVulkan/VulkanBackend.hpp>
 
+#include <Texture/TextureUtils.hpp>
+
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
 const bool enableValidationFeaturesEnabled = false;
@@ -243,6 +245,8 @@ namespace RHI::Vulkan
         const size_t imageCount = createSwapchainImages();
         m_SwapChainIndex = 0;
 
+
+
         m_PresentSemaphores.reserve(m_DeviceParams.maxFramesInFlight + 1);
         m_AcquireSemaphores.reserve(m_DeviceParams.maxFramesInFlight + 1);
         const VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
@@ -358,6 +362,11 @@ namespace RHI::Vulkan
         return m_SwapchainTextures[index];
     }
 
+    ITexture* VulkanDynamicRHI::GetDepthBuffer()
+    {
+        return m_DepthSwapChainTexture;
+    }
+
     IFramebuffer* VulkanDynamicRHI::GetFramebuffer(uint32_t index)
     {
         return m_SwapChainFramebuffers[index];
@@ -413,10 +422,18 @@ namespace RHI::Vulkan
             desc.setWidth(m_DeviceParams.backBufferWidth)
                 .setHeight(m_DeviceParams.backBufferHeight)
                 .setFormat(Format::BGRA8_UNORM);
-            ITexture* texture = device->createTextureForNative(&m_SwapchainImages[i], &m_SwapchainImageViews[i], ImageAspectFlagBits::COLOR_BIT, desc);
+            ITexture* texture = device->createTextureForNative(m_SwapchainImages[i], m_SwapchainImageViews[i], ImageAspectFlagBits::COLOR_BIT, desc);
 
             m_SwapchainTextures.push_back(texture);
         }
+
+        IRHICommandList* commandList = m_Device->createCommandList();
+        commandList->beginSingleTimeCommands();
+        m_DepthSwapChainTexture = RenderUtils::createDepthTexture(m_Device, commandList, m_DeviceParams.backBufferWidth, m_DeviceParams.backBufferHeight);
+        commandList->endSingleTimeCommands();
+        std::vector<IRHICommandList*> commandLists;
+        commandLists.push_back(commandList);
+        m_Device->executeCommandLists(commandLists, 1);
 
         return static_cast<size_t>(imageCount);
     }

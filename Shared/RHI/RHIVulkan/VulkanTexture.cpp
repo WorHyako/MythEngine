@@ -337,16 +337,16 @@ namespace RHI::Vulkan
         copyBufferToImage(stagingBuffer, tex);
         transitionImageLayout(tex, ImageLayout::TRANSFER_DST_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
-        delete stagingBuffer;
+        //delete stagingBuffer;
 
         return true;
     }
 
-    ITexture* Device::createTextureForNative(VkImage* image, VkImageView* imageView, ImageAspectFlagBits aspectFlags, const TextureDesc& desc)
+    ITexture* Device::createTextureForNative(VkImage image, VkImageView imageView, ImageAspectFlagBits aspectFlags, const TextureDesc& desc)
     {
         Texture* tex = new Texture(m_Context);
         tex->desc = desc;
-        tex->image = *image;
+        tex->image = image;
         createImageView(tex, aspectFlags);
 
         return tex;

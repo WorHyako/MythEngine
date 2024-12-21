@@ -253,10 +253,13 @@ namespace RHI::Vulkan
 		virtual uint32_t GetBackBufferCount() override;
 		virtual uint32_t GetCurrentBackBufferIndex() override;
 		virtual ITexture* GetBackBuffer(uint32_t index) override;
+		virtual ITexture* GetDepthBuffer() override;
 		virtual IFramebuffer* GetFramebuffer(uint32_t index) override;
 
 		static VulkanContextFeatures& initializeContextFeatures();
 		static VulkanContextExtensions& initializeContextExtensions();
+
+		ITexture* m_DepthSwapChainTexture = nullptr;
 
 	private:
 		void createInstance();
@@ -641,6 +644,14 @@ namespace RHI::Vulkan
 		virtual const VertexInputBindingDesc* getVertexBindingDesc(uint32_t index) const override;
 	};
 
+	class BindingLayout : public IBindingLayout
+	{
+	public:
+		VkDescriptorSetLayout descriptorSetLayout;
+
+		virtual ~BindingLayout() {};
+	};
+
 	class BindingSet : public IBindingSet
 	{
 	public:
@@ -690,7 +701,7 @@ namespace RHI::Vulkan
 
 		virtual ISampler* createDepthSampler() override;
 
-		virtual ITexture* createTextureForNative(VkImage* image, VkImageView* imageView, ImageAspectFlagBits aspectFlags, const TextureDesc& desc) override;
+		virtual ITexture* createTextureForNative(VkImage image, VkImageView imageView, ImageAspectFlagBits aspectFlags, const TextureDesc& desc) override;
 
 		VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
@@ -781,9 +792,9 @@ namespace RHI::Vulkan
 		/* Calculate the descriptor pool size from the list of buffers and textures */
 		VkDescriptorPool createDescriptorPool(const DescriptorSetInfo& dsInfo, uint32_t dSetCount = 1);
 
-		VkDescriptorSetLayout createDescriptorSetLayout(const DescriptorSetInfo& dsInfo);
+		IBindingLayout* createDescriptorSetLayout(const DescriptorSetInfo& dsInfo);
 
-		virtual IBindingSet* createDescriptorSet(const DescriptorSetInfo& dsInfo, uint32_t dSetCount) override;
+		virtual IBindingSet* createDescriptorSet(const DescriptorSetInfo& dsInfo, uint32_t dSetCount, IBindingLayout* bindingLayout) override;
 
 		virtual IInputLayout* createInputLayout(const VertexInputAttributeDesc* attributes, const VertexInputBindingDesc* bindings) override;
 
@@ -827,6 +838,7 @@ namespace RHI::Vulkan
 
 		virtual void beginSingleTimeCommands() override;
 		virtual void endSingleTimeCommands() override;
+		virtual void queueWaitIdle() override;
 
 		virtual void copyBuffer(IBuffer* srcBuffer, IBuffer* dstBuffer, size_t size) override;
 		virtual void writeBuffer(IBuffer* srcBuffer, size_t size, const void* data) override;
@@ -859,5 +871,7 @@ namespace RHI::Vulkan
 
 		VkCommandPool m_CommandPool;
 		VkCommandBuffer m_CommandBuffer;
+
+		GraphicsState m_CurrentGraphicsState{};
 	};
 }

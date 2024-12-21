@@ -49,7 +49,8 @@ namespace RHI::Vulkan
 		si.signalSemaphoreCount = uint32_t(m_SignalSemaphores.size());
 		si.pSignalSemaphores = m_SignalSemaphores.data();
 
-		VK_CHECK(vkQueueSubmit(m_Queue, 1, &si, nullptr));
+		VkResult result = vkQueueSubmit(m_Queue, 1, &si, nullptr);
+		VK_CHECK(result);
 
 		m_WaitSemaphores.clear();
 		m_SignalSemaphores.clear();

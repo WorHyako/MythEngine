@@ -50,7 +50,7 @@ namespace RenderUtils
         return tex;
     }
 
-    ITexture* addDepthTexture(IDevice* device, IRHICommandList* commandList, int texWidth, int texHeight, ImageLayout layout)
+    ITexture* createDepthTexture(IDevice* device, IRHICommandList* commandList, int texWidth, int texHeight, ImageLayout layout)
     {
     	TextureDesc desc = {};
         desc.setWidth(texWidth)
@@ -200,7 +200,6 @@ namespace RenderUtils
         device->uploadBufferData(stagingBuffer, 0, mipData, imageSize);
         
         commandList->transitionImageLayout(tex, ImageLayout::UNDEFINED, ImageLayout::TRANSFER_DST_OPTIMAL);
-        // TODO:fix command list ussie
         commandList->copyMIPBufferToImage(stagingBuffer, tex, bytesPerPixel);
         commandList->transitionImageLayout(tex, ImageLayout::TRANSFER_DST_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
@@ -273,7 +272,7 @@ namespace RenderUtils
             exit(EXIT_FAILURE);
         }
 
-        commandList->transitionImageLayout(tex, ImageLayout::UNDEFINED, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+        //commandList->transitionImageLayout(tex, ImageLayout::UNDEFINED, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
         if (!device->createImageView(tex, ImageAspectFlagBits::COLOR_BIT))
         {

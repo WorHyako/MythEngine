@@ -30,11 +30,12 @@ namespace RHI::Vulkan
         for(uint32_t idx = 0; idx < inputLayout->getNumAttributes(); idx++)
         {
             const VertexInputAttributeDesc& description = *inputLayout->getVertexAttributeDesc(idx);
-            VkVertexInputAttributeDescription& attributeDescription = attributeDescriptions[idx];
+            VkVertexInputAttributeDescription attributeDescription;
             attributeDescription.binding = description.binding;
             attributeDescription.location = description.location;
             attributeDescription.format = convertFormat(description.format);
             attributeDescription.offset = description.offset;
+            attributeDescriptions.push_back(attributeDescription);
         }
 
         return attributeDescriptions;
@@ -188,8 +189,9 @@ namespace RHI::Vulkan
         tessellationState.flags = 0;
         tessellationState.patchControlPoints = pipeInfo.patchControlPoints;
 
-        std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
-        createPipelineLayout(descriptorSetLayouts, &pso->pipelineLayout);
+        BindingLayout* bindingLayout = dynamic_cast<BindingLayout*>(desc.bindingLayouts[0]);
+        std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { bindingLayout->descriptorSetLayout };
+        createPipelineLayout(descriptorSetLayouts, & pso->pipelineLayout);
 
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -295,15 +297,17 @@ namespace RHI::Vulkan
         rect.offset = VkOffset2D(0, 0);
         rect.extent = VkExtent2D(framebuffer->framebufferWidth, framebuffer->framebufferHeight);
 
-        VkClearValue clearValue{ .color = {0.0f, 0.0f, 0.0f, 1.0f} };
+        std::array<VkClearValue, 2> clearValues{};
+        clearValues[0] = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+        clearValues[1] = { 1.0f, 0 };
 
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass = framebuffer->renderPass;
         renderPassInfo.framebuffer = framebuffer->framebuffer; //(fb != VK_NULL_HANDLE) ? fb : swapchainFramebuffers[currentImage];
         renderPassInfo.renderArea = rect;
-        renderPassInfo.clearValueCount = 1;
-        renderPassInfo.pClearValues = &clearValue;
+        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+        renderPassInfo.pClearValues = clearValues.data();
         //renderPassInfo.clearValueCount = clearValueCount;
         //renderPassInfo.pClearValues = clearValues;
 
@@ -312,7 +316,11 @@ namespace RHI::Vulkan
 
     void CommandList::endRenderPass()
     {
-        vkCmdEndRenderPass(m_CurrentCommandBuffer->commandBuffer);
+        if(m_CurrentGraphicsState.framebuffer)
+        {
+            vkCmdEndRenderPass(m_CurrentCommandBuffer->commandBuffer);
+            m_CurrentGraphicsState.framebuffer = nullptr;
+        }
     }
 
     void CommandList::setGraphicsState(const GraphicsState& state)
@@ -320,7 +328,15 @@ namespace RHI::Vulkan
         GraphicsPipeline* pipeline = dynamic_cast<GraphicsPipeline*>(state.pipeline);
         Framebuffer* fb = dynamic_cast<Framebuffer*>(state.framebuffer);
 
-        beginRenderPass(fb);
+        if(state.framebuffer != m_CurrentGraphicsState.framebuffer)
+        {
+            endRenderPass();
+        }
+
+        if (!m_CurrentGraphicsState.framebuffer)
+        {
+            beginRenderPass(fb);
+        }
 
         vkCmdBindPipeline(m_CurrentCommandBuffer->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
 
@@ -348,5 +364,7 @@ namespace RHI::Vulkan
 
         GraphicsPipeline* pso = dynamic_cast<GraphicsPipeline*>(state.pipeline);
         bindBindingSets(VK_PIPELINE_BIND_POINT_GRAPHICS, pso->pipelineLayout, state.bindingSets);
+
+        m_CurrentGraphicsState = state;
     }
 }

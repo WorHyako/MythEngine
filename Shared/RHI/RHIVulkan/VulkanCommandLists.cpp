@@ -48,12 +48,19 @@ namespace RHI::Vulkan
         submitInfo.signalSemaphoreCount = 0;
         submitInfo.pSignalSemaphores = nullptr;
 
-        vkQueueSubmit(m_Device->getQueue(m_CommandListParameters.queueType)->getVkQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(m_Device->getQueue(m_CommandListParameters.queueType)->getVkQueue());
+        VkQueue submitQueue = m_Device->getQueue(m_CommandListParameters.queueType)->getVkQueue();
+        VkResult resultQueueSubmit =  vkQueueSubmit(submitQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        VkResult resultQueueWaidIdle = vkQueueWaitIdle(submitQueue);
 
         vkFreeCommandBuffers(m_Context.device, m_CurrentCommandBuffer->commandPool, 1, &m_CurrentCommandBuffer->commandBuffer);*/
     }
 
+    void CommandList::queueWaitIdle()
+    {
+        vkQueueWaitIdle(m_Device->getQueue(m_CommandListParameters.queueType)->getVkQueue());
+
+        vkFreeCommandBuffers(m_Context.device, m_CurrentCommandBuffer->commandPool, 1, &m_CurrentCommandBuffer->commandBuffer);
+    }
 
     void CommandList::copyBuffer(IBuffer* srcBuffer, IBuffer* dstBuffer, size_t size)
     {

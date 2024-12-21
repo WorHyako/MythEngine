@@ -14,7 +14,7 @@ namespace RenderUtils
 		RHI::IDevice* device, RHI::IRHICommandList* commandList,
 		int texWidth = 0, int texHeight = 0, RHI::Format colorFormat = RHI::Format::BGRA8_UNORM,
 		const RHI::SamplerDesc& samplerDesc = {});
-	RHI::ITexture* addDepthTexture(
+	RHI::ITexture* createDepthTexture(
 		RHI::IDevice* device, RHI::IRHICommandList* commandList,
 		int texWidth = 0, int texHeight = 0,
 		RHI::ImageLayout layout = RHI::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
