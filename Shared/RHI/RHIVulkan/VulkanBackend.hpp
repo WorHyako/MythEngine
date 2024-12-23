@@ -138,8 +138,8 @@ namespace RHI::Vulkan
 		VkCommandBuffer commandBuffer = VkCommandBuffer();
 		VkCommandPool commandPool = VkCommandPool();
 
-		std::vector<IResource> referencedResources; // to keep them alive
-		std::vector<Buffer> referencedStagingBuffers; // to allow synchronous mapBuffer
+		std::vector<IResource*> referencedResources; // to keep them alive
+		std::vector<Buffer*> referencedStagingBuffers; // to allow synchronous mapBuffer
 
 		uint64_t recordingID = 0;
 		uint64_t submissionID = 0;
@@ -259,8 +259,6 @@ namespace RHI::Vulkan
 		static VulkanContextFeatures& initializeContextFeatures();
 		static VulkanContextExtensions& initializeContextExtensions();
 
-		ITexture* m_DepthSwapChainTexture = nullptr;
-
 	private:
 		void createInstance();
 		void destroyDevice();
@@ -290,6 +288,7 @@ namespace RHI::Vulkan
 		std::vector<VkImageView> m_SwapchainImageViews;
 		std::vector<ITexture*> m_SwapchainTextures;
 		uint32_t m_SwapChainIndex = uint32_t(-1);
+		ITexture* m_DepthSwapChainTexture = nullptr;
 
 		std::vector<VkSemaphore> m_AcquireSemaphores;
 		std::vector<VkSemaphore> m_PresentSemaphores;
@@ -806,7 +805,7 @@ namespace RHI::Vulkan
 
 		std::vector<VkFramebuffer> addFramebuffers(VkRenderPass renderPass, VkImageView depthView = VK_NULL_HANDLE);
 
-		virtual IShader* createShaderModule(const char* fileName) override;
+		virtual std::shared_ptr<IShader> createShaderModule(const char* fileName) override;
 
 		virtual IRHICommandList* createCommandList(const CommandListParameters& params) override;
 		virtual uint64_t executeCommandLists(std::vector<IRHICommandList*>& commandLists, size_t numCommandLists, CommandQueue executionQueue) override;
@@ -843,7 +842,9 @@ namespace RHI::Vulkan
 		virtual void copyBuffer(IBuffer* srcBuffer, IBuffer* dstBuffer, size_t size) override;
 		virtual void writeBuffer(IBuffer* srcBuffer, size_t size, const void* data) override;
 		virtual void transitionImageLayout(ITexture* texture, ImageLayout oldLayout, ImageLayout newLayout) override;
+		virtual void transitionBufferLayout(IBuffer* texture, ImageLayout oldLayout, ImageLayout newLayout) override;
 		void transitionImageLayoutCmd(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount = 1, uint32_t mipLevels = 1);
+		void transitionBufferLayoutCmd(VkBuffer buffer, VkFormat format, VkAccessFlags oldAccess, VkAccessFlags newAccess, uint32_t offset = 0, uint32_t size = 0);
 
 		/* VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL for real update of an existing texture */
 		virtual bool updateTextureImage(ITexture* texture, const void* imageData, ImageLayout sourceImageLayout = ImageLayout::UNDEFINED) override;

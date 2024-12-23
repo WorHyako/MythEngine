@@ -25,11 +25,13 @@ namespace RHI::Vulkan
 
         if (!glfwInit())
         {
+            printf("Cannot initialize GLFW\n");
             exit(EXIT_FAILURE);
         }
 
         if (!glfwVulkanSupported())
         {
+            printf("GLFW don't support Vulkan\n");
             exit(EXIT_FAILURE);
         }
     }
@@ -51,6 +53,7 @@ namespace RHI::Vulkan
 
         if (!setupDebugCallbacks(m_VulkanInstance.instance, &m_VulkanInstance.messenger, &m_VulkanInstance.reportCallback))
         {
+            printf("Cannot initialize debug callbacks\n");
             exit(EXIT_FAILURE);
         }
 	}

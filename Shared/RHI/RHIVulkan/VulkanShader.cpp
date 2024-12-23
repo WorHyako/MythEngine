@@ -122,9 +122,9 @@ namespace RHI::Vulkan
         return 0;
     }
 
-    IShader* Device::createShaderModule(const char* fileName)
+    std::shared_ptr<IShader> Device::createShaderModule(const char* fileName)
     {
-        Shader* shader = new Shader();
+        std::shared_ptr<Shader> shader = std::make_shared<Shader>();
 
         if (compileShaderFile(fileName, *shader) < 1)
         {

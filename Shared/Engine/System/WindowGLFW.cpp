@@ -27,7 +27,7 @@ namespace mythSystem
     GLFWWindow::GLFWWindow(Resolution resolution)
 	    : WindowInterface(resolution)
     {
-        m_Window = glfwCreateWindow(resolution.width, resolution.height, "VulkanApp", nullptr, nullptr);
+        m_Window = glfwCreateWindow(resolution.width, resolution.height, "MythEngine", nullptr, nullptr);
     }
 
     void GLFWWindow::setWindowUserPointer(void* pointer)

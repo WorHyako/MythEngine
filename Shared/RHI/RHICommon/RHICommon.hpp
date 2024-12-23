@@ -3,6 +3,7 @@
 #include <RHI/RHICommon/Common/Resources.hpp>
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 #define ENUM_CLASS_FLAG_OPERATORS(T) \
@@ -389,6 +390,7 @@ namespace RHI
         virtual void drawIndexed(const DrawArguments& args) = 0;
         virtual void setGraphicsState(const GraphicsState& state) = 0;
         virtual void transitionImageLayout(ITexture* texture, ImageLayout oldLayout, ImageLayout newLayout) = 0;
+        virtual void transitionBufferLayout(IBuffer* texture, ImageLayout oldLayout, ImageLayout newLayout) = 0;
         virtual bool updateTextureImage(ITexture* texture, const void* imageData, ImageLayout sourceImageLayout = ImageLayout::UNDEFINED) = 0;
         virtual void copyBufferToImage(IBuffer* buffer, ITexture* texture) = 0;
         virtual void copyMIPBufferToImage(IBuffer* buffer, ITexture* texture, uint32_t bytesPP) = 0;
@@ -416,8 +418,8 @@ namespace RHI
 
         bool enableDebugRuntime = false;
 
-        uint32_t backBufferWidth = -1;
-        uint32_t backBufferHeight = -1;
+        uint32_t backBufferWidth = 0;
+        uint32_t backBufferHeight = 0;
         uint32_t maxFramesInFlight = 2;
 
         bool supportScreenshots = false;
@@ -659,22 +661,22 @@ namespace RHI
         std::vector<IBindingLayout*> bindingLayouts;
 
 
-        IShader* VS = nullptr;
-        IShader* HS = nullptr;
-        IShader* DS = nullptr;
-        IShader* GS = nullptr;
-        IShader* PS = nullptr;
+        std::shared_ptr<IShader> VS = nullptr;
+        std::shared_ptr<IShader> HS = nullptr;
+        std::shared_ptr<IShader> DS = nullptr;
+        std::shared_ptr<IShader> GS = nullptr;
+        std::shared_ptr<IShader> PS = nullptr;
 
         //VkPipelineLayout pipelineLayout,
         GraphicsPipelineInfo pipelineInfo;
 
         GraphicsPipelineDesc& setPrimType(PrimitiveType value) { primType = value; return *this; }
         GraphicsPipelineDesc& setInputLayout(IInputLayout* value) { inputLayout = value; return *this; }
-        GraphicsPipelineDesc& setVertexShader(IShader* value) { VS = value; return *this; }
-        GraphicsPipelineDesc& setTessallationControlShader(IShader* value) { HS = value; return *this; }
-        GraphicsPipelineDesc& setTessallationEvaluationShader(IShader* value) { DS = value; return *this; }
-        GraphicsPipelineDesc& setGeometryShader(IShader* value) { GS = value; return *this; }
-        GraphicsPipelineDesc& setPixelShader(IShader* value) { PS = value; return *this; }
+        GraphicsPipelineDesc& setVertexShader(std::shared_ptr<IShader> value) { VS = value; return *this; }
+        GraphicsPipelineDesc& setTessallationControlShader(std::shared_ptr<IShader> value) { HS = value; return *this; }
+        GraphicsPipelineDesc& setTessallationEvaluationShader(std::shared_ptr<IShader> value) { DS = value; return *this; }
+        GraphicsPipelineDesc& setGeometryShader(std::shared_ptr<IShader> value) { GS = value; return *this; }
+        GraphicsPipelineDesc& setPixelShader(std::shared_ptr<IShader> value) { PS = value; return *this; }
     };
 
     class IGraphicsPipeline : public IResource
@@ -691,7 +693,7 @@ namespace RHI
         virtual IRenderPass* createRenderPass(const RenderPassCreateInfo& ci = RenderPassCreateInfo()) = 0;
         virtual IFramebuffer* createFramebuffer(IRenderPass* renderPass, const std::vector<ITexture*>& images) = 0;
         virtual IGraphicsPipeline* createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* framebuffer) = 0;
-        virtual IShader* createShaderModule(const char* fileName) = 0;
+        virtual std::shared_ptr<IShader> createShaderModule(const char* fileName) = 0;
         virtual IBindingLayout* createDescriptorSetLayout(const DescriptorSetInfo& dsInfo) = 0;
         virtual IBindingSet* createDescriptorSet(const DescriptorSetInfo& dsInfo, uint32_t dSetCount, IBindingLayout* bindingLayout) = 0;
         virtual IInputLayout* createInputLayout(const VertexInputAttributeDesc* attributes, const VertexInputBindingDesc* bindings) = 0;

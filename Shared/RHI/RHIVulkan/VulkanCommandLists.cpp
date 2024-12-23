@@ -239,6 +239,38 @@ namespace RHI::Vulkan
             1, &barrier);
     }
 
+    void CommandList::transitionBufferLayout(IBuffer* texture, ImageLayout oldLayout, ImageLayout newLayout)
+    {
+        Buffer* buf = new Buffer(m_Context);
+        transitionBufferLayoutCmd(buf->buffer, convertFormat(buf->desc.format), VkImageLayout{}, VkImageLayout{}, 0, 0);
+    }
+
+    void CommandList::transitionBufferLayoutCmd(VkBuffer buffer, VkFormat format, VkAccessFlags oldAccess, VkAccessFlags newAccess, uint32_t offset, uint32_t size)
+    {
+        VkBufferMemoryBarrier barrier{};
+
+        VkPipelineStageFlags sourceStage;
+        VkPipelineStageFlags destinationStage;
+
+        barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        barrier.pNext = nullptr;
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = 0;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.offset = offset;
+        barrier.size = size;
+
+        vkCmdPipelineBarrier(
+            m_CurrentCommandBuffer->commandBuffer,
+            sourceStage,
+            destinationStage,
+            0,
+            0, nullptr,
+            1, &barrier,
+            0, nullptr);
+    }
+
     void CommandList::copyBufferToImage(IBuffer* buffer, ITexture* texture)
     {
         Texture* tex = dynamic_cast<Texture*>(texture);

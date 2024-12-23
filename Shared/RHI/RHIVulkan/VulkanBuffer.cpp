@@ -177,13 +177,13 @@ namespace RHI::Vulkan
             .setSize(size)
             .setIsTransferSrc(true)
             .setMemoryProperties(MemoryPropertiesBits::HOST_VISIBLE_BIT | MemoryPropertiesBits::HOST_COHERENT_BIT);
-        IBuffer* stagingBuffer = m_Device->createBuffer(stagingDesc);
+        Buffer* stagingBuffer = dynamic_cast<Buffer*>(m_Device->createBuffer(stagingDesc));
 
         m_Device->uploadBufferData(stagingBuffer, 0, data, size);
 
-        copyBuffer(stagingBuffer, srcBuffer, size);
+        m_CurrentCommandBuffer->referencedStagingBuffers.push_back(stagingBuffer);
 
-        //delete stagingBuffer;
+        copyBuffer(stagingBuffer, srcBuffer, size);
     }
 
     Buffer::~Buffer()

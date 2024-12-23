@@ -52,11 +52,11 @@ namespace RHI::Vulkan
         std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 
         uint32_t numShaders = 0;
-        countShaders(desc.VS, numShaders);
-        countShaders(desc.HS, numShaders);
-        countShaders(desc.DS, numShaders);
-        countShaders(desc.GS, numShaders);
-        countShaders(desc.PS, numShaders);
+        countShaders(desc.VS.get(), numShaders);
+        countShaders(desc.HS.get(), numShaders);
+        countShaders(desc.DS.get(), numShaders);
+        countShaders(desc.GS.get(), numShaders);
+        countShaders(desc.PS.get(), numShaders);
 
         shaderStages.reserve(numShaders);
         /*localShaderModules.resize(numShaders);
@@ -84,12 +84,12 @@ namespace RHI::Vulkan
             shaderStages[i] = shaderStageInfo(stage, localShaderModules[i], "main");
         }*/
 
-        if (Shader* shader = dynamic_cast<Shader*>(desc.VS))
+        if (Shader* shader = dynamic_cast<Shader*>(desc.VS.get()))
         {
             //shaderStages.push_back(shaderStageInfo(shader->stage, *shader, "main"));
             shaderStages.push_back(shaderStageInfo(VK_SHADER_STAGE_VERTEX_BIT, *shader, "main"));
         }
-        if (Shader* shader = dynamic_cast<Shader*>(desc.PS))
+        if (Shader* shader = dynamic_cast<Shader*>(desc.PS.get()))
         {
             //shaderStages.push_back(shaderStageInfo(shader->stage, *shader, "main"));
             shaderStages.push_back(shaderStageInfo(VK_SHADER_STAGE_FRAGMENT_BIT, *shader, "main"));

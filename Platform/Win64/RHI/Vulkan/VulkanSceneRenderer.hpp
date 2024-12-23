@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <Renderer/RendererInterface.hpp>
 
 constexpr uint32_t c_NumViews = 4;
@@ -16,8 +17,8 @@ public:
 	virtual void composeFrame() override;
 
 private:
-	RHI::IShader* m_VertexShader = nullptr;
-	RHI::IShader* m_PixelShader = nullptr;
+	std::shared_ptr<RHI::IShader> m_VertexShader = nullptr;
+	std::shared_ptr<RHI::IShader> m_PixelShader = nullptr;
 	RHI::IBuffer* m_ConstantBuffer = nullptr;
 	RHI::IBuffer* m_VertexBuffer = nullptr;
 	RHI::IBuffer* m_IndexBuffer = nullptr;
