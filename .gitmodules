@@ -77,3 +77,6 @@
 	path = Shared/ThirdParty/bullet3
 	url = https://github.com/bulletphysics/bullet3.git
 	branch = 2c204c4
+[submodule "Shared/RHI/RHIProto"]
+	path = Shared/RHI/RHIProto
+	url = https://github.com/Mathematic1/RHIProto.git
