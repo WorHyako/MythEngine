@@ -7,6 +7,7 @@
 
 #include "GLFW/glfw3.h"
 #include "RHI/Vulkan/VulkanSceneRenderer.hpp"
+
 using glm::mat4;
 using glm::vec2;
 using glm::vec3;
@@ -15,18 +16,35 @@ using glm::vec4;
 const int SCREEN_WIDTH = 1920;
 const int SCREEN_HEIGHT = 1080;
 
+mythSystem::Application* gs_pApplication = nullptr;
+
 namespace mythSystem
 {
     Application::Application()
         : m_Positioner(glm::vec3(0.0f, 5.0f, 10.0f), vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, -1.0f, 0.0f))
         , m_Camera(m_Positioner)
     {
+        gs_pApplication = this;
+
         m_GraphicsAPI = RHI::GraphicsAPI::VULKAN;
         m_RhiModule = RHI::InitializeModuleRHI(m_GraphicsAPI);
+
+        if (!glfwInit())
+        {
+            printf("Cannot initialize GLFW\n");
+            exit(EXIT_FAILURE);
+        }
+
+        if (!glfwVulkanSupported())
+        {
+            printf("GLFW don't support Vulkan\n");
+            exit(EXIT_FAILURE);
+        }
+
         createWindow();
+        createDynamicRHI();
         m_Window->setWindowUserPointer(this);
         m_Window->assignCallbacks();
-        createDynamicRHI();
         createRenderer();
     }
 
@@ -54,7 +72,18 @@ namespace mythSystem
     {
         if (m_RhiModule)
         {
-            m_DynamicRHI = m_RhiModule->createRHI();
+            RHI::DeviceParams deviceParams = {};
+            deviceParams.useGraphicsQueue = true;
+            deviceParams.useComputeQueue = true;
+            deviceParams.useTransferQueue = true;
+            deviceParams.usePresentQueue = true;
+            Resolution resolution;
+            m_Window.get()->getFramebufferResolution(resolution);
+            deviceParams.backBufferWidth = resolution.width;
+            deviceParams.backBufferHeight = resolution.height;
+            m_Window->getRequiredExtension(deviceParams.requiredVulkanInstanceExtensions);
+
+            m_DynamicRHI = m_RhiModule->createRHI(deviceParams);
 
             if (m_GraphicsAPI == RHI::GraphicsAPI::VULKAN)
             {
@@ -62,22 +91,14 @@ namespace mythSystem
                 {
                     if (GLFWWindow* windowGLFW = dynamic_cast<GLFWWindow*>(m_Window.get()))
                     {
-                        VulkanDynamicRHI->setWindow(windowGLFW->getWindow());
-                        VulkanDynamicRHI->createWindowSurface();
+                        VkSurfaceKHR surface;
+                        glfwCreateWindowSurface(VulkanDynamicRHI->getVulkanInstance().instance, windowGLFW->getWindow(), nullptr, &surface);
+                        VulkanDynamicRHI->setWindowSurface(surface);
                     }
-
-                    RHI::DeviceParams deviceParams = {};
-                    deviceParams.useGraphicsQueue = true;
-                    deviceParams.useComputeQueue = true;
-                    deviceParams.useTransferQueue = true;
-                    deviceParams.usePresentQueue = true;
-                    Resolution resolution;
-                    m_Window.get()->getFramebufferResolution(resolution);
-                    deviceParams.backBufferWidth = resolution.width;
-                    deviceParams.backBufferHeight = resolution.height;
-                    m_DynamicRHI->CreateDevice(deviceParams);
                 }
             }
+
+            m_DynamicRHI->CreateDevice();
         }
     }
 
@@ -153,5 +174,11 @@ namespace mythSystem
     {
         m_MouseState.pos.x = mx;
         m_MouseState.pos.y = my;
+    }
+
+    Application& Application::Get()
+    {
+        assert(gs_pApplication != nullptr);
+        return *gs_pApplication;
     }
 }

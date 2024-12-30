@@ -21,6 +21,11 @@ public:
 
 	virtual void setWindowUserPointer(void* pointer){};
 	virtual void assignCallbacks(){};
+	virtual void createWindowSurface() override{};
+	virtual uint32_t getRequiredExtension(std::vector<const char*>& extensions) override
+	{
+		return 0;
+	};
 
 	virtual void handleKey(int key, bool pressed) {};
 	virtual void handleMouseClick(int button, bool pressed) {};

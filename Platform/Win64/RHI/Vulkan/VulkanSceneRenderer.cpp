@@ -1,5 +1,5 @@
 #include <RHI/Vulkan/VulkanSceneRenderer.hpp>
-#include <RHI/RHICommon/RHIModuleWrapper.hpp>
+#include <RHIModuleWrapper.hpp>
 
 #include <Filesystem/FilesystemUtilities.hpp>\
 

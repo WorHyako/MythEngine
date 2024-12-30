@@ -1,6 +1,6 @@
 #pragma once
 
-#include <RHI/RHICommon/RHICommon.hpp>
+#include <RHICommon.hpp>
 
 namespace RenderUtils
 {

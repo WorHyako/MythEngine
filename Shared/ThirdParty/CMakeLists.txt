@@ -275,7 +275,7 @@ if (USE_OPTICK)
         message(FATAL_ERROR "Cannot enable both profilers (Optick and EasyProfiler) at once. Just pick one please.")
     endif ()
 
-    set(Optick_Root ${CMAKE_CURRENT_SOURCE_DIR}/optick})
+    set(Optick_Root ${CMAKE_CURRENT_SOURCE_DIR}/optick)
 
     quiet_add_subdirectory(${Optick_Root})
 

@@ -3,8 +3,6 @@
 #include <assimp/scene.h>
 #include <assimp/cimport.h>
 #include <assimp/postprocess.h>
-#include <assimp/version.h>
-#include <glad/vulkan.h>
 
 namespace RenderUtils
 {

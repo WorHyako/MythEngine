@@ -1,14 +1,12 @@
 if(APPLE)
 	set(RHI_Vulkan ON)
 	set(RHI_OpenGL OFF)
+	set(Render_Utils ON)
 endif ()
 
 if(WIN32)
 	set(RHI_OpenGL ON)
 	set(RHI_Vulkan ON)
-	set(RHI_DX12 ON)
-	set(RHI_VulkanNew ON)
-	set(RHI ON)
 	set(Render_Utils ON)
 endif ()
 
@@ -16,14 +14,6 @@ list(APPEND Rhi_Source_File_Ext
         /*.cpp
         /*.hpp
         /*.ini)
-
-if(${RHI})
-	set(Rhi_Sources_Ext ${Rhi_Source_File_Ext})
-	list(TRANSFORM Rhi_Sources_Ext PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/RHICommon)
-	file(GLOB_RECURSE Rhi_Common_Sources ${Rhi_Sources_Ext})
-    list(APPEND Rhi_Sources ${Rhi_Common_Sources})
-    list(APPEND Rhi_Include_Dir ${CMAKE_CURRENT_SOURCE_DIR}/RHICommon)
-endif ()
 
 if(${RHI_OpenGL})
 	set(Rhi_Sources_Ext ${Rhi_Source_File_Ext})
@@ -41,22 +31,6 @@ if(${RHI_Vulkan})
     list(APPEND Rhi_Include_Dir ${CMAKE_CURRENT_SOURCE_DIR}/Vulkan)
 endif()
 
-if(${RHI_VulkanNew})
-	set(Rhi_Sources_Ext ${Rhi_Source_File_Ext})
-	list(TRANSFORM Rhi_Sources_Ext PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/RHIVulkan)
-	file(GLOB_RECURSE Rhi_Vulkan_Sources ${Rhi_Sources_Ext})
-    list(APPEND Rhi_Sources ${Rhi_Vulkan_Sources})
-    list(APPEND Rhi_Include_Dir ${CMAKE_CURRENT_SOURCE_DIR}/RHIVulkan)
-endif()
-
-if(${RHI_DX12})
-	set(Rhi_Sources_Ext ${Rhi_Source_File_Ext})
-	list(TRANSFORM Rhi_Sources_Ext PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/DX12)
-	file(GLOB_RECURSE Rhi_DX12_Sources ${Rhi_Sources_Ext})
-    list(APPEND Rhi_Sources ${Rhi_DX12_Sources})
-    list(APPEND Rhi_Include_Dir ${CMAKE_CURRENT_SOURCE_DIR}/DX12)
-endif()
-
 if(${Render_Utils})
 	set(Rhi_Sources_Ext ${Rhi_Source_File_Ext})
 	list(TRANSFORM Rhi_Sources_Ext PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/RenderUtils)
@@ -67,3 +41,12 @@ endif ()
 
 set(Rhi_Include_Dir ${Rhi_Include_Dir} PARENT_SCOPE)
 set(Rhi_Sources ${Rhi_Sources} PARENT_SCOPE)
+
+set(rhiProto_Root ${CMAKE_CURRENT_SOURCE_DIR}/RHIProto)
+quiet_add_subdirectory(${rhiProto_Root})
+
+list(APPEND ThirdParty_IncludeDirs ${rhiProto_Root}/)
+list(APPEND ThirdParty_Libs rhiProto)
+
+set(ThirdParty_Libs ${ThirdParty_Libs} PARENT_SCOPE)
+set(ThirdParty_IncludeDirs ${ThirdParty_IncludeDirs} PARENT_SCOPE)

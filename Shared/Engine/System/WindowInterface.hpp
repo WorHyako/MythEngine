@@ -31,8 +31,10 @@ namespace mythSystem
 
         virtual void getFramebufferResolution(Resolution& resolution) = 0;
 
+        virtual void createWindowSurface() = 0;
         virtual void setWindowUserPointer(void* pointer) = 0;
         virtual void assignCallbacks() = 0;
+        virtual uint32_t getRequiredExtension(std::vector<const char*>& extensions) = 0;
 
         virtual void handleKey(int key, bool pressed) = 0;
         virtual void handleMouseClick(int button, bool pressed) = 0;

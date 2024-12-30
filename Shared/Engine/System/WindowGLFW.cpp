@@ -97,6 +97,26 @@ namespace mythSystem
         resolution.height = height;
     }
 
+    bool GLFWWindow::Initialize()
+    {
+        return true;
+    }
+
+    void GLFWWindow::createWindowSurface()
+    {
+
+    }
+
+    uint32_t GLFWWindow::getRequiredExtension(std::vector<const char*>& extensions)
+    {
+        uint32_t extensionsCount = 0;
+        const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&extensionsCount);
+        for (uint32_t i = 0; i < extensionsCount; i++) {
+            extensions.push_back(glfwExtensions[i]);
+        }
+        return extensionsCount;
+    }
+
     bool GLFWWindow::IsClosed()
     {
         return glfwWindowShouldClose(m_Window);

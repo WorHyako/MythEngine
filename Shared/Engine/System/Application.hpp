@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <System/ApplicationInterface.hpp>
-#include <RHI/RHICommon/RHIModuleWrapper.hpp>
+#include <RHIModuleWrapper.hpp>
 #include <Camera/TestCamera.hpp>
 #include "Utils/UtilsFPS.hpp"
 
@@ -35,6 +35,12 @@ namespace mythSystem
 
 		virtual void OnApplicationStarted() override {};
 		virtual void Exit(int ExitCode) override {};
+
+		/**
+		* Get a reference to the application instance.
+		* @returns A reference to the Application instance.
+		*/
+		static Application& Get();
 
 	private:
 		UniquePtr<WindowInterface> m_Window;

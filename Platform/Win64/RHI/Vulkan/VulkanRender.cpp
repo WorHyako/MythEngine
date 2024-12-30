@@ -2,13 +2,12 @@
 
 #include <RHI/Vulkan/VulkanRender.hpp>
 
-#define VK_NO_PROTOTYPES
-
-#include <volk.h>
-
 #ifdef WIN32
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
+
+#define VK_NO_PROTOTYPES
+#include <volk.h>
 
 #define GLFW_INCLUDE_VULKAN
 
