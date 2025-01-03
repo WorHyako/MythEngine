@@ -82,6 +82,7 @@ namespace mythSystem
             deviceParams.backBufferWidth = resolution.width;
             deviceParams.backBufferHeight = resolution.height;
             m_Window->getRequiredExtension(deviceParams.requiredVulkanInstanceExtensions);
+            deviceParams.vSyncEnabled = false;
 
             m_DynamicRHI = m_RhiModule->createRHI(deviceParams);
 
