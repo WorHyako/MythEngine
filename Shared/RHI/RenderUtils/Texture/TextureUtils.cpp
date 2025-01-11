@@ -26,13 +26,13 @@ namespace RenderUtils
         }
     }
 
-    ITexture* addColorTexture(IDevice* device, IRHICommandList* commandList, int texWidth, int texHeight, Format colorFormat, const SamplerDesc& samplerDesc)
+    RHI::TextureHandle addColorTexture(IDevice* device, IRHICommandList* commandList, int texWidth, int texHeight, Format colorFormat, const SamplerDesc& samplerDesc)
     {
         TextureDesc desc = {};
         desc.setWidth(texWidth)
             .setHeight(texHeight)
             .setFormat(colorFormat);
-        ITexture* tex = dynamic_cast<ITexture*>(createOffscreenImage(device, commandList, desc));
+        RHI::TextureHandle tex = createOffscreenImage(device, commandList, desc);
 
         if (!tex)
         {
@@ -40,17 +40,17 @@ namespace RenderUtils
             exit(EXIT_FAILURE);
         }
 
-        device->createImageView(tex, ImageAspectFlagBits::COLOR_BIT);
+        device->createImageView(tex.get(), ImageAspectFlagBits::COLOR_BIT);
         ISampler* sampler = device->createTextureSampler(samplerDesc);
 
-        commandList->transitionImageLayout(tex, ImageLayout::UNDEFINED, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+        commandList->transitionImageLayout(tex.get(), ImageLayout::UNDEFINED, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
         // TODO:fix allocation issue
         //m_Resources.allTextures.push_back(tex);
 
         return tex;
     }
 
-    ITexture* createDepthTexture(IDevice* device, IRHICommandList* commandList, int texWidth, int texHeight, ImageLayout layout)
+    RHI::TextureHandle createDepthTexture(IDevice* device, IRHICommandList* commandList, int texWidth, int texHeight, ImageLayout layout)
     {
     	TextureDesc desc = {};
         desc.setWidth(texWidth)
@@ -59,7 +59,7 @@ namespace RenderUtils
             .setIsShaderResource(true)
             .setIsRenderTarget(true);
 
-        ITexture* tex = device->createImage(desc);
+        RHI::TextureHandle tex = device->createImage(desc);
 
         if (!tex)
         {
@@ -67,8 +67,8 @@ namespace RenderUtils
             exit(EXIT_FAILURE);
         }
 
-        device->createImageView(tex, ImageAspectFlagBits::DEPTH_BIT);
-        commandList->transitionImageLayout(tex, ImageLayout::UNDEFINED, layout/*VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL*/);
+        device->createImageView(tex.get(), ImageAspectFlagBits::DEPTH_BIT);
+        commandList->transitionImageLayout(tex.get(), ImageLayout::UNDEFINED, layout/*VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL*/);
 
         ISampler* sampler = device->createDepthSampler();
         if (!sampler)
@@ -84,7 +84,7 @@ namespace RenderUtils
     }
 
     /** Offscreen rendering helpers */
-    ITexture* createOffscreenImage(IDevice* device, IRHICommandList* commandList, TextureDesc& desc)
+    RHI::TextureHandle createOffscreenImage(IDevice* device, IRHICommandList* commandList, TextureDesc& desc)
     {
         desc.setIsTransferSrc(true)
             .setIsTransferDst(true)
@@ -94,7 +94,7 @@ namespace RenderUtils
         return device->createImage(desc);
     }
 
-    ITexture* createTextureImage(IDevice* device, IRHICommandList* commandList, const char* filename)
+    RHI::TextureHandle createTextureImage(IDevice* device, IRHICommandList* commandList, const char* filename)
     {
         int texWidth, texHeight, texChannels;
         stbi_uc* pixels = stbi_load(filename, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
@@ -109,25 +109,25 @@ namespace RenderUtils
         desc.setWidth(texWidth)
             .setHeight(texHeight)
             .setFormat(Format::RGBA8_UNORM);
-        ITexture* result = createTextureImageFromData(device, commandList, desc, pixels);
+        RHI::TextureHandle result = createTextureImageFromData(device, commandList, desc, pixels);
 
         stbi_image_free(pixels);
 
         return result;
     }
 
-    ITexture* createTextureImageFromData(IDevice* device, IRHICommandList* commandList, TextureDesc& desc, void* imageData)
+    RHI::TextureHandle createTextureImageFromData(IDevice* device, IRHICommandList* commandList, TextureDesc& desc, void* imageData)
     {
         desc.setIsTransferDst(true)
             .setIsShaderResource(true);
-        ITexture* tex = device->createImage(desc);
+        RHI::TextureHandle tex = device->createImage(desc);
 
-        commandList->updateTextureImage(tex, imageData);
+        commandList->updateTextureImage(tex.get(), imageData);
 
         return tex;
     }
 
-    ITexture* createMIPTextureImage(IDevice* device, IRHICommandList* commandList, const char* filename, uint32_t mipLevels)
+    RHI::TextureHandle createMIPTextureImage(IDevice* device, IRHICommandList* commandList, const char* filename, uint32_t mipLevels)
     {
         int texWidth, texHeight, texChannels;
         stbi_uc* pixels = stbi_load(filename, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
@@ -164,18 +164,18 @@ namespace RenderUtils
             .setHeight(texHeight)
             .setMipLevels(mipLevels)
             .setFormat(Format::RGBA8_UNORM);
-        ITexture* result = createMIPTextureImageFromData(device, commandList, desc, mipData.data());
+        RHI::TextureHandle result = createMIPTextureImageFromData(device, commandList, desc, mipData.data());
 
         stbi_image_free(pixels);
 
         return result;
     }
 
-    ITexture* createMIPTextureImageFromData(IDevice* device, IRHICommandList* commandList, TextureDesc& desc, void* mipData)
+    RHI::TextureHandle createMIPTextureImageFromData(IDevice* device, IRHICommandList* commandList, TextureDesc& desc, void* mipData)
     {
         desc.setIsTransferDst(true)
             .setIsShaderResource(true);
-        ITexture* tex = device->createImage(desc);
+        RHI::TextureHandle tex = device->createImage(desc);
 
         // now allocate staging buffer for all MIP levels
         uint32_t bytesPerPixel = bytesPerTexFormat(tex->getDesc().format);
@@ -195,23 +195,24 @@ namespace RenderUtils
             .setSize(imageSize)
             .setIsTransferSrc(true)
             .setMemoryProperties(MemoryPropertiesBits::HOST_VISIBLE_BIT | MemoryPropertiesBits::HOST_COHERENT_BIT);
-        IBuffer* stagingBuffer = device->createBuffer(stagingDesc);
+        BufferHandle stagingBuffer = device->createBuffer(stagingDesc);
 
-        device->uploadBufferData(stagingBuffer, 0, mipData, imageSize);
+        device->uploadBufferData(stagingBuffer.get(), 0, mipData, imageSize);
         
-        commandList->transitionImageLayout(tex, ImageLayout::UNDEFINED, ImageLayout::TRANSFER_DST_OPTIMAL);
-        commandList->copyMIPBufferToImage(stagingBuffer, tex, bytesPerPixel);
-        commandList->transitionImageLayout(tex, ImageLayout::TRANSFER_DST_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+        commandList->transitionImageLayout(tex.get(), ImageLayout::UNDEFINED, ImageLayout::TRANSFER_DST_OPTIMAL);
+        commandList->copyMIPBufferToImage(stagingBuffer.get(), tex.get(), bytesPerPixel);
+        commandList->transitionImageLayout(tex.get(), ImageLayout::TRANSFER_DST_OPTIMAL, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
-        delete stagingBuffer;
+        // TODO: fixup memory cleanup
+        //delete stagingBuffer;
 
         return tex;
     }
 
-    ITexture* addRGBATexture(IDevice* device, IRHICommandList* commandList, TextureDesc& desc, void* data)
+    RHI::TextureHandle addRGBATexture(IDevice* device, IRHICommandList* commandList, TextureDesc& desc, void* data)
     {
         desc.setFormat(Format::RGBA8_UNORM);
-        ITexture* tex = dynamic_cast<ITexture*>(createTextureImageFromData(device, commandList, desc, data));
+        RHI::TextureHandle tex = createTextureImageFromData(device, commandList, desc, data);
 
         if (!tex)
         {
@@ -219,9 +220,9 @@ namespace RenderUtils
             exit(EXIT_FAILURE);
         }
 
-        commandList->transitionImageLayout(tex, ImageLayout::UNDEFINED, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+        commandList->transitionImageLayout(tex.get(), ImageLayout::UNDEFINED, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
-        if (!device->createImageView(tex, ImageAspectFlagBits::COLOR_BIT))
+        if (!device->createImageView(tex.get(), ImageAspectFlagBits::COLOR_BIT))
         {
             printf("Cannot create image view for 2d texture\n");
             exit(EXIT_FAILURE);
@@ -233,14 +234,14 @@ namespace RenderUtils
         return tex;
     }
 
-    ITexture* addSolidRGBATexture(IDevice* device, IRHICommandList* commandList, uint32_t color)
+    RHI::TextureHandle addSolidRGBATexture(IDevice* device, IRHICommandList* commandList, uint32_t color)
     {
         TextureDesc desc = {};
         desc.setWidth(1)
             .setHeight(1)
             .setDepth(1)
             .setFormat(Format::RGBA8_UNORM);
-        ITexture* tex = dynamic_cast<ITexture*>(createTextureImageFromData(device, commandList, desc, &color));
+        RHI::TextureHandle tex = createTextureImageFromData(device, commandList, desc, &color);
 
         if (!tex)
         {
@@ -248,9 +249,9 @@ namespace RenderUtils
             exit(EXIT_FAILURE);
         }
 
-        commandList->transitionImageLayout(tex, ImageLayout::UNDEFINED, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+        commandList->transitionImageLayout(tex.get(), ImageLayout::UNDEFINED, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
-        if (!device->createImageView(tex, ImageAspectFlagBits::COLOR_BIT))
+        if (!device->createImageView(tex.get(), ImageAspectFlagBits::COLOR_BIT))
         {
             printf("Cannot create image view for solid texture\n");
             exit(EXIT_FAILURE);
@@ -263,9 +264,9 @@ namespace RenderUtils
         return tex;
     }
 
-    ITexture* loadTexture2D(IDevice* device, IRHICommandList* commandList, const char* fileName)
+    RHI::TextureHandle loadTexture2D(IDevice* device, IRHICommandList* commandList, const char* fileName)
     {
-        ITexture* tex = createTextureImage(device, commandList, fileName);
+        RHI::TextureHandle tex = createTextureImage(device, commandList, fileName);
         if (!tex)
         {
             printf("Cannot load %s 2D texture file\n", fileName);
@@ -274,7 +275,7 @@ namespace RenderUtils
 
         //commandList->transitionImageLayout(tex, ImageLayout::UNDEFINED, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 
-        if (!device->createImageView(tex, ImageAspectFlagBits::COLOR_BIT))
+        if (!device->createImageView(tex.get(), ImageAspectFlagBits::COLOR_BIT))
         {
             printf("Cannot create image view for 2d texture (%s)\n", fileName);
             exit(EXIT_FAILURE);
@@ -286,7 +287,7 @@ namespace RenderUtils
         return tex;
     }
 
-    ITexture* createCubeTextureImage(IDevice* device, IRHICommandList* commandList, const char* filename, uint32_t* width, uint32_t* height)
+    RHI::TextureHandle createCubeTextureImage(IDevice* device, IRHICommandList* commandList, const char* filename, uint32_t* width, uint32_t* height)
     {
         int w, h, comp;
         const float* img = stbi_loadf(filename, &w, &h, &comp, 3);
@@ -323,7 +324,7 @@ namespace RenderUtils
         return createTextureImageFromData(device, commandList, desc, cube.data_.data());
     }
 
-    ITexture* createMIPCubeTextureImage(IDevice* device, IRHICommandList* commandList, const char* filename, uint32_t mipLevels, uint32_t* width, uint32_t* height)
+    RHI::TextureHandle createMIPCubeTextureImage(IDevice* device, IRHICommandList* commandList, const char* filename, uint32_t mipLevels, uint32_t* width, uint32_t* height)
     {
         int comp;
         int texWidth, texHeight;
@@ -411,9 +412,9 @@ namespace RenderUtils
         return createMIPTextureImageFromData(device, commandList, desc, mipCube.data());
     }
 
-    ITexture* loadCubemap(IDevice* device, IRHICommandList* commandList, const char* fileName, uint32_t mipLevels)
+    RHI::TextureHandle loadCubemap(IDevice* device, IRHICommandList* commandList, const char* fileName, uint32_t mipLevels)
     {
-        ITexture* tex = nullptr;
+        RHI::TextureHandle tex = nullptr;
 
         uint32_t w = 0, h = 0;
 
@@ -422,7 +423,7 @@ namespace RenderUtils
         else
             tex = createCubeTextureImage(device, commandList, fileName, &w, &h);
 
-        device->createImageView(tex, ImageAspectFlagBits::COLOR_BIT);
+        device->createImageView(tex.get(), ImageAspectFlagBits::COLOR_BIT);
         ISampler* sampler = device->createTextureSampler();
 
         /*TextureDesc desc = tex->getDesc();
@@ -437,7 +438,7 @@ namespace RenderUtils
         return tex;
     }
 
-    ITexture* loadKTX(IDevice* device, IRHICommandList* commandList, const char* fileName)
+    RHI::TextureHandle loadKTX(IDevice* device, IRHICommandList* commandList, const char* fileName)
     {
         gli::texture gliTex = gli::load_ktx(fileName);
         gli::tvec3<uint32_t> extent(gliTex.extent(0));
@@ -448,7 +449,7 @@ namespace RenderUtils
             .setWidth(4)
             .setFormat(Format::RG16_FLOAT);
 
-        ITexture* ktx = createTextureImageFromData(device, commandList, desc,(uint8_t*)gliTex.data(0, 0, 0));
+        RHI::TextureHandle ktx = createTextureImageFromData(device, commandList, desc,(uint8_t*)gliTex.data(0, 0, 0));
 
         if (!ktx)
         {
@@ -456,7 +457,7 @@ namespace RenderUtils
             exit(EXIT_FAILURE);
         }
 
-        device->createImageView(ktx, ImageAspectFlagBits::COLOR_BIT);
+        device->createImageView(ktx.get(), ImageAspectFlagBits::COLOR_BIT);
 
         SamplerDesc samplerDesc = {};
         samplerDesc.setAddressAll(SamplerAddressMode::CLAMP_TO_EDGE);
@@ -468,7 +469,7 @@ namespace RenderUtils
         return ktx;
     }
 
-    ITexture* createFontTexture(IDevice* device, IRHICommandList* commandList, const char* fontFile)
+    RHI::TextureHandle createFontTexture(IDevice* device, IRHICommandList* commandList, const char* fontFile)
     {
         // TODO: fix loading resources
         ImGuiIO& io = ImGui::GetIO();
@@ -498,14 +499,14 @@ namespace RenderUtils
         desc.setWidth(texWidth)
             .setHeight(texHeight)
             .setFormat(Format::RGBA8_UNORM);
-        ITexture* tex = createTextureImageFromData(device, commandList, desc, pixels);
+        RHI::TextureHandle tex = createTextureImageFromData(device, commandList, desc, pixels);
         if (!tex)
         {
             printf("Failed to create texture\n"); fflush(stdout);
             return nullptr;
         }
 
-        device->createImageView(tex, ImageAspectFlagBits::COLOR_BIT);
+        device->createImageView(tex.get(), ImageAspectFlagBits::COLOR_BIT);
         ISampler* sampler = device->createTextureSampler();
 
         /* This is not strictly necessary, a font can be any texture */

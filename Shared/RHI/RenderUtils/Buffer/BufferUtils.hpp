@@ -5,9 +5,9 @@
 namespace RenderUtils
 {
 	/* Allocate and upload vertex & index buffer pair */
-	RHI::IBuffer* addVertexBuffer(RHI::IDevice* device, RHI::IRHICommandList* commandList, uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData);
+	RHI::BufferHandle addVertexBuffer(RHI::IDevice* device, RHI::IRHICommandList* commandList, uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData);
 
-	RHI::IBuffer* allocateVertexBuffer(RHI::IDevice* device, RHI::IRHICommandList* commandList, size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData);
+	RHI::BufferHandle allocateVertexBuffer(RHI::IDevice* device, RHI::IRHICommandList* commandList, size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData);
 
 	std::pair<RHI::BufferAttachment, RHI::BufferAttachment> makeMeshBuffers(RHI::IDevice* device, RHI::IRHICommandList* commandList, const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
 

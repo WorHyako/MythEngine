@@ -8,13 +8,13 @@ namespace RenderUtils
 {
 	using namespace RHI;
 
-    IBuffer* addVertexBuffer(IDevice* device, IRHICommandList* commandList, uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData)
+    BufferHandle addVertexBuffer(IDevice* device, IRHICommandList* commandList, uint32_t indexBufferSize, const void* indexData, uint32_t vertexBufferSize, const void* vertexData)
     {
         return allocateVertexBuffer(device, commandList, vertexBufferSize, vertexData, indexBufferSize, indexData);
         //m_Resources.allBuffers.push_back(result);
     }
 
-    IBuffer* allocateVertexBuffer(IDevice* device, IRHICommandList* commandList, size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData)
+    BufferHandle allocateVertexBuffer(IDevice* device, IRHICommandList* commandList, size_t vertexDataSize, const void* vertexData, size_t indexDataSize, const void* indexData)
     {
         size_t bufferSize = vertexDataSize + indexDataSize;
 
@@ -22,20 +22,21 @@ namespace RenderUtils
             .setSize(bufferSize)
             .setIsTransferSrc(true)
             .setMemoryProperties(MemoryPropertiesBits::HOST_VISIBLE_BIT | MemoryPropertiesBits::HOST_COHERENT_BIT);
-        IBuffer* stagingBuffer = device->createBuffer(stagingDesc);
+        BufferHandle stagingBuffer = device->createBuffer(stagingDesc);
 
-        device->uploadVertexIndexBufferData(stagingBuffer, 0, vertexDataSize, vertexData, indexDataSize, indexData, bufferSize);
+        device->uploadVertexIndexBufferData(stagingBuffer.get(), 0, vertexDataSize, vertexData, indexDataSize, indexData, bufferSize);
 
         BufferDesc storageDesc = BufferDesc{}
             .setSize(bufferSize)
             .setIsTransferDst(true)
             .setIsStorageBuffer(true)
             .setMemoryProperties(MemoryPropertiesBits::DEVICE_LOCAL_BIT);
-        IBuffer* storageBuffer = device->createBuffer(storageDesc);
+        BufferHandle storageBuffer = device->createBuffer(storageDesc);
 
-        commandList->copyBuffer(stagingBuffer, storageBuffer, bufferSize);
+        commandList->copyBuffer(stagingBuffer.get(), storageBuffer.get(), bufferSize);
 
-        delete stagingBuffer;
+        // TODO: fixup memory cleanup
+        //delete stagingBuffer;
 
         return storageBuffer;
     }
@@ -46,7 +47,7 @@ namespace RenderUtils
         const uint32_t indexBufferSize = uint32_t(indices.size() * sizeof(int));
         const uint32_t vertexBufferSize = uint32_t(vertices.size() * sizeof(float));
 
-        IBuffer* storageBuffer = addVertexBuffer(device, commandList, indexBufferSize, indices.data(), vertexBufferSize, vertices.data());
+        IBuffer* storageBuffer = addVertexBuffer(device, commandList, indexBufferSize, indices.data(), vertexBufferSize, vertices.data()).get();
 
         BufferAttachment vertexBufferAttachment{};
         vertexBufferAttachment.dInfo = { DescriptorType::STORAGE_BUFFER, ShaderStageFlagBits::VERTEX_BIT };

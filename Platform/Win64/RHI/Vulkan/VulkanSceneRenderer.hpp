@@ -19,10 +19,10 @@ public:
 private:
 	std::shared_ptr<RHI::IShader> m_VertexShader = nullptr;
 	std::shared_ptr<RHI::IShader> m_PixelShader = nullptr;
-	RHI::IBuffer* m_ConstantBuffer = nullptr;
-	RHI::IBuffer* m_VertexBuffer = nullptr;
-	RHI::IBuffer* m_IndexBuffer = nullptr;
-	RHI::ITexture* m_Texture = nullptr;
+	RHI::BufferHandle m_ConstantBuffer = nullptr;
+	RHI::BufferHandle m_VertexBuffer = nullptr;
+	RHI::BufferHandle m_IndexBuffer = nullptr;
+	RHI::TextureHandle m_Texture = nullptr;
 	RHI::ISampler* m_Sampler = nullptr;
 	RHI::IInputLayout* m_InputLayout = nullptr;
 	RHI::IBindingLayout* m_BindingLayout = nullptr;

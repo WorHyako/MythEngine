@@ -139,7 +139,7 @@ bool VulkanSceneRenderer::initializeRender()
 		m_VertexBuffer = m_Device->createBuffer(vertexBufferDesc);
 
 		//m_CommandList->beginTrackingBufferState(m_VertexBuffer, nvrhi::ResourceStates::CopyDest);
-		m_CommandList->writeBuffer(m_VertexBuffer, sizeof(g_Vertices), g_Vertices);
+		m_CommandList->writeBuffer(m_VertexBuffer.get(), sizeof(g_Vertices), g_Vertices);
 		//m_CommandList->setPermanentBufferState(m_VertexBuffer, nvrhi::ResourceStates::VertexBuffer);
 
 		//m_CommandList->endSingleTimeCommands();
@@ -156,7 +156,7 @@ bool VulkanSceneRenderer::initializeRender()
 		m_IndexBuffer = m_Device->createBuffer(indexBufferDesc);
 
 		//m_CommandList->beginTrackingBufferState(m_IndexBuffer, nvrhi::ResourceStates::CopyDest);
-		m_CommandList->writeBuffer(m_IndexBuffer, sizeof(g_Indices), g_Indices);
+		m_CommandList->writeBuffer(m_IndexBuffer.get(), sizeof(g_Indices), g_Indices);
 		//m_CommandList->setPermanentBufferState(m_IndexBuffer, nvrhi::ResourceStates::IndexBuffer);
 
 		//m_CommandList->endSingleTimeCommands();
@@ -178,14 +178,14 @@ bool VulkanSceneRenderer::initializeRender()
 			RHI::BufferAttachment bufferAttachment = {};
 			bufferAttachment
 				.setDescriptorInfo(RHI::DescriptorInfo{RHI::DescriptorType::UNIFORM_BUFFER, RHI::ShaderStageFlagBits::VERTEX_BIT})
-				.setBuffer(m_ConstantBuffer)
+				.setBuffer(m_ConstantBuffer.get())
 				.setSize(sizeof(ConstantBufferEntry))
 				.setOffset(viewIndex * sizeof(ConstantBufferEntry));
 
 			RHI::TextureAttachment textureAttachment = {};
 			textureAttachment
 				.setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::COMBINED_IMAGE_SAMPLER, RHI::ShaderStageFlagBits::FRAGMENT_BIT })
-				.setTexture(m_Texture)
+				.setTexture(m_Texture.get())
 				.setSampler(m_Sampler);
 
 			RHI::DescriptorSetInfo dsInfos = {.buffers = {bufferAttachment}, .textures = {textureAttachment}};
@@ -222,7 +222,7 @@ bool VulkanSceneRenderer::renderScene()
 		pipelineDesc.inputLayout = m_InputLayout;
 		pipelineDesc.bindingLayouts = { m_BindingLayout };
 		pipelineDesc.primType = RHI::PrimitiveType::TriangleList;
-		pipelineDesc.pipelineInfo.useDepth = true;
+		pipelineDesc.renderState.depthStencilState.depthTestEnable = true;
 
 		m_GraphicsPipeline = m_Device->createGraphicsPipeline(pipelineDesc, framebuffer);
 	}
@@ -249,7 +249,7 @@ bool VulkanSceneRenderer::renderScene()
 			modelConstants[viewIndex].viewProjMatrix = viewProjMatrix;
 		}
 
-		m_CommandList->writeBuffer(m_ConstantBuffer, sizeof(modelConstants), modelConstants);
+		m_CommandList->writeBuffer(m_ConstantBuffer.get(), sizeof(modelConstants), modelConstants);
 	}
 	numFrames++;
 
@@ -273,11 +273,11 @@ bool VulkanSceneRenderer::renderScene()
 		RHI::GraphicsState state;
 		// Pick the right binding set for this view.
 		state.bindingSets = { m_BindingSets[viewIndex] };
-		state.indexBufferBinding = { m_IndexBuffer, 0, 1 };
+		state.indexBufferBinding = { m_IndexBuffer.get(), 0, 1 };
 		// Bind the vertex buffers in reverse order to test the RHI implementation of binding slots
 		state.vertexBufferBindings = {
-			{ m_VertexBuffer, 0, offsetof(Vertex, position) },
-			{ m_VertexBuffer, 1, offsetof(Vertex, uv) }
+			{ m_VertexBuffer.get(), 0, offsetof(Vertex, position) },
+			{ m_VertexBuffer.get(), 1, offsetof(Vertex, uv) }
 		};
 		state.pipeline = m_GraphicsPipeline;
 		state.framebuffer = framebuffer;
