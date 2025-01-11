@@ -129,7 +129,7 @@ bool VulkanSceneRenderer::initializeRender()
 		RHI::CommandListParameters commandListParams = { RHI::CommandQueue::Graphics };
 		m_CommandList = m_Device->createCommandList(commandListParams);
 		m_CommandList->beginSingleTimeCommands();
-		m_CommandLists.push_back(m_CommandList);
+		m_CommandLists.push_back(m_CommandList.get());
 
 		RHI::BufferDesc vertexBufferDesc = {};
 		vertexBufferDesc
@@ -165,7 +165,7 @@ bool VulkanSceneRenderer::initializeRender()
 
 		//m_CommandList->beginSingleTimeCommands();
 
-		m_Texture = RenderUtils::loadTexture2D(m_Device, m_CommandList, (FilesystemUtilities::GetResourcesDir() + "textures/container2.png").c_str());
+		m_Texture = RenderUtils::loadTexture2D(m_Device.get(), m_CommandList.get(), (FilesystemUtilities::GetResourcesDir() + "textures/container2.png").c_str());
 		m_Sampler = m_Device->createTextureSampler();
 
 		m_CommandList->endSingleTimeCommands();
@@ -186,7 +186,7 @@ bool VulkanSceneRenderer::initializeRender()
 			textureAttachment
 				.setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::COMBINED_IMAGE_SAMPLER, RHI::ShaderStageFlagBits::FRAGMENT_BIT })
 				.setTexture(m_Texture.get())
-				.setSampler(m_Sampler);
+				.setSampler(m_Sampler.get());
 
 			RHI::DescriptorSetInfo dsInfos = {.buffers = {bufferAttachment}, .textures = {textureAttachment}};
 
@@ -212,7 +212,7 @@ void VulkanSceneRenderer::composeFrame()
 
 bool VulkanSceneRenderer::renderScene()
 {
-	RHI::IFramebuffer* framebuffer = m_DynamicRHI->GetFramebuffer(m_DynamicRHI->GetCurrentBackBufferIndex());
+	RHI::FramebufferHandle framebuffer = m_DynamicRHI->GetFramebuffer(m_DynamicRHI->GetCurrentBackBufferIndex());
 
 	if(!m_GraphicsPipeline)
 	{
@@ -224,7 +224,7 @@ bool VulkanSceneRenderer::renderScene()
 		pipelineDesc.primType = RHI::PrimitiveType::TriangleList;
 		pipelineDesc.renderState.depthStencilState.depthTestEnable = true;
 
-		m_GraphicsPipeline = m_Device->createGraphicsPipeline(pipelineDesc, framebuffer);
+		m_GraphicsPipeline = m_Device->createGraphicsPipeline(pipelineDesc, framebuffer.get());
 	}
 
     //updateBuffers(imageIndex);
@@ -279,8 +279,8 @@ bool VulkanSceneRenderer::renderScene()
 			{ m_VertexBuffer.get(), 0, offsetof(Vertex, position) },
 			{ m_VertexBuffer.get(), 1, offsetof(Vertex, uv) }
 		};
-		state.pipeline = m_GraphicsPipeline;
-		state.framebuffer = framebuffer;
+		state.pipeline = m_GraphicsPipeline.get();
+		state.framebuffer = framebuffer.get();
 
 		// Update the pipeline, bindings, and other state.
 		m_CommandList->setGraphicsState(state);

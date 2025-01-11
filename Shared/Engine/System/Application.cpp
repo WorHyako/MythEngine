@@ -52,7 +52,7 @@ namespace mythSystem
     {
         delete m_RhiModule;
         delete m_DynamicRHI;
-        delete m_Device;
+    	m_Device = nullptr;
 
     	m_Window.release();
         m_Window = nullptr;

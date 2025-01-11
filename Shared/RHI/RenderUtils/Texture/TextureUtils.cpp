@@ -41,7 +41,7 @@ namespace RenderUtils
         }
 
         device->createImageView(tex.get(), ImageAspectFlagBits::COLOR_BIT);
-        ISampler* sampler = device->createTextureSampler(samplerDesc);
+        SamplerHandle sampler = device->createTextureSampler(samplerDesc);
 
         commandList->transitionImageLayout(tex.get(), ImageLayout::UNDEFINED, ImageLayout::SHADER_READ_ONLY_OPTIMAL);
         // TODO:fix allocation issue
@@ -70,7 +70,7 @@ namespace RenderUtils
         device->createImageView(tex.get(), ImageAspectFlagBits::DEPTH_BIT);
         commandList->transitionImageLayout(tex.get(), ImageLayout::UNDEFINED, layout/*VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL*/);
 
-        ISampler* sampler = device->createDepthSampler();
+        SamplerHandle sampler = device->createDepthSampler();
         if (!sampler)
         {
             printf("Cannot create a depth sampler");
@@ -228,7 +228,7 @@ namespace RenderUtils
             exit(EXIT_FAILURE);
         }
 
-        ISampler* sampler = device->createTextureSampler();
+        SamplerHandle sampler = device->createTextureSampler();
         // TODO:fix allocation issue
         //m_Resources.allTextures.push_back(tex);
         return tex;
@@ -257,7 +257,7 @@ namespace RenderUtils
             exit(EXIT_FAILURE);
         }
 
-        ISampler* sampler = device->createTextureSampler();
+        SamplerHandle sampler = device->createTextureSampler();
         // TODO:fix allocation issue
         //m_Resources.allTextures.push_back(tex);
 
@@ -281,7 +281,7 @@ namespace RenderUtils
             exit(EXIT_FAILURE);
         }
 
-        ISampler* sampler = device->createTextureSampler();
+        SamplerHandle sampler = device->createTextureSampler();
         // TODO:fix allocation issue
         //m_Resources.allTextures.push_back(tex);
         return tex;
@@ -424,7 +424,7 @@ namespace RenderUtils
             tex = createCubeTextureImage(device, commandList, fileName, &w, &h);
 
         device->createImageView(tex.get(), ImageAspectFlagBits::COLOR_BIT);
-        ISampler* sampler = device->createTextureSampler();
+        SamplerHandle sampler = device->createTextureSampler();
 
         /*TextureDesc desc = tex->getDesc();
         desc.setWidth(w);
@@ -461,7 +461,7 @@ namespace RenderUtils
 
         SamplerDesc samplerDesc = {};
         samplerDesc.setAddressAll(SamplerAddressMode::CLAMP_TO_EDGE);
-        ISampler* sampler = device->createTextureSampler(samplerDesc);
+        SamplerHandle sampler = device->createTextureSampler(samplerDesc);
 
         // TODO:fix allocation issue
         //m_Resources.allTextures.push_back(ktx);
@@ -507,7 +507,7 @@ namespace RenderUtils
         }
 
         device->createImageView(tex.get(), ImageAspectFlagBits::COLOR_BIT);
-        ISampler* sampler = device->createTextureSampler();
+        SamplerHandle sampler = device->createTextureSampler();
 
         /* This is not strictly necessary, a font can be any texture */
         io.Fonts->TexID = (ImTextureID)0;

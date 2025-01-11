@@ -17,16 +17,16 @@ public:
 	virtual void composeFrame() override;
 
 private:
-	std::shared_ptr<RHI::IShader> m_VertexShader = nullptr;
-	std::shared_ptr<RHI::IShader> m_PixelShader = nullptr;
+	RHI::ShaderHandle m_VertexShader = nullptr;
+	RHI::ShaderHandle m_PixelShader = nullptr;
 	RHI::BufferHandle m_ConstantBuffer = nullptr;
 	RHI::BufferHandle m_VertexBuffer = nullptr;
 	RHI::BufferHandle m_IndexBuffer = nullptr;
 	RHI::TextureHandle m_Texture = nullptr;
-	RHI::ISampler* m_Sampler = nullptr;
+	RHI::SamplerHandle m_Sampler = nullptr;
 	RHI::IInputLayout* m_InputLayout = nullptr;
 	RHI::IBindingLayout* m_BindingLayout = nullptr;
 	RHI::IBindingSet* m_BindingSets[c_NumViews];
-	RHI::IGraphicsPipeline* m_GraphicsPipeline = nullptr;
-	RHI::IRHICommandList* m_CommandList = nullptr;
+	RHI::GraphicsPipelineHandle m_GraphicsPipeline = nullptr;
+	RHI::CommandListHandle m_CommandList = nullptr;
 };

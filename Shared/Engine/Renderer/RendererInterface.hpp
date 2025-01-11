@@ -21,7 +21,7 @@ namespace mythSystem
 
 	protected:
 		RHI::IDynamicRHI* m_DynamicRHI;
-		RHI::IDevice* m_Device;
+		RHI::DeviceHandle m_Device;
 		std::vector<RHI::IRHICommandList*> m_CommandLists;
 	};
 }

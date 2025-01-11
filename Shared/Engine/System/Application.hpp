@@ -47,7 +47,7 @@ namespace mythSystem
 		UniquePtr<RendererInterface> m_Renderer;
 		RHI::IRHIModule* m_RhiModule;
 		RHI::IDynamicRHI* m_DynamicRHI;
-		RHI::IDevice* m_Device;
+		RHI::DeviceHandle m_Device;
 		RHI::GraphicsAPI m_GraphicsAPI;
 		CameraPositioner_FirstPerson m_Positioner;
 		TestCamera m_Camera;
