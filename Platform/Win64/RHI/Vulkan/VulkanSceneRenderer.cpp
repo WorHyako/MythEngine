@@ -191,7 +191,7 @@ bool VulkanSceneRenderer::initializeRender()
 			RHI::DescriptorSetInfo dsInfos = {.buffers = {bufferAttachment}, .textures = {textureAttachment}};
 
 			m_BindingLayout = m_Device->createDescriptorSetLayout(dsInfos);
-			m_BindingSets[viewIndex] = m_Device->createDescriptorSet(dsInfos, 1, m_BindingLayout);
+			m_BindingSets[viewIndex] = m_Device->createDescriptorSet(dsInfos, 1, m_BindingLayout.get());
 		}
 
 		return true;

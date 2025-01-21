@@ -24,9 +24,9 @@ private:
 	RHI::BufferHandle m_IndexBuffer = nullptr;
 	RHI::TextureHandle m_Texture = nullptr;
 	RHI::SamplerHandle m_Sampler = nullptr;
-	RHI::IInputLayout* m_InputLayout = nullptr;
-	RHI::IBindingLayout* m_BindingLayout = nullptr;
-	RHI::IBindingSet* m_BindingSets[c_NumViews];
+	RHI::InputLayoutHandle m_InputLayout = nullptr;
+	RHI::BindingLayoutHandle m_BindingLayout = nullptr;
+	RHI::BindingSetHandle m_BindingSets[c_NumViews];
 	RHI::GraphicsPipelineHandle m_GraphicsPipeline = nullptr;
 	RHI::CommandListHandle m_CommandList = nullptr;
 };
