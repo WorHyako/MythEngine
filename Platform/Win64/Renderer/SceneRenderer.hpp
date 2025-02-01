@@ -1,15 +1,15 @@
 #pragma once
 
-#include <memory>
 #include <Renderer/RendererInterface.hpp>
+#include <memory>
 
 constexpr uint32_t c_NumViews = 4;
 
-class VulkanSceneRenderer : public mythSystem::RendererInterface
+class SceneRenderer : public mythSystem::RendererInterface
 {
 public:
-	VulkanSceneRenderer(RHI::IDynamicRHI* dynamicRHI);
-	virtual ~VulkanSceneRenderer();
+	SceneRenderer(RHI::IDynamicRHI* dynamicRHI);
+	virtual ~SceneRenderer();
 
 	virtual bool renderScene() override;
 	virtual bool initializeRender() override;

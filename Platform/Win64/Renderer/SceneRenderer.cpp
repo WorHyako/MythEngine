@@ -1,4 +1,4 @@
-#include <RHI/Vulkan/VulkanSceneRenderer.hpp>
+#include <Renderer/SceneRenderer.hpp>
 #include <RHIModuleWrapper.hpp>
 
 #include <Filesystem/FilesystemUtilities.hpp>\
@@ -75,18 +75,18 @@ struct ConstantBufferEntry
 	float padding[16 * 3];
 };
 
-VulkanSceneRenderer::VulkanSceneRenderer(RHI::IDynamicRHI* dynamicRHI)
+SceneRenderer::SceneRenderer(RHI::IDynamicRHI* dynamicRHI)
 	: RendererInterface(dynamicRHI)
 {
 	
 }
 
-VulkanSceneRenderer::~VulkanSceneRenderer()
+SceneRenderer::~SceneRenderer()
 {
 
 }
 
-bool VulkanSceneRenderer::initializeRender()
+bool SceneRenderer::initializeRender()
 {
 	if(m_Device)
 	{
@@ -138,9 +138,9 @@ bool VulkanSceneRenderer::initializeRender()
 			.setIsTransferDst(true);
 		m_VertexBuffer = m_Device->createBuffer(vertexBufferDesc);
 
-		//m_CommandList->beginTrackingBufferState(m_VertexBuffer, nvrhi::ResourceStates::CopyDest);
+		//m_CommandList->beginTrackingBufferState(m_VertexBuffer, RHI::ResourceStates::CopyDest);
 		m_CommandList->writeBuffer(m_VertexBuffer.get(), sizeof(g_Vertices), g_Vertices);
-		//m_CommandList->setPermanentBufferState(m_VertexBuffer, nvrhi::ResourceStates::VertexBuffer);
+		//m_CommandList->setPermanentBufferState(m_VertexBuffer, RHI::ResourceStates::VertexBuffer);
 
 		//m_CommandList->endSingleTimeCommands();
 		//m_Device->executeCommandLists(m_CommandLists, m_CommandLists.size(), RHI::CommandQueue::Graphics);
@@ -155,9 +155,9 @@ bool VulkanSceneRenderer::initializeRender()
 			.setIsTransferDst(true);
 		m_IndexBuffer = m_Device->createBuffer(indexBufferDesc);
 
-		//m_CommandList->beginTrackingBufferState(m_IndexBuffer, nvrhi::ResourceStates::CopyDest);
+		//m_CommandList->beginTrackingBufferState(m_IndexBuffer, RHI::ResourceStates::CopyDest);
 		m_CommandList->writeBuffer(m_IndexBuffer.get(), sizeof(g_Indices), g_Indices);
-		//m_CommandList->setPermanentBufferState(m_IndexBuffer, nvrhi::ResourceStates::IndexBuffer);
+		//m_CommandList->setPermanentBufferState(m_IndexBuffer, RHI::ResourceStates::IndexBuffer);
 
 		//m_CommandList->endSingleTimeCommands();
 		//m_Device->executeCommandLists(m_CommandLists, m_CommandLists.size(), RHI::CommandQueue::Graphics);
@@ -200,17 +200,17 @@ bool VulkanSceneRenderer::initializeRender()
 	return false;
 }
 
-void VulkanSceneRenderer::updateBuffers()
+void SceneRenderer::updateBuffers()
 {
 	
 }
 
-void VulkanSceneRenderer::composeFrame()
+void SceneRenderer::composeFrame()
 {
 	
 }
 
-bool VulkanSceneRenderer::renderScene()
+bool SceneRenderer::renderScene()
 {
 	RHI::FramebufferHandle framebuffer = m_DynamicRHI->GetFramebuffer(m_DynamicRHI->GetCurrentBackBufferIndex());
 
@@ -274,7 +274,6 @@ bool VulkanSceneRenderer::renderScene()
 		// Pick the right binding set for this view.
 		state.bindingSets = { m_BindingSets[viewIndex] };
 		state.indexBufferBinding = { m_IndexBuffer.get(), 0, 1 };
-		// Bind the vertex buffers in reverse order to test the RHI implementation of binding slots
 		state.vertexBufferBindings = {
 			{ m_VertexBuffer.get(), 0, offsetof(Vertex, position) },
 			{ m_VertexBuffer.get(), 1, offsetof(Vertex, uv) }
