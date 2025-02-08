@@ -438,6 +438,37 @@ namespace RenderUtils
         return tex;
     }
 
+    RHI::TextureHandle loadBRDFLUTKTX(IDevice* device, IRHICommandList* commandList, const char* fileName)
+    {
+        gli::texture gliTex = gli::load_ktx(fileName);
+        gli::tvec3<uint32_t> extent(gliTex.extent(0));
+
+        TextureDesc desc = {};
+        desc.setWidth(extent.x)
+            .setHeight(extent.y)
+            .setDepth(4)
+            .setFormat(Format::RG16_FLOAT);
+
+        RHI::TextureHandle ktx = createTextureImageFromData(device, commandList, desc,(uint8_t*)gliTex.data(0, 0, 0));
+
+        if (!ktx)
+        {
+            printf("ModelRenderer: failed to load BRDF LUT texture \n");
+            exit(EXIT_FAILURE);
+        }
+
+        device->createImageView(ktx.get(), ImageAspectFlagBits::COLOR_BIT);
+
+        SamplerDesc samplerDesc = {};
+        samplerDesc.setAddressAll(SamplerAddressMode::CLAMP_TO_EDGE);
+        SamplerHandle sampler = device->createTextureSampler(samplerDesc);
+
+        // TODO:fix allocation issue
+        //m_Resources.allTextures.push_back(ktx);
+
+        return ktx;
+    }
+
     RHI::TextureHandle loadKTX(IDevice* device, IRHICommandList* commandList, const char* fileName)
     {
         gli::texture gliTex = gli::load_ktx(fileName);
@@ -446,10 +477,10 @@ namespace RenderUtils
         TextureDesc desc = {};
         desc.setWidth(extent.x)
             .setHeight(extent.y)
-            .setWidth(4)
+            .setDepth(4)
             .setFormat(Format::RG16_FLOAT);
 
-        RHI::TextureHandle ktx = createTextureImageFromData(device, commandList, desc,(uint8_t*)gliTex.data(0, 0, 0));
+        RHI::TextureHandle ktx = createTextureImageFromData(device, commandList, desc, (uint8_t*)gliTex.data(0, 0, 0));
 
         if (!ktx)
         {

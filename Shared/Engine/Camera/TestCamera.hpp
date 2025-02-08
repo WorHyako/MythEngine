@@ -104,7 +104,7 @@ public:
 		cameraPosition_ = pos;
 	}
 
-	void reserMousePosition(const glm::vec2& p) { mousePos_ = p; };
+	void resetMousePosition(const glm::vec2& p) { mousePos_ = p; };
 
 	void setUpVector(const glm::vec3& up)
 	{

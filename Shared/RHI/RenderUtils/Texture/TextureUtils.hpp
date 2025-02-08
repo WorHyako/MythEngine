@@ -25,6 +25,7 @@ namespace RenderUtils
 	RHI::TextureHandle createCubeTextureImage(RHI::IDevice* device, RHI::IRHICommandList* commandList, const char* filename, uint32_t* width = nullptr, uint32_t* height = nullptr);
 	RHI::TextureHandle createMIPCubeTextureImage(RHI::IDevice* device, RHI::IRHICommandList* commandList, const char* filename, uint32_t mipLevels, uint32_t* width = nullptr, uint32_t* height = nullptr);
 	RHI::TextureHandle loadCubemap(RHI::IDevice* device, RHI::IRHICommandList* commandList, const char* fileName, uint32_t mipLevels);
+	RHI::TextureHandle loadBRDFLUTKTX(RHI::IDevice* device, RHI::IRHICommandList* commandList, const char* fileName);
 	RHI::TextureHandle loadKTX(RHI::IDevice* device, RHI::IRHICommandList* commandList, const char* fileName);
 	RHI::TextureHandle createFontTexture(RHI::IDevice* device, RHI::IRHICommandList* commandList, const char* fontFile);
 }

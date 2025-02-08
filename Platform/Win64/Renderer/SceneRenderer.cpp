@@ -71,7 +71,7 @@ static const glm::vec3 g_Offsets[] = {
 	// so define a struct that represents one constant buffer entry or slice for one draw call.
 struct ConstantBufferEntry
 {
-	glm::mat4x4 viewProjMatrix;
+	glm::mat4 viewProjMatrix;
 	float padding[16 * 3];
 };
 

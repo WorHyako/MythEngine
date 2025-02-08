@@ -1,12 +1,11 @@
 ﻿#include <System/Application.hpp>
 #include <System/WindowGLFW.hpp>
-#include <Renderer/RendererInterface.hpp>
+#include <Renderer/SceneRenderer.hpp>
 
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 
 #include "GLFW/glfw3.h"
-#include "RHI/Vulkan/VulkanSceneRenderer.hpp"
 
 using glm::mat4;
 using glm::vec2;
@@ -65,7 +64,7 @@ namespace mythSystem
 
     void Application::createRenderer()
     {
-        m_Renderer = std::make_unique<VulkanSceneRenderer>(m_DynamicRHI);
+        m_Renderer = std::make_unique<SceneRenderer>(m_DynamicRHI);
     }
 
     void Application::createDynamicRHI()
