@@ -8,6 +8,8 @@ layout(location = 2) in vec2 inUV;
 vec4 constant = vec4(5.0, 0.5, 0.04, 1.0);
 uniform vec4 constant1 = vec4(0.0f, 1.0f, 0.5f, -0.04f);
 uniform vec4 tangentBasis = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+uniform vec4 frenelK = vec4(1.0f, 0.0f, 0.0f, 1.0f)
+uniform vec4 frenelMax = vec4(0.0f, 1.0f, 0.0f, 1.0f);
 
 layout(binding = 0) uniform UniformBufferObject{
     mat4 mvp; //16
@@ -19,8 +21,6 @@ layout(binding = 0) uniform UniformBufferObject{
     vec4 seaColor;
     vec4 skyColor;
     vec4 vec7;
-    vec4 frenelK;
-    vec4 frenelMax;
     mat4 mTexProjection;
 } ubo;
 

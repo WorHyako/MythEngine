@@ -162,6 +162,29 @@ private:
 	RHI::GraphicsPipelineHandle m_GraphicsPipeline = nullptr;
 	RHI::CommandListHandle m_CommandList = nullptr;
 	RHI::DeviceHandle m_Device = nullptr;
+	RHI::IDynamicRHI* m_DynamicRHI = nullptr;
+
+	// Sea PSO
+	RHI::GraphicsPipelineHandle m_SeaPipeline = nullptr;
+	RHI::GraphicsPipelineHandle m_SeaFoamPipeline = nullptr;
+	RHI::GraphicsPipelineHandle m_SeaSunRoadPipeline = nullptr;
+	RHI::GraphicsPipelineHandle m_SimpleSeaPipeline = nullptr;
+
+	// Sea Shaders
+	RHI::ShaderHandle m_SeaVertexShader = nullptr;
+	RHI::ShaderHandle m_SeaPixelShader = nullptr;
+	RHI::ShaderHandle m_SeaSunRoadVertexShader = nullptr;
+	RHI::ShaderHandle m_SeaSunRoadPixelShader = nullptr;
+	RHI::ShaderHandle m_SeaFoamVertexShader = nullptr;
+	RHI::ShaderHandle m_SeaFoamPixelShader = nullptr;
+
+	// Sea Binding Layouts & Sets
+	RHI::BindingLayoutHandle m_SeaBindingLayout = nullptr;
+	RHI::BindingLayoutHandle m_SeaFoamBindingLayout = nullptr;
+	RHI::BindingLayoutHandle m_SeaSunroadBindingLayout = nullptr;
+	RHI::BindingSetHandle m_SeaBindingSet = nullptr;
+	RHI::BindingSetHandle m_SeaFoamBindingSet = nullptr;
+	RHI::BindingSetHandle m_SeaSunroadBindingSet = nullptr;
 
 	bool m_UnderSea;
 	bool m_UnderSeaEnable;
@@ -236,7 +259,7 @@ private:
 	RHI::TextureHandle m_FoamTexture = nullptr;
 
 	float m_PosShift {};
-	float m_Frenel;
+	float m_Fresnel;
 
 	glm::vec3 m_WorldOffset = glm::vec3{};
 	glm::vec3 m_SeaCenterPos = glm::vec3{};

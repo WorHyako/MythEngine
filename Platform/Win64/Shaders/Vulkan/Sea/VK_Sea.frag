@@ -10,8 +10,8 @@ in VS_OUT {
 
 layout(location = 0) out vec4 outColor;
 
-uniform sampler3D VolumeTexture;  // Corresponds to pVolumeTexture or pRenderTargetBumpMap
-uniform samplerCube SunRoadMap;
+layout(binding = 0) uniform sampler3D VolumeTexture;  // Corresponds to pVolumeTexture or pRenderTargetBumpMap
+layout(binding = 1) uniform samplerCube EnvMap;
 
 void main() {
     // Sample the volume texture (3D texture lookup using transformed coordinates)
@@ -22,7 +22,7 @@ void main() {
     Nworld.z = dot(N*2-1, T3);
 
     vec3 R = 2 * dot(Nworld, Eye) * Nworld – Eye * dot(Nworld, Nworld);
-    vec4 specular = texture(SunRoadMap, R);
+    vec4 specular = texture(EnvMap, R);
     
-    gl_FragColor = specular;
+    outColor = specular;
 }

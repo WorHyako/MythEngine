@@ -74,7 +74,7 @@ struct WaveParams
 WaveParams wave1{ 1.0f, 0.0f, 1.0f, glm::vec3(0.0f), glm::vec3(5.0f, 0.0f, 0.0f), 0.4f};
 WaveParams wave2{1.0f, 10.0f, 1.0f, glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 2.0f), 2.0f};
 
-struct ConstantBuffer
+struct ConstantSeaVertexBuffer
 {
     glm::mat4 mvp; //16
     glm::vec4 constant2;
@@ -84,11 +84,8 @@ struct ConstantBuffer
     glm::vec4 seaParameters;
     glm::vec4 seaColor;
     glm::vec4 skyColor;
-    glm::vec4 vec6;
     glm::vec4 vec7;
-    glm::vec4 frenelK;
-    glm::vec4 frenelMax;
-    //float padding[0];
+    glm::mat4 texProjection;
 };
 
 struct ConstantAlphaBuffer
@@ -117,7 +114,7 @@ Sea::Sea()
     fBumpSpeed = 1.0f;
 
     m_PosShift = 1.2f;
-    m_Frenel = 0.75f;
+    m_Fresnel = 0.75f;
 
     m_FoamV = 3.0f;
     m_FoamK = 0.0f;
@@ -189,12 +186,54 @@ Sea::~Sea()
 
 bool Sea::initializeRender()
 {
-    CreateVertexDeclaration();
+    m_SeaVertexShader = m_Device->createShaderModule((FilesystemUtilities::GetShadersDir() + "Vulkan/Sea/VK_Sea.vert").c_str());
+    m_SeaPixelShader = m_Device->createShaderModule((FilesystemUtilities::GetShadersDir() + "Vulkan/Sea/VK_Sea.frag").c_str());
+    m_SeaFoamVertexShader = m_Device->createShaderModule((FilesystemUtilities::GetShadersDir() + "Vulkan/Sea/VK_Sea_Foam.vert").c_str());
+    m_SeaFoamPixelShader = m_Device->createShaderModule((FilesystemUtilities::GetShadersDir() + "Vulkan/Sea/VK_Sea_Foam.frag").c_str());
+    m_SeaSunRoadVertexShader = m_Device->createShaderModule((FilesystemUtilities::GetShadersDir() + "Vulkan/Sea/VK_Sea_SunRoad.vert").c_str());
+    m_SeaSunRoadPixelShader = m_Device->createShaderModule((FilesystemUtilities::GetShadersDir() + "Vulkan/Sea/VK_Sea_SunRoad.frag").c_str());
+
+	CreateVertexDeclaration();
+
+    RHI::VertexInputAttributeDesc attributes[] = {
+            RHI::VertexInputAttributeDesc()
+                .setFormat(RHI::Format::RGB32_FLOAT)
+                .setOffset(offsetof(SeaVertex, position))
+                .setBinding(0)
+                .setLocation(0),
+			RHI::VertexInputAttributeDesc()
+                .setFormat(RHI::Format::RGB32_FLOAT)
+                .setOffset(offsetof(SeaVertex, normal))
+                .setBinding(0)
+                .setLocation(1),
+            RHI::VertexInputAttributeDesc()
+                .setFormat(RHI::Format::RG32_FLOAT)
+                .setOffset(offsetof(SeaVertex, uv))
+                .setBinding(0)
+                .setLocation(2)
+    };
+
+    RHI::VertexInputBindingDesc bindings[] =
+    {
+    RHI::VertexInputBindingDesc()
+    .setBinding(0)
+    .setStride(sizeof(SeaVertex))
+    };
+    m_InputLayout = m_Device->createInputLayout(attributes, bindings);
 
     {
         //auto config = Config::Load(Constants::ConfigNames::engine());
         //std::ignore = config.SelectSection("sea");
         //bIniFoamEnable = config.Get<std::int64_t>("FoamEnable", 1) != 0;
+    }
+
+    {
+        RHI::BufferDesc bufferDesc{};
+        bufferDesc
+            .setSize(sizeof(ConstantSeaVertexBuffer))
+            .setIsUniformBuffer(true)
+            .setIsTransferDst(true);
+        m_ConstantBuffer = m_Device->createBuffer(bufferDesc);
     }
 
     m_FoamTexture = RenderUtils::loadTexture2D(m_Device.get(), m_CommandList.get(), (FilesystemUtilities::GetResourcesDir() + "StormResources/Weather/Sea/Pena/pena.tga").c_str()) ;
@@ -333,6 +372,89 @@ bool Sea::initializeRender()
         delete aTmpBumps[i];
 
     BuildVolumeTexture();
+
+    // Sea
+    {
+        RHI::BufferAttachment bufferAttachment = {};
+        bufferAttachment
+            .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::UNIFORM_BUFFER, RHI::ShaderStageFlagBits::VERTEX_BIT })
+            .setBuffer(m_ConstantBuffer.get())
+            .setSize(sizeof(ConstantSeaVertexBuffer))
+            .setOffset(0);
+
+        RHI::TextureAttachment textureAttachment1 = {};
+        textureAttachment1
+            .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::COMBINED_IMAGE_SAMPLER, RHI::ShaderStageFlagBits::FRAGMENT_BIT })
+            .setTexture(pVolumeTexture.get() ? pVolumeTexture.get() : pRenderTargetBumpMap.get())
+            .setSampler(m_Sampler.get());
+
+        RHI::TextureAttachment textureAttachment2 = {};
+        textureAttachment1
+            .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::COMBINED_IMAGE_SAMPLER, RHI::ShaderStageFlagBits::FRAGMENT_BIT })
+            .setTexture(pEnvMap.get())
+            .setSampler(m_Sampler.get());
+
+        RHI::DescriptorSetInfo dsInfos = { .buffers = {bufferAttachment}, .textures = {textureAttachment1, textureAttachment2} };
+
+        m_SeaBindingLayout = m_Device->createDescriptorSetLayout(dsInfos);
+        m_SeaBindingSet = m_Device->createDescriptorSet(dsInfos, 1, m_SeaBindingLayout.get());
+    }
+
+
+    // Foam
+    {
+        RHI::BufferAttachment bufferAttachment1 = {};
+        bufferAttachment1
+            .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::UNIFORM_BUFFER, RHI::ShaderStageFlagBits::VERTEX_BIT })
+            .setBuffer(m_ConstantBuffer.get())
+            .setSize(sizeof(ConstantSeaVertexBuffer))
+            .setOffset(0);
+
+        RHI::TextureAttachment textureAttachment1 = {};
+        textureAttachment1
+            .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::COMBINED_IMAGE_SAMPLER, RHI::ShaderStageFlagBits::FRAGMENT_BIT })
+            .setTexture(m_FoamTexture.get())
+            .setSampler(m_Sampler.get());
+
+        RHI::TextureAttachment textureAttachment2 = {};
+        textureAttachment1
+            .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::COMBINED_IMAGE_SAMPLER, RHI::ShaderStageFlagBits::FRAGMENT_BIT })
+            .setTexture(pVolumeTexture.get() ? pVolumeTexture.get() : pRenderTargetBumpMap.get())
+            .setSampler(m_Sampler.get());
+
+        RHI::DescriptorSetInfo dsInfos = { .buffers = {bufferAttachment1}, .textures = {textureAttachment1, textureAttachment2} };
+
+        m_SeaFoamBindingLayout = m_Device->createDescriptorSetLayout(dsInfos);
+        m_SeaFoamBindingSet = m_Device->createDescriptorSet(dsInfos, 1, m_SeaFoamBindingLayout.get());
+    }
+
+    // SunRoad
+    {
+        RHI::BufferAttachment bufferAttachment = {};
+        bufferAttachment
+            .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::UNIFORM_BUFFER, RHI::ShaderStageFlagBits::VERTEX_BIT })
+            .setBuffer(m_ConstantBuffer.get())
+            .setSize(sizeof(ConstantSeaVertexBuffer))
+            .setOffset(0);
+
+        RHI::TextureAttachment textureAttachment1 = {};
+        textureAttachment1
+            .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::COMBINED_IMAGE_SAMPLER, RHI::ShaderStageFlagBits::FRAGMENT_BIT })
+            .setTexture(pVolumeTexture.get() ? pVolumeTexture.get() : pRenderTargetBumpMap.get())
+            .setSampler(m_Sampler.get());
+
+        RHI::TextureAttachment textureAttachment2 = {};
+        textureAttachment1
+            .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::COMBINED_IMAGE_SAMPLER, RHI::ShaderStageFlagBits::FRAGMENT_BIT })
+            .setTexture(pSunRoadMap.get())
+            .setSampler(m_Sampler.get());
+
+        RHI::DescriptorSetInfo dsInfos = { .buffers = {bufferAttachment}, .textures = {textureAttachment1, textureAttachment2} };
+
+        m_SeaSunroadBindingLayout = m_Device->createDescriptorSetLayout(dsInfos);
+        m_SeaSunroadBindingSet = m_Device->createDescriptorSet(dsInfos, 1, m_SeaSunroadBindingLayout.get());
+    }
+
 
     EditMode_Update();
 
@@ -1271,6 +1393,8 @@ void Sea::CalculateHeightMap(float fFrame, float fAmplitude, float* pfOut, std::
 
 void Sea::Realize(float deltaTime)
 {
+    RHI::FramebufferHandle framebuffer = m_DynamicRHI->GetFramebuffer(m_DynamicRHI->GetCurrentBackBufferIndex());
+
     static float fTmp = 0.0f;
 
     if (core.Controls->GetDebugAsyncKeyState(VK_SHIFT) < 0 && core.Controls->GetDebugAsyncKeyState('S') < 0)
@@ -1383,13 +1507,13 @@ void Sea::Realize(float deltaTime)
         aBumpAttachment1
             .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::COMBINED_IMAGE_SAMPLER, RHI::ShaderStageFlagBits::FRAGMENT_BIT })
             .setTexture(aBumpMaps[dw1].get())
-            .setSampler(m_Sampler.get());
+            .setSampler(m_Sampler.get()); // Make nearest sampler
 
         RHI::TextureAttachment aBumpAttachment2 = {};
         aBumpAttachment2
             .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::COMBINED_IMAGE_SAMPLER, RHI::ShaderStageFlagBits::FRAGMENT_BIT })
             .setTexture(aBumpMaps[dw2].get())
-            .setSampler(m_Sampler.get());
+            .setSampler(m_Sampler.get());  // Make nearest sampler
 
         RHI::DescriptorSetInfo dsInfos = { .buffers = {bufferAttachment}, .textures = {aBumpAttachment1, aBumpAttachment2} };
 
@@ -1417,8 +1541,10 @@ void Sea::Realize(float deltaTime)
 
             RHI::GraphicsState graphicsState{};
             graphicsState.framebuffer = framebuffer.get();
-            graphicsState.bindingSets = { bindingSet };
+            graphicsState.bindingSets = { bindingSet.get() };
             graphicsState.pipeline = pipelineHandle.get();
+
+            m_CommandList->setGraphicsState(graphicsState);
 
             RHI::DrawArguments drawArgs{};
             drawArgs.startVertexLocation = 0;
@@ -1482,6 +1608,7 @@ void Sea::Realize(float deltaTime)
         glm::mat4 mProjection = rs->GetProjection();
 
 #ifndef OLD_WORLD_POS
+
         mView.MoveInversePosition(-m_WorldOffset.x, 0.f, -m_WorldOffset.z);
 #endif
 
@@ -1493,36 +1620,30 @@ void Sea::Realize(float deltaTime)
         while (fTmp >= 1.0f)
             fTmp -= 1.0f;
 
-        rs->SetVertexDeclaration(vertexDecl_);
-
         const auto constant2 = glm::vec4(2.0f, -1.0f, 0.00036621652552071f, (m_FogEnable) ? m_FogSeaDensity : 0.0f);
         const auto shadowConst = glm::vec4(m_FoamV, m_FoamK, m_FoamUV, 6.0f);
-        const auto vec4 = glm::vec4(fTmp, fTmp, fTmp, fTmp);
-        const auto vec5 = glm::vec4(m_CamPos.x - m_WorldOffset.x, m_CamPos.y, m_CamPos.z - m_WorldOffset.z, 1.0f);
-        const auto vec6 = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
-        const auto vec7 = glm::vec4(m_Frenel, 1.0f, 0.5f, 1.0f);
-        const auto vec8 = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
-        const auto vec9 = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+        const auto animation = glm::vec4(fTmp, fTmp, fTmp, fTmp);
+        const auto cameraPos = glm::vec4(m_CamPos.x - m_WorldOffset.x, m_CamPos.y, m_CamPos.z - m_WorldOffset.z, 1.0f);
+        const auto vec7 = glm::vec4(m_Fresnel, 1.0f, 0.5f, 1.0f);
 
-        ConstantBuffer constantBuffer = {};
+        ConstantSeaVertexBuffer constantBuffer = {};
         constantBuffer.mvp = mWorldViewProj;
         constantBuffer.constant2 = constant2;
         constantBuffer.shadowConst = shadowConst;
-        constantBuffer.animation = vec4;
-        constantBuffer.cameraPos = vec5;
+        constantBuffer.animation = animation;
+        constantBuffer.cameraPos = cameraPos;
         constantBuffer.seaParameters = v4SeaParameters;
         constantBuffer.seaColor = v4SeaColor;
         constantBuffer.skyColor = v4SkyColor;
-        constantBuffer.vec6 = vec6;
         constantBuffer.vec7 = vec7;
-        constantBuffer.frenelK = vec8;
-        constantBuffer.frenelMax = vec9;
+
+        m_CommandList->beginSingleTimeCommands();
 
         if (m_SimpleSea)
         {
-            rs->SetVertexShaderConstantF(GC_FREE + 8, (const float*)&m_TexProjection, 4); // Matrix!!
+            constantBuffer.texProjection = m_TexProjection;
 
-            rs->SetTexture(0, pVolumeTexture ? pVolumeTexture : pRenderTargetBumpMap);
+            /*rs->SetTexture(0, pVolumeTexture ? pVolumeTexture : pRenderTargetBumpMap);
             rs->SetTexture(1, pReflection);
             rs->SetTexture(2, pVolumeTexture ? pVolumeTexture : pRenderTargetBumpMap);
             rs->SetTexture(3, pReflectionSunroad);
@@ -1538,7 +1659,7 @@ void Sea::Realize(float deltaTime)
             rs->SetTextureStageState(3, D3DTSS_BUMPENVMAT11, F2DW(0.05f));
 
             rs->DrawIndexedPrimitiveNoVShader(D3DPT_TRIANGLELIST, m_VerticesSeaBuffer, sizeof(SeaVertex), m_IndicesSeaBuffer, 0,
-                verticesStart, 0, trianglesStart, "Sea3");
+                verticesStart, 0, trianglesStart, "Sea3");*/
 
             RHI::DrawArguments drawArgs{};
 
@@ -1547,12 +1668,32 @@ void Sea::Realize(float deltaTime)
         else
         {
             const glm::mat4 mTexProjection = glm::rotate(glm::identity<glm::mat4>(), Math::TWOPI, glm::vec3(0.0f, 0.0f, 1.0f));
-            rs->SetVertexShaderConstantF(GC_FREE + 8, (const float*)&mTexProjection, 4); // Matrix!!
+            constantBuffer.texProjection = mTexProjection;
 
-            rs->SetTexture(0, pVolumeTexture ? pVolumeTexture : pRenderTargetBumpMap);
-            rs->SetTexture(3, pEnvMap);
             rs->DrawIndexedPrimitiveNoVShader(D3DPT_TRIANGLELIST, m_VerticesSeaBuffer, sizeof(SeaVertex), m_IndicesSeaBuffer, 0,
                 verticesStart, 0, trianglesStart, "Sea2");
+
+            if(!m_SeaPipeline)
+            {
+                RHI::GraphicsPipelineDesc seaPipelineDesc{};
+                seaPipelineDesc.VS = m_SeaVertexShader;
+                seaPipelineDesc.PS = m_SeaPixelShader;
+                seaPipelineDesc.bindingLayouts = { m_SeaBindingLayout };
+                seaPipelineDesc.inputLayout = m_InputLayout;
+                seaPipelineDesc.primType = RHI::PrimitiveType::TriangleList;
+                seaPipelineDesc.renderState.depthStencilState.depthTestEnable = true;
+
+                m_SeaPipeline = m_Device->createGraphicsPipeline(seaPipelineDesc, framebuffer.get());
+            }
+
+            RHI::GraphicsState seaGraphicsState{};
+            seaGraphicsState
+        		.setFramebuffer(framebuffer.get())
+                .setPipeline(m_SeaPipeline.get())
+                .addBindingSet(m_SeaBindingSet.get())
+                .setVertexBufferBindings(vertexBufferBindings)
+                .setIndexBufferBinding({ m_IndicesSeaBuffer.get() });
+            m_CommandList->setGraphicsState(seaGraphicsState);
 
             RHI::DrawArguments drawArgs{};
             drawArgs.vertexCount = NUM_VERTICES;
@@ -1564,23 +1705,68 @@ void Sea::Realize(float deltaTime)
                 const auto vec2 = glm::vec4(m_FoamTextureDisturb, 0.0f, 0.0f, 0.0f);
                 rs->SetPixelShaderConstantF(0, (const float*)&vec2, 1);
 
-                rs->TextureSet(0, m_FoamTexture);
-                rs->SetTexture(4, pVolumeTexture ? pVolumeTexture : pRenderTargetBumpMap);
                 rs->DrawIndexedPrimitiveNoVShader(D3DPT_TRIANGLELIST, m_VerticesSeaBuffer, sizeof(SeaVertex), m_IndicesSeaBuffer, 0,
                     verticesStart, 0, trianglesStart, "Sea2_Foam");
+
+                if(!m_SeaFoamPipeline)
+                {
+                    RHI::GraphicsPipelineDesc seaFoamPipelineDesc{};
+                    seaFoamPipelineDesc.VS = m_SeaFoamVertexShader;
+                    seaFoamPipelineDesc.PS = m_SeaFoamPixelShader;
+                    seaFoamPipelineDesc.bindingLayouts = { m_SeaFoamBindingLayout };
+                    seaFoamPipelineDesc.inputLayout = m_InputLayout;
+                    seaFoamPipelineDesc.primType = RHI::PrimitiveType::TriangleList;
+                    seaFoamPipelineDesc.renderState.depthStencilState.depthTestEnable = true;
+
+                    m_SeaFoamPipeline = m_Device->createGraphicsPipeline(seaFoamPipelineDesc, framebuffer.get());
+                }
+
+                RHI::GraphicsState seaFoamRoadgraphicsState{};
+                seaFoamRoadgraphicsState
+                    .setFramebuffer(framebuffer.get())
+                    .setPipeline(m_SeaFoamPipeline.get())
+                    .addBindingSet(m_SeaFoamBindingSet.get())
+                    .setVertexBufferBindings(vertexBufferBindings)
+                    .setIndexBufferBinding({ m_IndicesSeaBuffer.get() });
+
+                m_CommandList->setGraphicsState(seaFoamRoadgraphicsState);
 
                 drawArgs.vertexCount = NUM_VERTICES;
                 m_CommandList->drawIndexed(drawArgs);
             }
 
-            rs->SetTexture(0, pVolumeTexture ? pVolumeTexture : pRenderTargetBumpMap);
-            rs->SetTexture(3, pSunRoadMap);
             rs->DrawIndexedPrimitiveNoVShader(D3DPT_TRIANGLELIST, m_VerticesSeaBuffer, sizeof(SeaVertex), m_IndicesSeaBuffer, 0,
                 verticesStart, 0, trianglesStart, "Sea2_SunRoad");
+
+            if(!m_SeaSunRoadPipeline)
+            {
+                RHI::GraphicsPipelineDesc seaSunRoadPipelineDesc{};
+                seaSunRoadPipelineDesc.VS = m_SeaSunRoadVertexShader;
+                seaSunRoadPipelineDesc.PS = m_SeaSunRoadPixelShader;
+                seaSunRoadPipelineDesc.bindingLayouts = { m_SeaSunroadBindingLayout };
+                seaSunRoadPipelineDesc.inputLayout = m_InputLayout;
+                seaSunRoadPipelineDesc.primType = RHI::PrimitiveType::TriangleList;
+                seaSunRoadPipelineDesc.renderState.depthStencilState.depthTestEnable = true;
+
+                m_SeaSunRoadPipeline = m_Device->createGraphicsPipeline(seaSunRoadPipelineDesc, framebuffer.get());
+            }
+
+            RHI::GraphicsState seaSunRoadGraphicsState{};
+            seaSunRoadGraphicsState
+                .setFramebuffer(framebuffer.get())
+                .setPipeline(m_SeaSunRoadPipeline.get())
+                .addBindingSet(m_SeaSunroadBindingSet.get())
+                .setVertexBufferBindings(vertexBufferBindings)
+                .setIndexBufferBinding({ m_IndicesSeaBuffer.get() });
+
+            m_CommandList->setGraphicsState(seaSunRoadGraphicsState);
 
             drawArgs.vertexCount = NUM_VERTICES;
             m_CommandList->drawIndexed(drawArgs);
         }
+
+        m_CommandList->endSingleTimeCommands();
+        m_Device->executeCommandList(m_CommandList.get());
     }
 
     if (m_UnderSea && m_UnderSeaEnable)
@@ -1671,6 +1857,8 @@ void Sea::Realize(float deltaTime)
         if (aTrashRects.size())
         {
             rs->TextureSet(0, m_SeaTrashTexture);
+
+
             rs->DrawRects(&aTrashRects[0], aTrashRects.size(), "seatrash", 2, 2);
         }
 
@@ -1732,6 +1920,8 @@ void Sea::Realize(float deltaTime)
         if (aLightsRects.size())
         {
             rs->TextureSet(0, m_SeaLightTexture);
+
+
             rs->DrawRects(&aLightsRects[0], aLightsRects.size(), "seatrash", 2, 2, 0.5f);
         }
 

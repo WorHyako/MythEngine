@@ -272,7 +272,7 @@ bool SceneRenderer::renderScene()
 	{
 		RHI::GraphicsState state;
 		// Pick the right binding set for this view.
-		state.bindingSets = { m_BindingSets[viewIndex] };
+		state.bindingSets = { m_BindingSets[viewIndex].get() };
 		state.indexBufferBinding = { m_IndexBuffer.get(), 0, 1 };
 		state.vertexBufferBindings = {
 			{ m_VertexBuffer.get(), 0, offsetof(Vertex, position) },
