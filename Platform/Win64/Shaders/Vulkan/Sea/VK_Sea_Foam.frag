@@ -10,7 +10,8 @@ in VS_OUT {
 
 layout(location = 0) out vec4 outColor;
 
-uniform float FoamTextureDisturb;
+layout(push_constant) uniform pushBlock { float FoamTextureDisturb; } pushConsts;
+
 uniform sampler3D VolumeTexture;
 uniform sampler2D FoamTexture; // Additional texture for foam rendering
 
@@ -26,7 +27,7 @@ void main() {
         dot(fs_in.T0, biasedVolumeColor),
         dot(fs_in.T1, biasedVolumeColor),
         dot(fs_in.T2, biasedVolumeColor)
-    ) * FoamTextureDisturb;
+    ) * pushConsts.FoamTextureDisturb;
 
     // Sample the foam texture using perturbed texture coordinates
     vec3 foamTexCoords = fs_in.T3.rgb;

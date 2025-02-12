@@ -51,6 +51,26 @@ void main()
     // Reflection direction
     vec3 reflectedDir = reflect(-viewDir, normal);
 
+    // calculate approximated Fresnel term F
+    //                      1
+    // F = -------------------------------------
+    // ( 1 + V.N ) ^ FresnelApprox_PowFactor
+
+    float cosPhi = -dot(normal, viewDir);
+    float ct = sqrt(1.0f + fFresnel * fFresnel * (cosPhi * cosPhi - 1.0f));
+    float fFresnelK = min(fFresnelMax, 0.5f * (pow(rcp(cosPhi + fFresnel * ct) * (cosPhi - fFresnel * ct), 2.0f) + pow(rcp(fFresnel * cosPhi + ct) * (fFresnel * cosPhi - ct), 2.0f)));
+
+	fFresnelK = min(fFresnelMax, 0.0211f  + (1.0f - 0.0211f) * pow(1.0f - cosPhi, 5.0f));
+
+    float U = rcp(viewDir.y) * fSeaAttenuation;
+    U = exp2(min(U, -U));
+
+    vs_out.diffuse.rgb = skyColor.xyz * fFresnelK * fSeaReflection;
+    vs_out.diffuse.a = (1.0f - fFresnelK) * U * fSeaTransparency;
+
+    vs_out.specular.rgb = (1.0f - fFresnelK) * (1.0f - U) * seaColor.xyz;
+    vs_out.specular.a = 1.0f;
+
     vec3 r3;
     vs_out.diffuse.rgb = r3.yyy * skyColor;
     max(0, dot(normal, Constant2.xyz));

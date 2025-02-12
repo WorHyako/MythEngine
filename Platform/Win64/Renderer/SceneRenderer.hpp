@@ -1,7 +1,10 @@
 #pragma once
 
 #include <Renderer/RendererInterface.hpp>
+#include <Renderer/Sea.hpp>
 #include <memory>
+
+#include "EngineTypes.hpp"
 
 constexpr uint32_t c_NumViews = 4;
 
@@ -29,4 +32,6 @@ private:
 	RHI::BindingSetHandle m_BindingSets[c_NumViews];
 	RHI::GraphicsPipelineHandle m_GraphicsPipeline = nullptr;
 	RHI::CommandListHandle m_CommandList = nullptr;
+
+	mythSystem::UniquePtr<Sea> m_SeaPass = nullptr;
 };

@@ -16,6 +16,10 @@
 
 #include "Filesystem/FilesystemUtilities.hpp"
 
+#include <stb_image.h>
+
+#include "System/Application.hpp"
+
 #define NUM_VERTICES 65500
 #define NUM_INDICES 165000
 
@@ -93,6 +97,13 @@ struct ConstantAlphaBuffer
     float Alpha;
 };
 
+struct VolumeBox
+{
+    char* data;
+    uint32_t slicePitch;
+    uint32_t rowPitch;
+};
+
 Sea::Sea()
 {
     m_Blocks.reserve(128);
@@ -147,6 +158,8 @@ Sea::Sea()
     m_SimpleSea = false;
 
     m_Stop = false;
+
+    pFrustumPlanes = new Plane[4];
 }
 
 Sea::~Sea()
@@ -182,6 +195,8 @@ Sea::~Sea()
     delete[] pSeaFrame2;
     delete[] pSeaNormalsFrame1;
     delete[] pSeaNormalsFrame2;
+
+    delete[] pFrustumPlanes;
 }
 
 bool Sea::initializeRender()
@@ -305,71 +320,14 @@ bool Sea::initializeRender()
     m_SeaTrashTexture = RenderUtils::loadTexture2D(m_Device.get(), m_CommandList.get(), (FilesystemUtilities::GetResourcesDir() + "StormResources/SeaTrash.tga").c_str());
     m_SeaLightTexture = RenderUtils::loadTexture2D(m_Device.get(), m_CommandList.get(), (FilesystemUtilities::GetResourcesDir() + "StormResources/SeaLight.tga").c_str());
 
-    uint8_t bMin = 0xFF;
-    uint8_t bMax = 0;
-
-    std::vector<uint8_t*> aTmpBumps;
-
-    uint32_t i;
-
-    for (i = 0; i < FRAMES; i++)
+    for (uint32_t i = 0; i < FRAMES; i++)
     {
         char str[256];
-        char* pFBuffer = nullptr;
-        uint32_t dwSize;
-        sprintf_s(str, "resource\\sea\\sea%.4d.tga", i);
-        // sprintf_s(str, "resource\\sea\\sea0000.tga", i);
-        fio->LoadFile(str, &pFBuffer, &dwSize);
-        if (!pFBuffer)
-        {
-            core.Trace("Sea: Can't load %s", str);
-            return false;
-        }
-
-        auto* pFB = pFBuffer + sizeof(TGA_H);
-
-        auto* pBuffer = new uint8_t[XWIDTH * YWIDTH];
-        aTmpBumps.push_back(pBuffer);
-
-        for (uint32_t y = 0; y < YWIDTH; y++)
-            for (uint32_t x = 0; x < XWIDTH; x++)
-            {
-                const uint8_t bB = (*pFB);
-                // bB = byte(float(bB - 79.0f) * 255.0f / (139.0f - 79.0f));
-                if (bB < bMin)
-                    bMin = bB;
-                if (bB > bMax)
-                    bMax = bB;
-                pBuffer[x + y * XWIDTH] = bB & 0xFF;
-                pFB += sizeof(uint32_t);
-            }
-
-        delete[] pFBuffer;
+        sprintf_s(str, "StormResources\\Sea\\sea%.4d.tga", i);
+        int texWidth, texHeight, texChannels;
+        stbi_uc* pixels = stbi_load((FilesystemUtilities::GetResourcesDir() + str).c_str(), &texWidth, &texHeight, &texChannels, STBI_grey);
+        aBumps.push_back(pixels);
     }
-
-    for (i = 0; i < FRAMES; i++)
-    {
-        auto* pBuffer = new uint8_t[XWIDTH * YWIDTH];
-        aBumps.push_back(pBuffer);
-
-        for (uint32_t y = 0; y < YWIDTH; y++)
-            for (uint32_t x = 0; x < XWIDTH; x++)
-            {
-                const auto dwAddress = x + y * YWIDTH;
-                float b1, b2, b3, b4, b5; // -2 -1 0 1 2
-
-                b1 = 0.08f * static_cast<float>(aTmpBumps[(i - 2) & (FRAMES - 1)][dwAddress]);
-                b2 = 0.17f * static_cast<float>(aTmpBumps[(i - 1) & (FRAMES - 1)][dwAddress]);
-                b3 = 0.50f * static_cast<float>(aTmpBumps[(i - 0) & (FRAMES - 1)][dwAddress]);
-                b4 = 0.17f * static_cast<float>(aTmpBumps[(i + 1) & (FRAMES - 1)][dwAddress]);
-                b5 = 0.08f * static_cast<float>(aTmpBumps[(i + 2) & (FRAMES - 1)][dwAddress]);
-
-                pBuffer[dwAddress] = aTmpBumps[(i - 0) & (FRAMES - 1)][dwAddress];
-            }
-    }
-
-    for (i = 0; i < aTmpBumps.size(); i++)
-        delete aTmpBumps[i];
 
     BuildVolumeTexture();
 
@@ -506,18 +464,28 @@ void Sea::BuildVolumeTexture()
         delete normal;
     aNormals.clear();
 
-    D3DLOCKED_BOX box[4];
+    VolumeBox box[4];
 
     if (pVolumeTexture)
+    {
         for (i = 0; i < 4; i++)
-            pVolumeTexture->LockBox(i, &box[i], nullptr, 0);
+        {
+            box[i].data = new char[(XWIDTH >> i) * (XWIDTH >> i) * (FRAMES >> i) * 4];
+            box->slicePitch = (XWIDTH >> i) * (XWIDTH >> i) * 4;
+            box->rowPitch = (XWIDTH >> i) * 4;
+        }
+    }
 
     for (i = 0; i < aBumpMaps.size(); i++)
         aBumpMaps[i] = nullptr;
     aBumpMaps.clear();
 
     uint32_t dwTexelSize = 4;
-    auto* pDst = static_cast<char*>(new char[XWIDTH * YWIDTH * dwTexelSize]);
+    auto* pDst0 = static_cast<char*>(new char[XWIDTH * YWIDTH * dwTexelSize]);
+    auto* pDst1 = static_cast<char*>(new char[(XWIDTH >> 1) * (YWIDTH >> 1) * dwTexelSize]);
+    auto* pDst2 = static_cast<char*>(new char[(XWIDTH >> 2) * (YWIDTH >> 2) * dwTexelSize]);
+    auto* pDst3 = static_cast<char*>(new char[(XWIDTH >> 3) * (YWIDTH >> 3) * dwTexelSize]);
+    char* pDsts[] = { pDst0, pDst1, pDst2, pDst3 };
 
     // build normals
 
@@ -574,8 +542,7 @@ void Sea::BuildVolumeTexture()
                 {
                     vRes1 = glm::normalize(vRes * glm::vec3(100.0f, 1.0f, 100.0f));
                 }
-                // CVECTOR vRes1 = !(vRes * CVECTOR(100.0f, 1.0f, 100.0f));
-                uint32_t dwRes = MAKELONG(static_cast<short>(vRes.x * 32767.5f), static_cast<short>(vRes.z * 32767.5f));
+                uint32_t dwRes = ((static_cast<short>(vRes.x * 32767.5f) & 0xffff) | (static_cast<short>(vRes.z * 32767.5f) << 16));
 
                 aNormals[i][x + y * XWIDTH] = dwRes;
                 vectors[i][x + y * XWIDTH] = vRes1;
@@ -588,20 +555,17 @@ void Sea::BuildVolumeTexture()
                 {
                     if (m_SimpleSea)
                         *(uint32_t*)&(
-                            static_cast<char*>(box[0].pBits)[i * box[0].SlicePitch + y * box[0].RowPitch + x * 4]) =
+                            static_cast<char*>(box[0].data)[i * box[0].slicePitch + y * box[0].rowPitch + x * 4]) =
                         ARGB(0x80, blue, blue, red);
                     else
                         *(uint32_t*)&(
-                            static_cast<char*>(box[0].pBits)[i * box[0].SlicePitch + y * box[0].RowPitch + x * 4]) =
+                            static_cast<char*>(box[0].data)[i * box[0].slicePitch + y * box[0].rowPitch + x * 4]) =
                         ARGB(0x80, blue, green, red);
                 }
             }
 
         if (!pVolumeTexture)
         {
-            D3DSURFACE_DESC d3dsd;
-            D3DLOCKED_RECT d3dlr;
-
             aBumpMaps.push_back(nullptr);
             // pBumpMap = &aBumpMaps[aBumpMaps.Add()];
             RHI::TextureHandle* pBumpMap = &aBumpMaps.back();
@@ -614,16 +578,20 @@ void Sea::BuildVolumeTexture()
                 .setIsRenderTarget(true)
                 .setMemoryProperties(RHI::MemoryPropertiesBits::HOST_VISIBLE_BIT | RHI::MemoryPropertiesBits::HOST_CACHED_BIT);
 
+            *pBumpMap = m_Device->createImage(desc);
+
+            m_CommandList->beginSingleTimeCommands();
+
             // generate mip levels for random bump
             for (uint32_t lev = 0; lev < MIPSLVLS; lev++)
             {
-                (*pBumpMap)->GetLevelDesc(lev, &d3dsd);
-                (*pBumpMap)->LockRect(lev, &d3dlr, nullptr, 0);
+                uint32_t width = XWIDTH >> lev;
+                uint32_t height = YWIDTH >> lev;
 
-                auto* pDstT = (uint32_t*)pDst;
-                for (uint32_t y = 0; y < d3dsd.Height; y++)
+                auto* pDstT = (uint32_t*)pDsts[lev];
+                for (uint32_t y = 0; y < height; y++)
                 {
-                    for (uint32_t x = 0; x < d3dsd.Width; x++)
+                    for (uint32_t x = 0; x < width; x++)
                     {
                         glm::vec3 vTmp = glm::vec3(0.0f);
                         int32_t dwMult = 1 << (lev);
@@ -640,16 +608,11 @@ void Sea::BuildVolumeTexture()
                     }
                 }
 
-                // simple copy
-                auto pDstTemp = static_cast<uint8_t*>(d3dlr.pBits);
-                for (uint32_t y = 0; y < d3dsd.Height; y++)
-                {
-                    memcpy(pDstTemp, &pDst[y * d3dsd.Width * dwTexelSize], d3dsd.Width * dwTexelSize);
-                    pDstTemp += static_cast<uint32_t>(d3dlr.Pitch);
-                }
-
-                (*pBumpMap)->UnlockRect(lev);
+                m_CommandList->updateTextureImage(pBumpMap->get(), lev, 0, pDstT);
             }
+
+            m_CommandList->endSingleTimeCommands();
+            m_Device->executeCommandList(m_CommandList.get());
         }
     }
 
@@ -684,32 +647,46 @@ void Sea::BuildVolumeTexture()
                     for (uint32_t x = 0; x < (XWIDTH >> j); x++)
                     {
                         int32_t red = fftol((pVectors[x + y * (XWIDTH >> j)].x * 0.5f + 0.5f) * 255.0f); // FIX-ME no ftol
-                        int32_t green = fftol((pVectors[x + y * (XWIDTH >> j)].y * 0.5f + 0.5f) * 255.0f);
-                        // FIX-ME no ftol
+                        int32_t green = fftol((pVectors[x + y * (XWIDTH >> j)].y * 0.5f + 0.5f) * 255.0f); // FIX-ME no ftol
                         int32_t blue = fftol((pVectors[x + y * (XWIDTH >> j)].z * 0.5f + 0.5f) * 255.0f); // FIX-ME no ftol
 
                         if (m_SimpleSea)
                             *(uint32_t*)&(static_cast<char*>(
-                                box[j].pBits)[i * box[j].SlicePitch + y * box[j].RowPitch + x * 4]) =
+                                box[j].data)[i * box[j].slicePitch + y * box[j].rowPitch + x * 4]) =
                             ARGB(0x80, blue, blue, red);
                         else
                             *(uint32_t*)&(static_cast<char*>(
-                                box[j].pBits)[i * box[j].SlicePitch + y * box[j].RowPitch + x * 4]) =
+                                box[j].data)[i * box[j].slicePitch + y * box[j].rowPitch + x * 4]) =
                             ARGB(0x80, blue, green, red);
                     }
         }
         delete[] pVectors;
     }
 
+    m_CommandList->beginSingleTimeCommands();
+    if(pVolumeTexture)
+    {
+        for (i = 0; i < 4; i++)
+        {
+            m_CommandList->updateTextureImage(pVolumeTexture.get(), i, 0, box[i].data);
+        }
+    }
+    m_CommandList->endSingleTimeCommands();
+    m_Device->executeCommandList(m_CommandList.get());
+
     if (pVolumeTexture)
         for (i = 0; i < 4; i++)
-            pVolumeTexture->UnlockBox(i);
+            delete[] box->data;
 
     for (const auto& vector : vectors)
         delete vector;
     vectors.clear();
 
-    delete[] pDst;
+    delete[] pDst0;
+    delete[] pDst1;
+    delete[] pDst2;
+    delete[] pDst3;
+    delete[] pDsts;
 }
 
 bool Sea::EditMode_Update()
@@ -1391,13 +1368,67 @@ void Sea::CalculateHeightMap(float fFrame, float fAmplitude, float* pfOut, std::
         }
 }
 
+void FindPlanes(const glm::mat4& mProjection, const glm::mat4 mView, Plane* viewplane)
+{
+    glm::mat4 m = mProjection;
+    glm::vec4 v[4];
+    // left
+    v[0].x = m[0][0];
+    v[0].y = 0.0f;
+    v[0].z = 1.0f;
+    // right
+    v[1].x = -m[0][0];
+    v[1].y = 0.0f;
+    v[1].z = 1.0f;
+    // top
+    v[2].x = 0.0f;
+    v[2].y = -m[1][1];
+    v[2].z = 1.0f;
+    // bottom
+    v[3].x = 0.0f;
+    v[3].y = m[1][1];
+    v[3].z = 1.0f;
+    v[0] = glm::normalize(v[0]);
+    v[1] = glm::normalize(v[1]);
+    v[2] = glm::normalize(v[2]);
+    v[3] = glm::normalize(v[3]);
+
+    m = mView;
+    glm::vec3 pos;
+
+    pos.x = -m[3][0] * m[0][0] - m[3][1] * m[0][1] - m[3][2] * m[0][2];
+    pos.y = -m[3][0] * m[1][0] - m[3][1] * m[1][1] - m[3][2] * m[1][2];
+    pos.z = -m[3][0] * m[2][0] - m[3][1] * m[2][1] - m[3][2] * m[2][2];
+
+    viewplane[0].normal.x = v[0].x * m[0][0] + v[0].y * m[0][1] + v[0].z * m[0][2];
+    viewplane[0].normal.y = v[0].x * m[1][0] + v[0].y * m[1][1] + v[0].z * m[1][2];
+    viewplane[0].normal.z = v[0].x * m[2][0] + v[0].y * m[2][1] + v[0].z * m[2][2];
+
+    viewplane[1].normal.x= v[1].x * m[0][0] + v[1].y * m[0][1] + v[1].z * m[0][2];
+    viewplane[1].normal.y = v[1].x * m[1][0] + v[1].y * m[1][1] + v[1].z * m[1][2];
+    viewplane[1].normal.z = v[1].x * m[2][0] + v[1].y * m[2][1] + v[1].z * m[2][2];
+
+    viewplane[2].normal.x= v[2].x * m[0][0] + v[2].y * m[0][1] + v[2].z * m[0][2];
+    viewplane[2].normal.y = v[2].x * m[1][0] + v[2].y * m[1][1] + v[2].z * m[1][2];
+    viewplane[2].normal.z = v[2].x * m[2][0] + v[2].y * m[2][1] + v[2].z * m[2][2];
+
+    viewplane[3].normal.x= v[3].x * m[0][0] + v[3].y * m[0][1] + v[3].z * m[0][2];
+    viewplane[3].normal.y = v[3].x * m[1][0] + v[3].y * m[1][1] + v[3].z * m[1][2];
+    viewplane[3].normal.z = v[3].x * m[2][0] + v[3].y * m[2][1] + v[3].z * m[2][2];
+
+    viewplane[0].distance = (pos.x * viewplane[0].normal.x + pos.y * viewplane[0].normal.y + pos.z * viewplane[0].normal.z);
+    viewplane[1].distance = (pos.x * viewplane[1].normal.x + pos.y * viewplane[1].normal.y + pos.z * viewplane[1].normal.z);
+    viewplane[2].distance = (pos.x * viewplane[2].normal.x + pos.y * viewplane[2].normal.y + pos.z * viewplane[2].normal.z);
+    viewplane[3].distance = (pos.x * viewplane[3].normal.x + pos.y * viewplane[3].normal.y + pos.z * viewplane[3].normal.z);
+}
+
 void Sea::Realize(float deltaTime)
 {
     RHI::FramebufferHandle framebuffer = m_DynamicRHI->GetFramebuffer(m_DynamicRHI->GetCurrentBackBufferIndex());
 
     static float fTmp = 0.0f;
 
-    if (core.Controls->GetDebugAsyncKeyState(VK_SHIFT) < 0 && core.Controls->GetDebugAsyncKeyState('S') < 0)
+    if (0/*core.Controls->GetDebugAsyncKeyState(VK_SHIFT) < 0 && core.Controls->GetDebugAsyncKeyState('S') < 0*/)
     {
         if (m_TempFullMode)
         {
@@ -1461,7 +1492,8 @@ void Sea::Realize(float deltaTime)
         SunRoad_Render();
     }
 
-    pFrustumPlanes = rs->GetPlanes();
+    glm::mat4 mProjection = glm::perspective(glm::radians(60.0f), float(framebuffer->framebufferWidth) / float(framebuffer->framebufferHeight), 0.1f, 1000.0f);
+    FindPlanes(mProjection, GetCamera()->getViewMatrix(), pFrustumPlanes);
 
     float fBlockSize = 256.0f * m_GridStep;
     int32_t iNumBlocks = static_cast<int32_t>(m_MaxDim) / (256 * 2);
@@ -1605,11 +1637,10 @@ void Sea::Realize(float deltaTime)
 
         glm::mat4 mView = GetCamera()->getViewMatrix();
         glm::mat4 mWorld = glm::identity<glm::mat4>();
-        glm::mat4 mProjection = rs->GetProjection();
 
 #ifndef OLD_WORLD_POS
-
-        mView.MoveInversePosition(-m_WorldOffset.x, 0.f, -m_WorldOffset.z);
+        //TODO: rework
+        //mView.MoveInversePosition(-m_WorldOffset.x, 0.f, -m_WorldOffset.z);
 #endif
 
         mWorldViewProj = mProjection * mView * mWorld;
@@ -1670,8 +1701,8 @@ void Sea::Realize(float deltaTime)
             const glm::mat4 mTexProjection = glm::rotate(glm::identity<glm::mat4>(), Math::TWOPI, glm::vec3(0.0f, 0.0f, 1.0f));
             constantBuffer.texProjection = mTexProjection;
 
-            rs->DrawIndexedPrimitiveNoVShader(D3DPT_TRIANGLELIST, m_VerticesSeaBuffer, sizeof(SeaVertex), m_IndicesSeaBuffer, 0,
-                verticesStart, 0, trianglesStart, "Sea2");
+            /*rs->DrawIndexedPrimitiveNoVShader(D3DPT_TRIANGLELIST, m_VerticesSeaBuffer, sizeof(SeaVertex), m_IndicesSeaBuffer, 0,
+                verticesStart, 0, trianglesStart, "Sea2");*/
 
             if(!m_SeaPipeline)
             {
@@ -1682,6 +1713,9 @@ void Sea::Realize(float deltaTime)
                 seaPipelineDesc.inputLayout = m_InputLayout;
                 seaPipelineDesc.primType = RHI::PrimitiveType::TriangleList;
                 seaPipelineDesc.renderState.depthStencilState.depthTestEnable = true;
+                seaPipelineDesc.renderState.srcColorBlendFactor = RHI::BlendState::ONE;
+                seaPipelineDesc.renderState.dstColorBlendFactor = RHI::BlendState::SRC_ALPHA;
+                seaPipelineDesc.renderState.alphaBlend = true;
 
                 m_SeaPipeline = m_Device->createGraphicsPipeline(seaPipelineDesc, framebuffer.get());
             }
@@ -1693,6 +1727,7 @@ void Sea::Realize(float deltaTime)
                 .addBindingSet(m_SeaBindingSet.get())
                 .setVertexBufferBindings(vertexBufferBindings)
                 .setIndexBufferBinding({ m_IndicesSeaBuffer.get() });
+
             m_CommandList->setGraphicsState(seaGraphicsState);
 
             RHI::DrawArguments drawArgs{};
@@ -1701,12 +1736,8 @@ void Sea::Realize(float deltaTime)
 
             if (m_FoamK > 0.0f && bFoamEnable && bIniFoamEnable)
             {
-                // Render sea foam
-                const auto vec2 = glm::vec4(m_FoamTextureDisturb, 0.0f, 0.0f, 0.0f);
-                rs->SetPixelShaderConstantF(0, (const float*)&vec2, 1);
-
-                rs->DrawIndexedPrimitiveNoVShader(D3DPT_TRIANGLELIST, m_VerticesSeaBuffer, sizeof(SeaVertex), m_IndicesSeaBuffer, 0,
-                    verticesStart, 0, trianglesStart, "Sea2_Foam");
+                /*rs->DrawIndexedPrimitiveNoVShader(D3DPT_TRIANGLELIST, m_VerticesSeaBuffer, sizeof(SeaVertex), m_IndicesSeaBuffer, 0,
+                    verticesStart, 0, trianglesStart, "Sea2_Foam");*/
 
                 if(!m_SeaFoamPipeline)
                 {
@@ -1717,6 +1748,11 @@ void Sea::Realize(float deltaTime)
                     seaFoamPipelineDesc.inputLayout = m_InputLayout;
                     seaFoamPipelineDesc.primType = RHI::PrimitiveType::TriangleList;
                     seaFoamPipelineDesc.renderState.depthStencilState.depthTestEnable = true;
+                    seaFoamPipelineDesc.renderState.srcColorBlendFactor = RHI::BlendState::SRC_ALPHA;
+                    seaFoamPipelineDesc.renderState.dstColorBlendFactor = RHI::BlendState::ONE;
+                    seaFoamPipelineDesc.renderState.alphaBlend = true;
+                    seaFoamPipelineDesc.pushConstants.vtxConstSize = 0;
+                    seaFoamPipelineDesc.pushConstants.fragConstSize = sizeof(float);
 
                     m_SeaFoamPipeline = m_Device->createGraphicsPipeline(seaFoamPipelineDesc, framebuffer.get());
                 }
@@ -1731,12 +1767,14 @@ void Sea::Realize(float deltaTime)
 
                 m_CommandList->setGraphicsState(seaFoamRoadgraphicsState);
 
+                m_CommandList->setPushConstants(&m_FoamTextureDisturb, sizeof(float));
+
                 drawArgs.vertexCount = NUM_VERTICES;
                 m_CommandList->drawIndexed(drawArgs);
             }
 
-            rs->DrawIndexedPrimitiveNoVShader(D3DPT_TRIANGLELIST, m_VerticesSeaBuffer, sizeof(SeaVertex), m_IndicesSeaBuffer, 0,
-                verticesStart, 0, trianglesStart, "Sea2_SunRoad");
+            /*rs->DrawIndexedPrimitiveNoVShader(D3DPT_TRIANGLELIST, m_VerticesSeaBuffer, sizeof(SeaVertex), m_IndicesSeaBuffer, 0,
+                verticesStart, 0, trianglesStart, "Sea2_SunRoad");*/
 
             if(!m_SeaSunRoadPipeline)
             {
@@ -1747,6 +1785,9 @@ void Sea::Realize(float deltaTime)
                 seaSunRoadPipelineDesc.inputLayout = m_InputLayout;
                 seaSunRoadPipelineDesc.primType = RHI::PrimitiveType::TriangleList;
                 seaSunRoadPipelineDesc.renderState.depthStencilState.depthTestEnable = true;
+                seaSunRoadPipelineDesc.renderState.srcColorBlendFactor = RHI::BlendState::ONE;
+                seaSunRoadPipelineDesc.renderState.dstColorBlendFactor = RHI::BlendState::ONE;
+                seaSunRoadPipelineDesc.renderState.alphaBlend = true;
 
                 m_SeaSunRoadPipeline = m_Device->createGraphicsPipeline(seaSunRoadPipelineDesc, framebuffer.get());
             }
@@ -1856,10 +1897,9 @@ void Sea::Realize(float deltaTime)
 
         if (aTrashRects.size())
         {
-            rs->TextureSet(0, m_SeaTrashTexture);
-
-
-            rs->DrawRects(&aTrashRects[0], aTrashRects.size(), "seatrash", 2, 2);
+            // TODO: rework
+            //rs->TextureSet(0, m_SeaTrashTexture);
+            //rs->DrawRects(&aTrashRects[0], aTrashRects.size(), "seatrash", 2, 2);
         }
 
         // Render schools of fish
@@ -1919,10 +1959,9 @@ void Sea::Realize(float deltaTime)
 
         if (aLightsRects.size())
         {
-            rs->TextureSet(0, m_SeaLightTexture);
-
-
-            rs->DrawRects(&aLightsRects[0], aLightsRects.size(), "seatrash", 2, 2, 0.5f);
+            // TODO: rework
+            //rs->TextureSet(0, m_SeaLightTexture);
+            //rs->DrawRects(&aLightsRects[0], aLightsRects.size(), "seatrash", 2, 2, 0.5f);
         }
 
         m_UnderSeaStarted = true;
@@ -1931,7 +1970,7 @@ void Sea::Realize(float deltaTime)
     m_Started = true;
 }
 
-TestCamera* Sea::GetCamera() const
+const TestCamera* Sea::GetCamera() const
 {
-    return;
+    return &mythSystem::Application::Get().getCamera();
 }

@@ -53,6 +53,11 @@ struct Plane
 	glm::vec3 normal = glm::vec3{};
 	float distance = 0.0f;
 
+	Plane()
+	{
+		
+	}
+
 	Plane(const glm::vec3& normal_, const glm::vec3& point)
 	{
 		normal = normal_;
@@ -115,7 +120,7 @@ public:
 	virtual ~Sea();
 
 	virtual bool initializeRender();
-
+	void Realize(float deltaTime);
 
 protected:
 	void CreateVertexDeclaration();
@@ -137,8 +142,6 @@ protected:
 	bool EnvMap_Render();
 	void EnvMap_GetSideMatrix(CubemapFaces Face, glm::mat4x4& mView);
 
-	void Realize(float deltaTime);
-
 	void BuildTree(int32_t iTX, int32_t iTY, int32_t iLev);
 	void AddBlock(int32_t iTX, int32_t iTY, int32_t iSize, int32_t iLOD);
 	void CalculateLOD(const glm::vec3& v1, const glm::vec3& v2, int32_t& iMaxLOD, int32_t& iMinLOD);
@@ -146,7 +149,7 @@ protected:
 	bool isVisibleBBox(const glm::vec3& vCenter, const glm::vec3& v1, const glm::vec3& v2);
 	int32_t VisCode(const glm::vec3& vP);
 
-	TestCamera* GetCamera() const;
+	const TestCamera* GetCamera() const;
 
 private:
 	RHI::ShaderHandle m_VertexShader = nullptr;

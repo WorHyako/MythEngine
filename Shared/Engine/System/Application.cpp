@@ -117,7 +117,7 @@ namespace mythSystem
 
     void Application::update(float deltaSeconds)
     {
-	    
+        m_Positioner.update(deltaSeconds, m_MouseState.pos, shouldHandleMouse() ? m_MouseState.pressedLeft : false);
     }
 
     void Application::mainLoop()

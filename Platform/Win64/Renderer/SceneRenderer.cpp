@@ -12,6 +12,8 @@
 
 #include <Texture/TextureUtils.hpp>
 
+#include "System/Application.hpp"
+
 struct Vertex
 {
 	glm::vec3 position;
@@ -78,7 +80,7 @@ struct ConstantBufferEntry
 SceneRenderer::SceneRenderer(RHI::IDynamicRHI* dynamicRHI)
 	: RendererInterface(dynamicRHI)
 {
-	
+	m_SeaPass = std::make_unique<Sea>();
 }
 
 SceneRenderer::~SceneRenderer()
@@ -193,6 +195,7 @@ bool SceneRenderer::initializeRender()
 			m_BindingLayout = m_Device->createDescriptorSetLayout(dsInfos);
 			m_BindingSets[viewIndex] = m_Device->createDescriptorSet(dsInfos, 1, m_BindingLayout.get());
 		}
+		//m_SeaPass->initializeRender();
 
 		return true;
 	}
@@ -243,7 +246,8 @@ bool SceneRenderer::renderScene()
 		{
 			glm::mat4 model = glm::mat4(1.0f);
 			model = glm::translate(model, g_Offsets[viewIndex]);
-			glm::mat4 view = glm::lookAt(glm::vec3(3.0f, 3.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+			//glm::mat4 view = glm::lookAt(glm::vec3(3.0f, 3.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+			glm::mat4 view = mythSystem::Application::Get().getCamera().getViewMatrix();
 			glm::mat4 projection = glm::perspective(glm::radians(60.0f), float(framebuffer->framebufferWidth) / float(framebuffer->framebufferHeight), 0.1f, 10.0f);
 			glm::mat4 viewProjMatrix = projection * view * model;
 			modelConstants[viewIndex].viewProjMatrix = viewProjMatrix;
@@ -293,6 +297,8 @@ bool SceneRenderer::renderScene()
 	m_CommandList->endSingleTimeCommands();
 
 	m_Device->executeCommandLists(m_CommandLists, m_CommandLists.size(), RHI::CommandQueue::Graphics);
+
+	//m_SeaPass->Realize(.016f);
 
 	return true;
 }

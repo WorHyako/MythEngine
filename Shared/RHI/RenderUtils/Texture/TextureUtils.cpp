@@ -122,7 +122,7 @@ namespace RenderUtils
             .setIsShaderResource(true);
         RHI::TextureHandle tex = device->createImage(desc);
 
-        commandList->updateTextureImage(tex.get(), imageData);
+        commandList->updateTextureImage(tex.get(), 0, 0, imageData);
 
         return tex;
     }

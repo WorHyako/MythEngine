@@ -36,11 +36,20 @@ namespace mythSystem
 		virtual void OnApplicationStarted() override {};
 		virtual void Exit(int ExitCode) override {};
 
+		const TestCamera& getCamera() const
+		{
+			return m_Camera;
+		}
+
 		/**
 		* Get a reference to the application instance.
 		* @returns A reference to the Application instance.
 		*/
 		static Application& Get();
+
+	protected:
+		// Check if none of the ImGui widgets were touched so our app can process mouse events
+		inline bool shouldHandleMouse() const { return /*!ImGui::GetIO().WantCaptureMouse*/ true; }
 
 	private:
 		UniquePtr<WindowInterface> m_Window;
