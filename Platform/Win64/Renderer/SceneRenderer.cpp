@@ -80,7 +80,7 @@ struct ConstantBufferEntry
 SceneRenderer::SceneRenderer(RHI::IDynamicRHI* dynamicRHI)
 	: RendererInterface(dynamicRHI)
 {
-	m_SeaPass = std::make_unique<Sea>();
+	m_SeaPass = std::make_unique<Sea>(dynamicRHI, m_Device);
 }
 
 SceneRenderer::~SceneRenderer()
@@ -126,7 +126,7 @@ bool SceneRenderer::initializeRender()
 		.setBinding(0)
 		.setStride(sizeof(Vertex))
 		};
-		m_InputLayout = m_Device->createInputLayout(attributes, bindings);
+		m_InputLayout = m_Device->createInputLayout(attributes, std::size(attributes), bindings, std::size(bindings));
 
 		RHI::CommandListParameters commandListParams = { RHI::CommandQueue::Graphics };
 		m_CommandList = m_Device->createCommandList(commandListParams);
@@ -144,11 +144,9 @@ bool SceneRenderer::initializeRender()
 		m_CommandList->writeBuffer(m_VertexBuffer.get(), sizeof(g_Vertices), g_Vertices);
 		//m_CommandList->setPermanentBufferState(m_VertexBuffer, RHI::ResourceStates::VertexBuffer);
 
-		//m_CommandList->endSingleTimeCommands();
 		//m_Device->executeCommandLists(m_CommandLists, m_CommandLists.size(), RHI::CommandQueue::Graphics);
 		//m_CommandList->queueWaitIdle();
 
-		//m_CommandList->beginSingleTimeCommands();
 
 		RHI::BufferDesc indexBufferDesc;
 		indexBufferDesc
@@ -161,17 +159,12 @@ bool SceneRenderer::initializeRender()
 		m_CommandList->writeBuffer(m_IndexBuffer.get(), sizeof(g_Indices), g_Indices);
 		//m_CommandList->setPermanentBufferState(m_IndexBuffer, RHI::ResourceStates::IndexBuffer);
 
-		//m_CommandList->endSingleTimeCommands();
-		//m_Device->executeCommandLists(m_CommandLists, m_CommandLists.size(), RHI::CommandQueue::Graphics);
-		//m_CommandList->queueWaitIdle();
-
-		//m_CommandList->beginSingleTimeCommands();
-
 		m_Texture = RenderUtils::loadTexture2D(m_Device.get(), m_CommandList.get(), (FilesystemUtilities::GetResourcesDir() + "textures/container2.png").c_str());
 		m_Sampler = m_Device->createTextureSampler();
 
 		m_CommandList->endSingleTimeCommands();
 		m_Device->executeCommandLists(m_CommandLists, m_CommandLists.size(), RHI::CommandQueue::Graphics);
+		//m_CommandList->queueWaitIdle();
 
 		// Create a single binding layout and multiple binding sets, one set per view.
 		// The different binding sets use different slices of the same constant buffer.
@@ -195,7 +188,8 @@ bool SceneRenderer::initializeRender()
 			m_BindingLayout = m_Device->createDescriptorSetLayout(dsInfos);
 			m_BindingSets[viewIndex] = m_Device->createDescriptorSet(dsInfos, 1, m_BindingLayout.get());
 		}
-		//m_SeaPass->initializeRender();
+
+		m_SeaPass->initializeRender(m_CommandList);
 
 		return true;
 	}
@@ -239,7 +233,7 @@ bool SceneRenderer::renderScene()
 	// Fill out the constant buffer slices for multiple views of the model.
 	static uint64_t numFrames = 0;
 
-	if(numFrames == 0)
+	if(numFrames >= 0)
 	{
 		ConstantBufferEntry modelConstants[c_NumViews];
 		for (uint32_t viewIndex = 0; viewIndex < c_NumViews; ++viewIndex)
@@ -248,7 +242,7 @@ bool SceneRenderer::renderScene()
 			model = glm::translate(model, g_Offsets[viewIndex]);
 			//glm::mat4 view = glm::lookAt(glm::vec3(3.0f, 3.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 			glm::mat4 view = mythSystem::Application::Get().getCamera().getViewMatrix();
-			glm::mat4 projection = glm::perspective(glm::radians(60.0f), float(framebuffer->framebufferWidth) / float(framebuffer->framebufferHeight), 0.1f, 10.0f);
+			glm::mat4 projection = glm::perspective(glm::radians(60.0f), float(framebuffer->framebufferWidth) / float(framebuffer->framebufferHeight), 0.1f, 1000.0f);
 			glm::mat4 viewProjMatrix = projection * view * model;
 			modelConstants[viewIndex].viewProjMatrix = viewProjMatrix;
 		}
@@ -294,11 +288,13 @@ bool SceneRenderer::renderScene()
 		m_CommandList->drawIndexed(drawArgs);
 	}
 
+	m_SeaPass->Realize(.016f);
+
 	m_CommandList->endSingleTimeCommands();
 
 	m_Device->executeCommandLists(m_CommandLists, m_CommandLists.size(), RHI::CommandQueue::Graphics);
 
-	//m_SeaPass->Realize(.016f);
+	//m_CommandList->queueWaitIdle();
 
 	return true;
 }

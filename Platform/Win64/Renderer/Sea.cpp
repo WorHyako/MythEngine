@@ -104,7 +104,9 @@ struct VolumeBox
     uint32_t rowPitch;
 };
 
-Sea::Sea()
+Sea::Sea(RHI::IDynamicRHI* dynamicRHI, RHI::DeviceHandle& device)
+	: m_DynamicRHI(dynamicRHI)
+	, m_Device(device)
 {
     m_Blocks.reserve(128);
     aSeaTrash.reserve(512);
@@ -199,8 +201,11 @@ Sea::~Sea()
     delete[] pFrustumPlanes;
 }
 
-bool Sea::initializeRender()
+bool Sea::initializeRender(RHI::CommandListHandle& commandList)
 {
+    m_CommandList = m_Device->createCommandList();
+    m_CommandList->beginSingleTimeCommands();
+
     m_SeaVertexShader = m_Device->createShaderModule((FilesystemUtilities::GetShadersDir() + "Vulkan/Sea/VK_Sea.vert").c_str());
     m_SeaPixelShader = m_Device->createShaderModule((FilesystemUtilities::GetShadersDir() + "Vulkan/Sea/VK_Sea.frag").c_str());
     m_SeaFoamVertexShader = m_Device->createShaderModule((FilesystemUtilities::GetShadersDir() + "Vulkan/Sea/VK_Sea_Foam.vert").c_str());
@@ -208,6 +213,7 @@ bool Sea::initializeRender()
     m_SeaSunRoadVertexShader = m_Device->createShaderModule((FilesystemUtilities::GetShadersDir() + "Vulkan/Sea/VK_Sea_SunRoad.vert").c_str());
     m_SeaSunRoadPixelShader = m_Device->createShaderModule((FilesystemUtilities::GetShadersDir() + "Vulkan/Sea/VK_Sea_SunRoad.frag").c_str());
 
+    SFLB_CreateBuffers();
 	CreateVertexDeclaration();
 
     RHI::VertexInputAttributeDesc attributes[] = {
@@ -234,7 +240,7 @@ bool Sea::initializeRender()
     .setBinding(0)
     .setStride(sizeof(SeaVertex))
     };
-    m_InputLayout = m_Device->createInputLayout(attributes, bindings);
+    m_InputLayout = m_Device->createInputLayout(attributes, std::size(attributes), bindings, std::size(bindings));
 
     {
         //auto config = Config::Load(Constants::ConfigNames::engine());
@@ -258,12 +264,13 @@ bool Sea::initializeRender()
         .setHeight(YWIDTH)
         .setMipLevels(MIPSLVLS)
         .setFormat(RHI::Format::RGBA8_UNORM)
+        .setIsTransferDst(true)
+        .setIsShaderResource(true)
         .setIsRenderTarget(true)
         .setMemoryProperties(RHI::MemoryPropertiesBits::DEVICE_LOCAL_BIT);
 
     pRenderTargetBumpMap = m_Device->createImage(textureDesc);
-
-    SFLB_CreateBuffers();
+    m_Device->createImageView(pRenderTargetBumpMap.get(), RHI::ImageAspectFlagBits::COLOR_BIT);
 
     {
         RHI::TextureDesc desc{};
@@ -273,10 +280,13 @@ bool Sea::initializeRender()
             .setMipLevels(4)
 			.setDimension(RHI::TextureDimension::Texture3D)
             .setFormat(RHI::Format::RGBA8_UNORM)
+            .setIsTransferDst(true)
+            .setIsShaderResource(true)
             .setIsRenderTarget(true)
-            .setMemoryProperties(RHI::MemoryPropertiesBits::HOST_VISIBLE_BIT | RHI::MemoryPropertiesBits::HOST_CACHED_BIT);
+            .setMemoryProperties(RHI::MemoryPropertiesBits::DEVICE_LOCAL_BIT);
 
         pVolumeTexture = m_Device->createImage(desc);
+        m_Device->createImageView(pVolumeTexture.get(), RHI::ImageAspectFlagBits::COLOR_BIT);
     }
 
     {
@@ -284,19 +294,25 @@ bool Sea::initializeRender()
         desc.setWidth(128)
             .setHeight(128)
             .setMipLevels(1)
+			.setLayerCount(6)
             .setDimension(RHI::TextureDimension::TextureCube)
-            .setFormat(RHI::Format::B5G6R5_UNORM)
+            .setFormat(RHI::Format::RGBA8_UNORM)
+            //.setFormat(RHI::Format::B5G6R5_UNORM)
+            .setIsTransferDst(true)
+            .setIsShaderResource(true)
             .setIsRenderTarget(true)
             .setMemoryProperties(RHI::MemoryPropertiesBits::DEVICE_LOCAL_BIT);
 
         pEnvMap = m_Device->createImage(desc);
+        m_Device->createImageView(pEnvMap.get(), RHI::ImageAspectFlagBits::COLOR_BIT);
         pSunRoadMap = m_Device->createImage(desc);
+        m_Device->createImageView(pSunRoadMap.get(), RHI::ImageAspectFlagBits::COLOR_BIT);
 
-        desc.setDimension(RHI::TextureDimension::Texture2D)
-            .setFormat(RHI::Format::D24S8)
+        desc.setFormat(RHI::Format::D24S8)
             .setSampleCount(1);
 
         pZStencil = m_Device->createImage(desc);
+        m_Device->createImageView(pZStencil.get(), RHI::ImageAspectFlagBits::DEPTH_BIT);
     }
 
     {
@@ -304,17 +320,21 @@ bool Sea::initializeRender()
         desc.setWidth(128)
             .setHeight(128)
             .setMipLevels(1)
-            .setFormat(RHI::Format::B5G6R5_UNORM)
+            .setFormat(RHI::Format::RGBA8_UNORM)
+            //.setFormat(RHI::Format::B5G6R5_UNORM)
             .setIsRenderTarget(true)
             .setMemoryProperties(RHI::MemoryPropertiesBits::DEVICE_LOCAL_BIT);
 
         pReflection = m_Device->createImage(desc);
+        m_Device->createImageView(pReflection.get(), RHI::ImageAspectFlagBits::COLOR_BIT);
         pReflectionSunroad = m_Device->createImage(desc);
+        m_Device->createImageView(pReflectionSunroad.get(), RHI::ImageAspectFlagBits::COLOR_BIT);
 
         desc.setFormat(RHI::Format::D24S8)
             .setSampleCount(1);
 
         pReflectionSurfaceDepth = m_Device->createImage(desc);
+        m_Device->createImageView(pReflectionSurfaceDepth.get(), RHI::ImageAspectFlagBits::DEPTH_BIT);
     }
 
     m_SeaTrashTexture = RenderUtils::loadTexture2D(m_Device.get(), m_CommandList.get(), (FilesystemUtilities::GetResourcesDir() + "StormResources/SeaTrash.tga").c_str());
@@ -330,6 +350,16 @@ bool Sea::initializeRender()
     }
 
     BuildVolumeTexture();
+
+    m_CommandList->endSingleTimeCommands();
+    m_Device->executeCommandList(m_CommandList.get(), RHI::CommandQueue::Graphics);
+    //m_CommandList->queueWaitIdle();
+
+    {
+        RHI::SamplerDesc desc{};
+        m_Sampler = m_Device->createTextureSampler(desc);
+    }
+
 
     // Sea
     {
@@ -347,7 +377,7 @@ bool Sea::initializeRender()
             .setSampler(m_Sampler.get());
 
         RHI::TextureAttachment textureAttachment2 = {};
-        textureAttachment1
+        textureAttachment2
             .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::COMBINED_IMAGE_SAMPLER, RHI::ShaderStageFlagBits::FRAGMENT_BIT })
             .setTexture(pEnvMap.get())
             .setSampler(m_Sampler.get());
@@ -361,8 +391,8 @@ bool Sea::initializeRender()
 
     // Foam
     {
-        RHI::BufferAttachment bufferAttachment1 = {};
-        bufferAttachment1
+        RHI::BufferAttachment bufferAttachment = {};
+        bufferAttachment
             .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::UNIFORM_BUFFER, RHI::ShaderStageFlagBits::VERTEX_BIT })
             .setBuffer(m_ConstantBuffer.get())
             .setSize(sizeof(ConstantSeaVertexBuffer))
@@ -375,16 +405,17 @@ bool Sea::initializeRender()
             .setSampler(m_Sampler.get());
 
         RHI::TextureAttachment textureAttachment2 = {};
-        textureAttachment1
+        textureAttachment2
             .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::COMBINED_IMAGE_SAMPLER, RHI::ShaderStageFlagBits::FRAGMENT_BIT })
             .setTexture(pVolumeTexture.get() ? pVolumeTexture.get() : pRenderTargetBumpMap.get())
             .setSampler(m_Sampler.get());
 
-        RHI::DescriptorSetInfo dsInfos = { .buffers = {bufferAttachment1}, .textures = {textureAttachment1, textureAttachment2} };
+        RHI::DescriptorSetInfo dsInfos = { .buffers = {bufferAttachment}, .textures = {textureAttachment1, textureAttachment2} };
 
         m_SeaFoamBindingLayout = m_Device->createDescriptorSetLayout(dsInfos);
         m_SeaFoamBindingSet = m_Device->createDescriptorSet(dsInfos, 1, m_SeaFoamBindingLayout.get());
     }
+
 
     // SunRoad
     {
@@ -402,7 +433,7 @@ bool Sea::initializeRender()
             .setSampler(m_Sampler.get());
 
         RHI::TextureAttachment textureAttachment2 = {};
-        textureAttachment1
+        textureAttachment2
             .setDescriptorInfo(RHI::DescriptorInfo{ RHI::DescriptorType::COMBINED_IMAGE_SAMPLER, RHI::ShaderStageFlagBits::FRAGMENT_BIT })
             .setTexture(pSunRoadMap.get())
             .setSampler(m_Sampler.get());
@@ -470,9 +501,10 @@ void Sea::BuildVolumeTexture()
     {
         for (i = 0; i < 4; i++)
         {
-            box[i].data = new char[(XWIDTH >> i) * (XWIDTH >> i) * (FRAMES >> i) * 4];
-            box->slicePitch = (XWIDTH >> i) * (XWIDTH >> i) * 4;
-            box->rowPitch = (XWIDTH >> i) * 4;
+            const size_t boxSize = (XWIDTH >> i) * (XWIDTH >> i) * (FRAMES >> i) * 4;
+            box[i].data = new char[boxSize];
+            box[i].slicePitch = (XWIDTH >> i) * (XWIDTH >> i) * 4;
+            box[i].rowPitch = (XWIDTH >> i) * 4;
         }
     }
 
@@ -663,7 +695,6 @@ void Sea::BuildVolumeTexture()
         delete[] pVectors;
     }
 
-    m_CommandList->beginSingleTimeCommands();
     if(pVolumeTexture)
     {
         for (i = 0; i < 4; i++)
@@ -671,12 +702,10 @@ void Sea::BuildVolumeTexture()
             m_CommandList->updateTextureImage(pVolumeTexture.get(), i, 0, box[i].data);
         }
     }
-    m_CommandList->endSingleTimeCommands();
-    m_Device->executeCommandList(m_CommandList.get());
 
     if (pVolumeTexture)
         for (i = 0; i < 4; i++)
-            delete[] box->data;
+            delete[] box[i].data;
 
     for (const auto& vector : vectors)
         delete vector;
@@ -686,7 +715,7 @@ void Sea::BuildVolumeTexture()
     delete[] pDst1;
     delete[] pDst2;
     delete[] pDst3;
-    delete[] pDsts;
+    //delete[] pDsts;
 }
 
 bool Sea::EditMode_Update()
@@ -717,7 +746,7 @@ bool Sea::EditMode_Update()
 
     m_PosShift = 1.2f;
 
-    Realize(0);
+    //Realize(0);
 
     return true;
 }
@@ -1371,7 +1400,7 @@ void Sea::CalculateHeightMap(float fFrame, float fAmplitude, float* pfOut, std::
 void FindPlanes(const glm::mat4& mProjection, const glm::mat4 mView, Plane* viewplane)
 {
     glm::mat4 m = mProjection;
-    glm::vec4 v[4];
+    glm::vec3 v[4];
     // left
     v[0].x = m[0][0];
     v[0].y = 0.0f;
@@ -1382,11 +1411,11 @@ void FindPlanes(const glm::mat4& mProjection, const glm::mat4 mView, Plane* view
     v[1].z = 1.0f;
     // top
     v[2].x = 0.0f;
-    v[2].y = -m[1][1];
+    v[2].y = m[1][1];
     v[2].z = 1.0f;
     // bottom
     v[3].x = 0.0f;
-    v[3].y = m[1][1];
+    v[3].y = -m[1][1];
     v[3].z = 1.0f;
     v[0] = glm::normalize(v[0]);
     v[1] = glm::normalize(v[1]);
@@ -1416,6 +1445,26 @@ void FindPlanes(const glm::mat4& mProjection, const glm::mat4 mView, Plane* view
     viewplane[3].normal.y = v[3].x * m[1][0] + v[3].y * m[1][1] + v[3].z * m[1][2];
     viewplane[3].normal.z = v[3].x * m[2][0] + v[3].y * m[2][1] + v[3].z * m[2][2];
 
+    /*pos.x = -m[0][3] * m[0][0] - m[1][3] * m[1][0] - m[2][3] * m[2][0];
+    pos.y = -m[0][3] * m[0][1] - m[1][3] * m[1][1] - m[2][3] * m[2][1];
+    pos.z = -m[0][3] * m[0][2] - m[1][3] * m[1][2] - m[2][3] * m[2][2];
+
+    viewplane[0].normal.x = v[0].x * m[0][0] + v[0].y * m[1][0] + v[0].z * m[2][0];
+    viewplane[0].normal.y = v[0].x * m[0][1] + v[0].y * m[1][1] + v[0].z * m[2][1];
+    viewplane[0].normal.z = v[0].x * m[0][2] + v[0].y * m[1][2] + v[0].z * m[2][2];
+
+    viewplane[1].normal.x = v[1].x * m[0][0] + v[1].y * m[1][0] + v[1].z * m[2][0];
+    viewplane[1].normal.y = v[1].x * m[0][1] + v[1].y * m[1][1] + v[1].z * m[2][1];
+    viewplane[1].normal.z = v[1].x * m[0][2] + v[1].y * m[1][2] + v[1].z * m[2][2];
+
+    viewplane[2].normal.x = v[2].x * m[0][0] + v[2].y * m[1][0] + v[2].z * m[2][0];
+    viewplane[2].normal.y = v[2].x * m[0][1] + v[2].y * m[1][1] + v[2].z * m[2][1];
+    viewplane[2].normal.z = v[2].x * m[0][2] + v[2].y * m[1][2] + v[2].z * m[2][2];
+
+    viewplane[3].normal.x = v[3].x * m[0][0] + v[3].y * m[1][0] + v[3].z * m[2][0];
+    viewplane[3].normal.y = v[3].x * m[0][1] + v[3].y * m[1][1] + v[3].z * m[2][1];
+    viewplane[3].normal.z = v[3].x * m[0][2] + v[3].y * m[1][2] + v[3].z * m[2][2];*/
+
     viewplane[0].distance = (pos.x * viewplane[0].normal.x + pos.y * viewplane[0].normal.y + pos.z * viewplane[0].normal.z);
     viewplane[1].distance = (pos.x * viewplane[1].normal.x + pos.y * viewplane[1].normal.y + pos.z * viewplane[1].normal.z);
     viewplane[2].distance = (pos.x * viewplane[2].normal.x + pos.y * viewplane[2].normal.y + pos.z * viewplane[2].normal.z);
@@ -1425,6 +1474,8 @@ void FindPlanes(const glm::mat4& mProjection, const glm::mat4 mView, Plane* view
 void Sea::Realize(float deltaTime)
 {
     RHI::FramebufferHandle framebuffer = m_DynamicRHI->GetFramebuffer(m_DynamicRHI->GetCurrentBackBufferIndex());
+
+    //m_CommandList->beginSingleTimeCommands();
 
     static float fTmp = 0.0f;
 
@@ -1492,8 +1543,26 @@ void Sea::Realize(float deltaTime)
         SunRoad_Render();
     }
 
-    glm::mat4 mProjection = glm::perspective(glm::radians(60.0f), float(framebuffer->framebufferWidth) / float(framebuffer->framebufferHeight), 0.1f, 1000.0f);
-    FindPlanes(mProjection, GetCamera()->getViewMatrix(), pFrustumPlanes);
+    glm::mat4 mProjectionPlanes = glm::perspective(glm::radians(45.0f), float(framebuffer->framebufferWidth) / float(framebuffer->framebufferHeight), 0.1f, 1000.0f);
+    //glm::mat4 mProjectionRight = glm::perspectiveFovRH(glm::radians(60.0f), float(framebuffer->framebufferWidth) , float(framebuffer->framebufferHeight), 0.1f, 10000.0f);
+    //const glm::mat4 inverted = glm::inverse();
+    //const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
+    //glm::mat4 mViewPlanes = glm::lookAt(GetCamera()->getPosition(), GetCamera()->getPosition() + 1.0f * forward, glm::vec3(0.0f, 1.0f, 0.0f)); //glm::transpose(GetCamera()->getViewMatrix());
+    //glm::mat4 mViewPlanes = glm::transpose(GetCamera()->getViewMatrix());
+    //FindPlanes(mProjectionPlanes, mViewPlanes, pFrustumPlanes);
+
+    vec4 frustumPlanes[6];
+    getFrustumPlanes(mProjectionPlanes * GetCamera()->getViewMatrix(), frustumPlanes);
+    pFrustumPlanes[0].normal = glm::normalize(glm::vec3(frustumPlanes[0].x, frustumPlanes[0].y, frustumPlanes[0].z));
+    pFrustumPlanes[1].normal = glm::normalize(glm::vec3(frustumPlanes[1].x, frustumPlanes[1].y, frustumPlanes[1].z));
+    pFrustumPlanes[2].normal = glm::normalize(glm::vec3(frustumPlanes[2].x, frustumPlanes[2].y, frustumPlanes[2].z));
+    pFrustumPlanes[3].normal = glm::normalize(glm::vec3(frustumPlanes[3].x, frustumPlanes[3].y, frustumPlanes[3].z));
+
+    pFrustumPlanes[0].distance = frustumPlanes[0].w;
+    pFrustumPlanes[1].distance = frustumPlanes[1].w;
+    pFrustumPlanes[2].distance = frustumPlanes[2].w;
+    pFrustumPlanes[3].distance = frustumPlanes[3].w;
+
 
     float fBlockSize = 256.0f * m_GridStep;
     int32_t iNumBlocks = static_cast<int32_t>(m_MaxDim) / (256 * 2);
@@ -1524,9 +1593,7 @@ void Sea::Realize(float deltaTime)
         desc.setIsTransferDst(true);
         RHI::BufferHandle bufferHandle = m_Device->createBuffer(desc);
 
-        m_CommandList->beginSingleTimeCommands();
         m_CommandList->writeBuffer(bufferHandle.get(), sizeof(ConstantAlphaBuffer), &alphaBuffer);
-        m_CommandList->endSingleTimeCommands();
 
         RHI::BufferAttachment bufferAttachment = {};
         bufferAttachment
@@ -1552,7 +1619,6 @@ void Sea::Realize(float deltaTime)
         RHI::BindingLayoutHandle bindingLayout = m_Device->createDescriptorSetLayout(dsInfos);
         RHI::BindingSetHandle bindingSet = m_Device->createDescriptorSet(dsInfos, 1, bindingLayout.get());
 
-        m_CommandList->beginSingleTimeCommands();
         for (uint32_t i = 0; i < MIPSLVLS; i++)
         {
             RHI::FramebufferDesc framebufferDesc{};
@@ -1586,9 +1652,6 @@ void Sea::Realize(float deltaTime)
 
         	//rs->DrawSprites(spr, 1, "bump_interpolate");
         }
-
-        m_CommandList->endSingleTimeCommands();
-        m_Device->executeCommandList(m_CommandList.get(), RHI::CommandQueue::Graphics);
     }
 
     memset(pIndices, 0xFF, NUM_VERTICES * sizeof(pIndices[0]) * 3);
@@ -1635,8 +1698,11 @@ void Sea::Realize(float deltaTime)
     {
         glm::mat4 mWorldViewProj;
 
+        glm::mat4 mProjection = glm::perspective(glm::radians(45.0f), float(framebuffer->framebufferWidth) / float(framebuffer->framebufferHeight), 0.1f, 100000.0f);
         glm::mat4 mView = GetCamera()->getViewMatrix();
-        glm::mat4 mWorld = glm::identity<glm::mat4>();
+        //glm::mat4 mView = glm::lookAtRH(GetCamera()->getPosition(), GetCamera()->getPosition() + 10.0f * forward, glm::vec3(0.0f, 1.0f, 0.0f));
+        //mView = glm::rotate(mView, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 mWorld = glm::mat4(1.0f);
 
 #ifndef OLD_WORLD_POS
         //TODO: rework
@@ -1645,7 +1711,7 @@ void Sea::Realize(float deltaTime)
 
         mWorldViewProj = mProjection * mView * mWorld;
 
-        mWorldViewProj = glm::transpose(mWorldViewProj);
+        //mWorldViewProj = glm::transpose(mWorldViewProj);
 
         fTmp += deltaTime * fBumpSpeed;
         while (fTmp >= 1.0f)
@@ -1668,7 +1734,7 @@ void Sea::Realize(float deltaTime)
         constantBuffer.skyColor = v4SkyColor;
         constantBuffer.vec7 = vec7;
 
-        m_CommandList->beginSingleTimeCommands();
+        m_CommandList->writeBuffer(m_ConstantBuffer.get(), sizeof(ConstantSeaVertexBuffer), &constantBuffer);
 
         if (m_SimpleSea)
         {
@@ -1716,6 +1782,7 @@ void Sea::Realize(float deltaTime)
                 seaPipelineDesc.renderState.srcColorBlendFactor = RHI::BlendState::ONE;
                 seaPipelineDesc.renderState.dstColorBlendFactor = RHI::BlendState::SRC_ALPHA;
                 seaPipelineDesc.renderState.alphaBlend = true;
+                seaPipelineDesc.renderState.blendEnable = true;
 
                 m_SeaPipeline = m_Device->createGraphicsPipeline(seaPipelineDesc, framebuffer.get());
             }
@@ -1792,7 +1859,7 @@ void Sea::Realize(float deltaTime)
                 m_SeaSunRoadPipeline = m_Device->createGraphicsPipeline(seaSunRoadPipelineDesc, framebuffer.get());
             }
 
-            RHI::GraphicsState seaSunRoadGraphicsState{};
+            /*RHI::GraphicsState seaSunRoadGraphicsState{};
             seaSunRoadGraphicsState
                 .setFramebuffer(framebuffer.get())
                 .setPipeline(m_SeaSunRoadPipeline.get())
@@ -1803,11 +1870,8 @@ void Sea::Realize(float deltaTime)
             m_CommandList->setGraphicsState(seaSunRoadGraphicsState);
 
             drawArgs.vertexCount = NUM_VERTICES;
-            m_CommandList->drawIndexed(drawArgs);
+            m_CommandList->drawIndexed(drawArgs);*/
         }
-
-        m_CommandList->endSingleTimeCommands();
-        m_Device->executeCommandList(m_CommandList.get());
     }
 
     if (m_UnderSea && m_UnderSeaEnable)
@@ -1966,6 +2030,9 @@ void Sea::Realize(float deltaTime)
 
         m_UnderSeaStarted = true;
     }
+
+    //m_CommandList->endSingleTimeCommands();
+    //m_Device->executeCommandList(m_CommandList.get());
 
     m_Started = true;
 }

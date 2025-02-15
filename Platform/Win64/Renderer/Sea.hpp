@@ -116,10 +116,10 @@ struct SeaLight
 class Sea
 {
 public:
-	Sea();
+	Sea(RHI::IDynamicRHI* dynamicRHI, RHI::DeviceHandle& device);
 	virtual ~Sea();
 
-	virtual bool initializeRender();
+	virtual bool initializeRender(RHI::CommandListHandle& commandList);
 	void Realize(float deltaTime);
 
 protected:

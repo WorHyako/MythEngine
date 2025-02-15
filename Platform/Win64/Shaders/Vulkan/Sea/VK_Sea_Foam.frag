@@ -1,19 +1,19 @@
 #version 450
 
-in VS_OUT {
+layout(location = 0) in FS_IN {
     vec3 T0;
     vec3 T1;
     vec3 T2;
     vec3 T3;
-    vec4 T4;
+    vec3 T4;
 } fs_in;
 
 layout(location = 0) out vec4 outColor;
 
 layout(push_constant) uniform pushBlock { float FoamTextureDisturb; } pushConsts;
 
-uniform sampler3D VolumeTexture;
-uniform sampler2D FoamTexture; // Additional texture for foam rendering
+layout(binding = 1) uniform sampler3D VolumeTexture;
+layout(binding = 2) uniform sampler2D FoamTexture; // Additional texture for foam rendering
 
 void main() {
     // Sample the 3D volume texture

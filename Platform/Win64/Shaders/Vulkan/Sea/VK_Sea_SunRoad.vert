@@ -4,11 +4,6 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inUV;
 
-uniform vec4 constant1 = vec4(0.0f, 1.0f, 0.5f, -0.04f);
-uniform vec4 tangentBasis = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-uniform vec4 frenelK = vec4(1.0f, 0.0f, 0.0f, 1.0f)
-uniform vec4 frenelMax = vec4(0.0f, 1.0f, 0.0f, 1.0f);
-
 layout(binding = 0) uniform UniformBufferObject {
     mat4 mvp;
     vec4 constant2;
@@ -22,7 +17,7 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 mTexProjection;
 } ubo;
 
-out VS_OUT {
+layout(location = 0) out VS_OUT {
     vec3 T0;
     vec3 T1;
     vec3 T2;

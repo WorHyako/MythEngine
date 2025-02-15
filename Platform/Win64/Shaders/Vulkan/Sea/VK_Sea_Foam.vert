@@ -4,15 +4,12 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inUV;
 
-uniform vec4 constant1 = vec4(0.0f, 1.0f, 0.5f, -0.04f);
-uniform vec4 tangentBasis = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-uniform vec4 frenelK = vec4(1.0f, 0.0f, 0.0f, 1.0f)
-uniform vec4 frenelMax = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+vec4 constant1 = vec4(0.0f, 1.0f, 0.5f, -0.04f);
 
 layout(binding = 0) uniform UniformBufferObject {
     mat4 mvp;
     vec4 constant2;
-    vec4 shadowConst;
+    vec4 foamParams; // fFoamV, fFoamK, fFoamUV
     vec4 animation;
     vec4 cameraPos;
     vec4 seaParameters;
@@ -22,12 +19,12 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 mTexProjection;
 } ubo;
 
-out VS_OUT {
+layout(location = 0) out VS_OUT {
     vec3 T0;
     vec3 T1;
     vec3 T2;
     vec3 T3;
-    vec4 T4;
+    vec3 T4;
     float fogFactor;
 } vs_out;
 
@@ -63,9 +60,9 @@ void main() {
                      dot(bitangent, ubo.mTexProjection[2].xyz),
                      dot(normal, ubo.mTexProjection[2].xyz));
     
-    // Compute texture coordinates for shadowing
-    vs_out.T3.xy = inUV * ubo.shadowConst.z;
-    vs_out.T3.z = max((inPosition.y - ubo.shadowConst.x) * ubo.shadowConst.y, ubo.constant1.x);
+    // Compute texture coordinates for foam
+    vs_out.T3.xy = inUV * ubo.foamParams.z;
+    vs_out.T3.z = max((inPosition.y - ubo.foamParams.x) * ubo.foamParams.y, constant1.x);
     
     // Store animation parameter
     vs_out.T4.z = ubo.animation.x;

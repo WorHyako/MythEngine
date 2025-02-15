@@ -4,15 +4,15 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inUV;
 
-uniform vec4 constant1 = vec4(0.0f, 1.0f, 0.5f, -0.04f);
-uniform vec4 tangentBasis = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-uniform vec4 frenelK = vec4(1.0f, 0.0f, 0.0f, 1.0f)
-uniform vec4 frenelMax = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+vec4 constant1 = vec4(0.0f, 1.0f, 0.5f, -0.04f);
+vec4 tangentBasis = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+float fFresnel = 1.0f;//vec4(1.0f, 0.0f, 0.0f, 1.0f)
+const float fFresnelMax = 1.0f;
 
 layout(binding = 0) uniform UniformBufferObject {
     mat4 mvp;
     vec4 constant2;
-    vec4 shadowConst;
+    vec4 foamParams; // fFoamV, fFoamK, fFoamUV
     vec4 animation;
     vec4 cameraPos;
     vec4 seaParameters;
@@ -22,14 +22,14 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 mTexProjection;
 } ubo;
 
-out VS_OUT {
+layout(location=0) out VS_OUT {
     vec4 diffuse;
     vec4 specular;
     vec3 T0;
     vec3 T1;
     vec3 T2;
-    vec3 T3;
     vec3 viewDir;
+    vec3 texCoords;
     float fogFactor;
 } vs_out;  
 
@@ -58,25 +58,25 @@ void main()
 
     float cosPhi = -dot(normal, viewDir);
     float ct = sqrt(1.0f + fFresnel * fFresnel * (cosPhi * cosPhi - 1.0f));
-    float fFresnelK = min(fFresnelMax, 0.5f * (pow(rcp(cosPhi + fFresnel * ct) * (cosPhi - fFresnel * ct), 2.0f) + pow(rcp(fFresnel * cosPhi + ct) * (fFresnel * cosPhi - ct), 2.0f)));
+    float fFresnelK = min(fFresnelMax, 0.5f * (pow((1.0f / (cosPhi + fFresnel * ct)) * (cosPhi - fFresnel * ct), 2.0f) + pow((1.0f / (fFresnel * cosPhi + ct)) * (fFresnel * cosPhi - ct), 2.0f)));
 
 	fFresnelK = min(fFresnelMax, 0.0211f  + (1.0f - 0.0211f) * pow(1.0f - cosPhi, 5.0f));
 
-    float U = rcp(viewDir.y) * fSeaAttenuation;
+    float U = (1.0f / (viewDir.y)) * ubo.seaParameters.x /*fSeaAttenuation*/;
     U = exp2(min(U, -U));
 
-    vs_out.diffuse.rgb = skyColor.xyz * fFresnelK * fSeaReflection;
-    vs_out.diffuse.a = (1.0f - fFresnelK) * U * fSeaTransparency;
+    vs_out.diffuse.rgb = ubo.skyColor.rgb * fFresnelK * ubo.seaParameters.y /*fSeaReflection*/;
+    vs_out.diffuse.a = (1.0f - fFresnelK) * U * ubo.seaParameters.z /*fSeaTransparency*/;
 
-    vs_out.specular.rgb = (1.0f - fFresnelK) * (1.0f - U) * seaColor.xyz;
+    vs_out.specular.rgb = (1.0f - fFresnelK) * (1.0f - U) * ubo.seaColor.rgb;
     vs_out.specular.a = 1.0f;
 
-    vec3 r3;
-    vs_out.diffuse.rgb = r3.yyy * skyColor;
-    max(0, dot(normal, Constant2.xyz));
-    vs_out.diffuse.a = max(0, dot(reflection, constant1.xyz));
-    output.specular.rgb = SeaColor.xyz * output.diffuse.a;
-    output.specular.a = 1.0;
+//    vec3 r3;
+//    vs_out.diffuse.rgb = r3.yyy * skyColor;
+//    max(0, dot(normal, Constant2.xyz));
+//    vs_out.diffuse.a = max(0, dot(reflection, constant1.xyz));
+//    output.specular.rgb = SeaColor.xyz * output.diffuse.a;
+//    output.specular.a = 1.0;
 
     // Compute tangent and bitangent
     vec3 tangent = normalize(cross(normal, vec3(0.0, 1.0, 0.0))); // Approximate tangent
@@ -95,6 +95,6 @@ void main()
 
     vs_out.viewDir = -viewDir;
 
-	out.T4.z = ubo.animation.x;
-    out.T4.xy = inUV;
+	vs_out.texCoords.z = ubo.animation.x;
+    vs_out.texCoords.xy = inUV;
 }
