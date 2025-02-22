@@ -207,7 +207,7 @@ void SceneRenderer::composeFrame()
 	
 }
 
-bool SceneRenderer::renderScene()
+bool SceneRenderer::renderScene(float deltaTime)
 {
 	RHI::FramebufferHandle framebuffer = m_DynamicRHI->GetFramebuffer(m_DynamicRHI->GetCurrentBackBufferIndex());
 
@@ -242,8 +242,13 @@ bool SceneRenderer::renderScene()
 			model = glm::translate(model, g_Offsets[viewIndex]);
 			//glm::mat4 view = glm::lookAt(glm::vec3(3.0f, 3.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 			glm::mat4 view = mythSystem::Application::Get().getCamera().getViewMatrix();
-			glm::mat4 projection = glm::perspective(glm::radians(60.0f), float(framebuffer->framebufferWidth) / float(framebuffer->framebufferHeight), 0.1f, 1000.0f);
-			glm::mat4 viewProjMatrix = projection * view * model;
+			view = glm::rotate(view, glm::radians(180.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+			glm::mat4 projection = glm::perspectiveLH_ZO(glm::radians(60.0f), float(framebuffer->framebufferWidth) / float(framebuffer->framebufferHeight), 0.1f, 1000.0f);
+			glm::mat4 X = glm::identity<glm::mat4>();
+			X[1][1] *= -1.0f;
+			X[2][2] *= -1.0f;
+			X = glm::inverse(X);
+			glm::mat4 viewProjMatrix = projection * X * view * model;
 			modelConstants[viewIndex].viewProjMatrix = viewProjMatrix;
 		}
 
@@ -288,7 +293,7 @@ bool SceneRenderer::renderScene()
 		m_CommandList->drawIndexed(drawArgs);
 	}
 
-	m_SeaPass->Realize(.016f);
+	m_SeaPass->Realize(deltaTime);
 
 	m_CommandList->endSingleTimeCommands();
 

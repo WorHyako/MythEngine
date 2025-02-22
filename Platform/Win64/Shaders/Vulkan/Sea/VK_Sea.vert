@@ -36,6 +36,7 @@ layout(location=0) out VS_OUT {
 void main()
 {
     vec4 worldPos = ubo.mvp * vec4(inPosition, 1.0);
+    //worldPos.y = -worldPos.y;
     gl_Position = worldPos;
 
     // Compute fog factor

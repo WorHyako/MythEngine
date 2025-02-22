@@ -63,8 +63,8 @@ namespace mythSystem
             [](GLFWwindow* window, int button, int action, int mods)
             {
                 //auto& io = ImGui::GetIO();
+                //io.MouseDown[idx] = action == GLFW_PRESS;
                 const int idx = button == GLFW_MOUSE_BUTTON_LEFT ? 0 : button == GLFW_MOUSE_BUTTON_RIGHT ? 2 : 1;
-                /*io.MouseDown[idx] = */action == GLFW_PRESS;
 
                 if (void* ptr = glfwGetWindowUserPointer(window))
                 {

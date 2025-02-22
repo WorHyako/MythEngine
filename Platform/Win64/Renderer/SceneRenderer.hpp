@@ -14,7 +14,7 @@ public:
 	SceneRenderer(RHI::IDynamicRHI* dynamicRHI);
 	virtual ~SceneRenderer();
 
-	virtual bool renderScene() override;
+	virtual bool renderScene(float deltaTime) override;
 	virtual bool initializeRender() override;
 	virtual void updateBuffers() override;
 	virtual void composeFrame() override;

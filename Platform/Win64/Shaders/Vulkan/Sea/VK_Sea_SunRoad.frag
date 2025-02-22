@@ -25,5 +25,4 @@ void main() {
     vec4 specular = texture(SunRoadMap, R);
     
     outColor = specular;
-    outColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
 }

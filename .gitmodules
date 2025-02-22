@@ -1,7 +1,7 @@
 [submodule "Shared/ThirdParty/assimp"]
 	path = Shared/ThirdParty/assimp
 	url = https://github.com/assimp/assimp.git
-	branch = 277e191
+	branch = c35200e
 
 [submodule "Shared/ThirdParty/ShaderConductor"]
 	path = Shared/ThirdParty/ShaderConductor

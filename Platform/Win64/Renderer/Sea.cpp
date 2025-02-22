@@ -114,19 +114,22 @@ Sea::Sea(RHI::IDynamicRHI* dynamicRHI, RHI::DeviceHandle& device)
     aSeaLights.reserve(512);
     aLightsRects.reserve(512);
 
-    m_MaxDim = 65536 * 2;
-    m_MinDim = 128;
+    //m_MaxDim = 65536 * 2;
+    m_MaxDim = 65536;
+    //m_MinDim = 128;
+    m_MinDim = 64;
 
-    m_MaxSeaHeight = 20.0f;
+    //m_MaxSeaHeight = 20.0f;
+    m_MaxSeaHeight = 1.0f;
     m_MaxSeaDistance = 1600.0f;
-    m_GridStep = 0.06f;
-    m_LodScale = 0.4f;
+    m_GridStep = 0.07f; // 0.06f;
+    m_LodScale = 0.5f; // 0.4f;
     m_SeaHeightOffset = 0.0f;
 
-    m_BumpScale = 0.1f;
+    m_BumpScale = 0.05f; // 0.1f;
     fBumpSpeed = 1.0f;
 
-    m_PosShift = 1.2f;
+    m_PosShift = 1.0f;// 1.2f;
     m_Fresnel = 0.75f;
 
     m_FoamV = 3.0f;
@@ -346,7 +349,19 @@ bool Sea::initializeRender(RHI::CommandListHandle& commandList)
         sprintf_s(str, "StormResources\\Sea\\sea%.4d.tga", i);
         int texWidth, texHeight, texChannels;
         stbi_uc* pixels = stbi_load((FilesystemUtilities::GetResourcesDir() + str).c_str(), &texWidth, &texHeight, &texChannels, STBI_grey);
-        aBumps.push_back(pixels);
+
+        auto* pBuffer = new uint8_t[XWIDTH * YWIDTH];
+        memcpy(pBuffer, pixels, XWIDTH * YWIDTH * sizeof(uint8_t));
+        /*for (uint32_t y = 0; y < texHeight; y++)
+            for (uint32_t x = 0; x < texWidth; x++)
+            {
+                const uint8_t bB = pixels[(x + y * XWIDTH) * texChannels];
+                pBuffer[x + y * XWIDTH] = bB & 0xFF;
+            }*/
+
+        aBumps.push_back(pBuffer);
+
+        stbi_image_free(pixels);
     }
 
     BuildVolumeTexture();
@@ -715,7 +730,6 @@ void Sea::BuildVolumeTexture()
     delete[] pDst1;
     delete[] pDst2;
     delete[] pDst3;
-    //delete[] pDsts;
 }
 
 bool Sea::EditMode_Update()
@@ -725,7 +739,7 @@ bool Sea::EditMode_Update()
 
     const float fReflection = 0.8f;
     const float fTransparency = 0.7f;
-    const float fFrenel = 0.75f;
+    const float fFresnel = 0.75f;
     const float fAttenuation = 0.9f;
     v4SeaParameters = glm::vec4(fAttenuation, fReflection, fTransparency, 0.0f);
 
@@ -1411,11 +1425,11 @@ void FindPlanes(const glm::mat4& mProjection, const glm::mat4 mView, Plane* view
     v[1].z = 1.0f;
     // top
     v[2].x = 0.0f;
-    v[2].y = m[1][1];
+    v[2].y = -m[1][1];
     v[2].z = 1.0f;
     // bottom
     v[3].x = 0.0f;
-    v[3].y = -m[1][1];
+    v[3].y = m[1][1];
     v[3].z = 1.0f;
     v[0] = glm::normalize(v[0]);
     v[1] = glm::normalize(v[1]);
@@ -1445,30 +1459,45 @@ void FindPlanes(const glm::mat4& mProjection, const glm::mat4 mView, Plane* view
     viewplane[3].normal.y = v[3].x * m[1][0] + v[3].y * m[1][1] + v[3].z * m[1][2];
     viewplane[3].normal.z = v[3].x * m[2][0] + v[3].y * m[2][1] + v[3].z * m[2][2];
 
-    /*pos.x = -m[0][3] * m[0][0] - m[1][3] * m[1][0] - m[2][3] * m[2][0];
-    pos.y = -m[0][3] * m[0][1] - m[1][3] * m[1][1] - m[2][3] * m[2][1];
-    pos.z = -m[0][3] * m[0][2] - m[1][3] * m[1][2] - m[2][3] * m[2][2];
-
-    viewplane[0].normal.x = v[0].x * m[0][0] + v[0].y * m[1][0] + v[0].z * m[2][0];
-    viewplane[0].normal.y = v[0].x * m[0][1] + v[0].y * m[1][1] + v[0].z * m[2][1];
-    viewplane[0].normal.z = v[0].x * m[0][2] + v[0].y * m[1][2] + v[0].z * m[2][2];
-
-    viewplane[1].normal.x = v[1].x * m[0][0] + v[1].y * m[1][0] + v[1].z * m[2][0];
-    viewplane[1].normal.y = v[1].x * m[0][1] + v[1].y * m[1][1] + v[1].z * m[2][1];
-    viewplane[1].normal.z = v[1].x * m[0][2] + v[1].y * m[1][2] + v[1].z * m[2][2];
-
-    viewplane[2].normal.x = v[2].x * m[0][0] + v[2].y * m[1][0] + v[2].z * m[2][0];
-    viewplane[2].normal.y = v[2].x * m[0][1] + v[2].y * m[1][1] + v[2].z * m[2][1];
-    viewplane[2].normal.z = v[2].x * m[0][2] + v[2].y * m[1][2] + v[2].z * m[2][2];
-
-    viewplane[3].normal.x = v[3].x * m[0][0] + v[3].y * m[1][0] + v[3].z * m[2][0];
-    viewplane[3].normal.y = v[3].x * m[0][1] + v[3].y * m[1][1] + v[3].z * m[2][1];
-    viewplane[3].normal.z = v[3].x * m[0][2] + v[3].y * m[1][2] + v[3].z * m[2][2];*/
-
     viewplane[0].distance = (pos.x * viewplane[0].normal.x + pos.y * viewplane[0].normal.y + pos.z * viewplane[0].normal.z);
     viewplane[1].distance = (pos.x * viewplane[1].normal.x + pos.y * viewplane[1].normal.y + pos.z * viewplane[1].normal.z);
     viewplane[2].distance = (pos.x * viewplane[2].normal.x + pos.y * viewplane[2].normal.y + pos.z * viewplane[2].normal.z);
     viewplane[3].distance = (pos.x * viewplane[3].normal.x + pos.y * viewplane[3].normal.y + pos.z * viewplane[3].normal.z);
+}
+
+// Build matrix
+glm::mat4 BuildMatrix(float angX, float angY, float angZ, float x, float y, float z)
+{
+    glm::mat4 m;
+    const auto sinAx = sinf(angX);
+    const auto cosAx = cosf(angX);
+    const auto sinAy = sinf(angY);
+    const auto cosAy = cosf(angY);
+    const auto sinAz = sinf(angZ);
+    const auto cosAz = cosf(angZ);
+
+    // Create a matrix with rotation order rz * rx * ry
+    m[0][0] = cosAz * cosAy + sinAz * sinAx * sinAy;
+    m[1][0] = -sinAz * cosAy + cosAz * sinAx * sinAy;
+    m[2][0] = cosAx * sinAy;
+    m[3][0] = x;
+
+    m[0][1] = sinAz * cosAx;
+    m[1][1] = cosAz * cosAx;
+    m[2][1] = -sinAx;
+    m[3][1] = y;
+
+    m[0][2] = cosAz * -sinAy + sinAz * sinAx * cosAy;
+    m[1][2] = -sinAz * -sinAy + cosAz * sinAx * cosAy;
+    m[2][2] = cosAx * cosAy;
+    m[3][2] = z;
+
+    m[0][3] = 0.0f;
+    m[1][3] = 0.0f;
+    m[2][3] = 0.0f;
+    m[3][3] = 1.0f;
+
+    return m;
 }
 
 void Sea::Realize(float deltaTime)
@@ -1476,6 +1505,16 @@ void Sea::Realize(float deltaTime)
     RHI::FramebufferHandle framebuffer = m_DynamicRHI->GetFramebuffer(m_DynamicRHI->GetCurrentBackBufferIndex());
 
     //m_CommandList->beginSingleTimeCommands();
+
+    {
+        glm::vec3 vMove = wave1.move + wave2.move;
+        float scale = wave1.scale + wave2.scale;
+        float amplitude1 = wave1.amplitude + wave2.amplitude + wave1._amplitude + wave2._amplitude + wave1.animSpeed + wave2.animSpeed + m_PosShift + m_SeaHeightOffset;
+
+        uint32_t dim = m_MaxDim + m_MinDim;
+        float sum = m_MaxSeaHeight + m_MaxSeaDistance + m_GridStep + m_LodScale + m_BumpScale + fBumpSpeed;
+        glm::vec3 moveSpeed = wave1.moveSpeed + wave2.moveSpeed;
+    }
 
     static float fTmp = 0.0f;
 
@@ -1513,7 +1552,31 @@ void Sea::Realize(float deltaTime)
     while (wave2.frame >= FRAMES)
         wave2.frame -= FRAMES;
 
-    m_CamPos = GetCamera()->getPosition();
+    static float time = 0;
+    time += deltaTime;
+
+    //glm::mat4 mCamView = BuildMatrix(0.216927350f, -2.56318760f + 0.1f * time, 0.0f, 0.0f, 0.0f, 0.0f);
+    //std::swap(mCamView[0][1], mCamView[1][0]);
+    //std::swap(mCamView[0][2], mCamView[2][0]);
+    //std::swap(mCamView[1][2], mCamView[2][1]);
+    //glm::vec3 translation = glm::vec3(31.6133499f, 16.0957222f, 62.3595161f);
+    //glm::vec3 vWordRelationPos = -translation;
+    //glm::vec3 vViewRelationPos = -(mCamView * glm::vec4(vWordRelationPos, 1.0f));
+    //mCamView[3][0] -= vViewRelationPos.x;
+    //mCamView[3][1] -= vViewRelationPos.y;
+    //mCamView[3][2] -= vViewRelationPos.z;
+
+    //glm::mat4 mCamView = glm::mat4(-0.837335646f, -0.117663905f, -0.533876598f, 0.00000000, 0.00000000f, 0.976563394f, -0.215230003f, 0.00000000f,
+      //  0.546689153f, -0.180219755f, -0.817711353f, 0.00000000f, -7.62028503f, -0.760326385f, 71.3339996f, 1.00000000f);
+    //glm::mat4 rotation = glm::identity<glm::mat4>();
+    //glm::mat4 rotationY = glm::rotate(rotation, glm::radians(10.0f * time), glm::vec3(0.0f, 1.0f, 0.0f));
+    /*mCamView = glm::transpose(mCamView);
+    mCamView = rotationY * mCamView;
+    mCamView = glm::transpose(mCamView);*/
+    glm::mat4 mCamView = GetCamera()->getViewMatrix();
+    mCamView = glm::rotate(mCamView, glm::radians(180.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 mView = glm::inverse(mCamView);
+    m_CamPos = glm::vec3(mView[3][0], mView[3][1], mView[3][2]);
 #ifdef OLD_WORLD_POS
     m_WorldOffset = 0.0f;
 #else
@@ -1543,15 +1606,12 @@ void Sea::Realize(float deltaTime)
         SunRoad_Render();
     }
 
-    glm::mat4 mProjectionPlanes = glm::perspective(glm::radians(45.0f), float(framebuffer->framebufferWidth) / float(framebuffer->framebufferHeight), 0.1f, 1000.0f);
-    //glm::mat4 mProjectionRight = glm::perspectiveFovRH(glm::radians(60.0f), float(framebuffer->framebufferWidth) , float(framebuffer->framebufferHeight), 0.1f, 10000.0f);
-    //const glm::mat4 inverted = glm::inverse();
-    //const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
-    //glm::mat4 mViewPlanes = glm::lookAt(GetCamera()->getPosition(), GetCamera()->getPosition() + 1.0f * forward, glm::vec3(0.0f, 1.0f, 0.0f)); //glm::transpose(GetCamera()->getViewMatrix());
-    //glm::mat4 mViewPlanes = glm::transpose(GetCamera()->getViewMatrix());
-    //FindPlanes(mProjectionPlanes, mViewPlanes, pFrustumPlanes);
+    glm::mat4 mProjectionPlanes = glm::perspectiveLH_ZO(glm::radians(45.0f), float(framebuffer->framebufferWidth) / float(framebuffer->framebufferHeight), 0.1f, 100000.0f);
+    FindPlanes(mProjectionPlanes, mCamView, pFrustumPlanes);
 
-    vec4 frustumPlanes[6];
+    //mViewPlanes = glm::transpose(mViewPlanes);
+    //mViewPlanes = glm::rotate(mViewPlanes, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    /*vec4 frustumPlanes[6];
     getFrustumPlanes(mProjectionPlanes * GetCamera()->getViewMatrix(), frustumPlanes);
     pFrustumPlanes[0].normal = glm::normalize(glm::vec3(frustumPlanes[0].x, frustumPlanes[0].y, frustumPlanes[0].z));
     pFrustumPlanes[1].normal = glm::normalize(glm::vec3(frustumPlanes[1].x, frustumPlanes[1].y, frustumPlanes[1].z));
@@ -1561,7 +1621,7 @@ void Sea::Realize(float deltaTime)
     pFrustumPlanes[0].distance = frustumPlanes[0].w;
     pFrustumPlanes[1].distance = frustumPlanes[1].w;
     pFrustumPlanes[2].distance = frustumPlanes[2].w;
-    pFrustumPlanes[3].distance = frustumPlanes[3].w;
+    pFrustumPlanes[3].distance = frustumPlanes[3].w;*/
 
 
     float fBlockSize = 256.0f * m_GridStep;
@@ -1681,6 +1741,9 @@ void Sea::Realize(float deltaTime)
     auto pVSea2 = static_cast<SeaVertex*>(m_Device->mapBufferMemory(m_VerticesSeaBuffer.get(), 0, m_VerticesSeaBuffer->getDesc().size));
     pTriangles = static_cast<uint16_t*>(m_Device->mapBufferMemory(m_IndicesSeaBuffer.get(), 0, m_IndicesSeaBuffer->getDesc().size));
 
+    memset(pVSea2, 0, m_VerticesSeaBuffer->getDesc().size);
+    memset(pTriangles, -1, m_IndicesSeaBuffer->getDesc().size);
+
     for (i = 0; i < m_Blocks.size(); i++) {
         PrepareIndicesForBlock(i);
     }
@@ -1697,20 +1760,38 @@ void Sea::Realize(float deltaTime)
     if (verticesStart && trianglesStart)
     {
         glm::mat4 mWorldViewProj;
-
-        glm::mat4 mProjection = glm::perspective(glm::radians(45.0f), float(framebuffer->framebufferWidth) / float(framebuffer->framebufferHeight), 0.1f, 100000.0f);
-        glm::mat4 mView = GetCamera()->getViewMatrix();
-        //glm::mat4 mView = glm::lookAtRH(GetCamera()->getPosition(), GetCamera()->getPosition() + 10.0f * forward, glm::vec3(0.0f, 1.0f, 0.0f));
-        //mView = glm::rotate(mView, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 mProjection = glm::perspectiveLH_ZO(glm::radians(45.0f), float(framebuffer->framebufferWidth) / float(framebuffer->framebufferHeight), 0.1f, 100000.0f);
+        mProjection[1][1] *= -1.0f;
+        glm::mat4 X = glm::identity<glm::mat4>();
+        X[1][1] *= -1.0f;
+        X[2][2] *= -1.0f;
+        X = glm::inverse(X);
         glm::mat4 mWorld = glm::mat4(1.0f);
+
+        /*glm::mat4 mCamView = BuildMatrix(0.216927350f, -2.56318760f + 0.1f * time, 0.0f, 0.0f, 0.0f, 0.0f);
+        std::swap(mCamView[0][1], mCamView[1][0]);
+        std::swap(mCamView[0][2], mCamView[2][0]);
+        std::swap(mCamView[1][2], mCamView[2][1]);
+        glm::vec3 translation = glm::vec3(31.6133499f, 16.0957222f, 62.3595161f);
+        glm::vec3 vWordRelationPos = -translation;
+        glm::vec3 vViewRelationPos = -(mCamView * glm::vec4(vWordRelationPos, 1.0f));
+        mCamView[3][0] -= vViewRelationPos.x;
+        mCamView[3][1] -= vViewRelationPos.y;
+        mCamView[3][2] -= vViewRelationPos.z;*/
 
 #ifndef OLD_WORLD_POS
         //TODO: rework
-        //mView.MoveInversePosition(-m_WorldOffset.x, 0.f, -m_WorldOffset.z);
+        glm::vec3 offset = glm::vec3(-m_WorldOffset.x, 0, -m_WorldOffset.z);
+        glm::mat4 mViewPlanes = mCamView;
+        mViewPlanes[3][0] -= mViewPlanes[0][0] * offset.x + mViewPlanes[1][0] * offset.y + mViewPlanes[2][0] * offset.z;
+        mViewPlanes[3][1] -= mViewPlanes[0][1] * offset.x + mViewPlanes[1][1] * offset.y + mViewPlanes[2][1] * offset.z;
+        mViewPlanes[3][2] -= mViewPlanes[0][2] * offset.x + mViewPlanes[1][2] * offset.y + mViewPlanes[2][2] * offset.z;
 #endif
 
-        mWorldViewProj = mProjection * mView * mWorld;
+    	mWorldViewProj = mProjection * mViewPlanes * mWorld;
 
+        //mWorldViewProj = glm::mat4(-1.11645f, 0.00f, 0.72892f, 0.00000000, -0.27981f, 2.31482f, -0.42719f, -37.25874f,
+          //  -0.53388f, -0.21523f, -0.81772f, 3.34933f, -0.53388f, -0.21523f, -0.81771f, 3.46428f);
         //mWorldViewProj = glm::transpose(mWorldViewProj);
 
         fTmp += deltaTime * fBumpSpeed;
@@ -1734,11 +1815,11 @@ void Sea::Realize(float deltaTime)
         constantBuffer.skyColor = v4SkyColor;
         constantBuffer.vec7 = vec7;
 
-        m_CommandList->writeBuffer(m_ConstantBuffer.get(), sizeof(ConstantSeaVertexBuffer), &constantBuffer);
-
         if (m_SimpleSea)
         {
             constantBuffer.texProjection = m_TexProjection;
+
+            m_CommandList->writeBuffer(m_ConstantBuffer.get(), sizeof(ConstantSeaVertexBuffer), &constantBuffer);
 
             /*rs->SetTexture(0, pVolumeTexture ? pVolumeTexture : pRenderTargetBumpMap);
             rs->SetTexture(1, pReflection);
@@ -1767,6 +1848,8 @@ void Sea::Realize(float deltaTime)
             const glm::mat4 mTexProjection = glm::rotate(glm::identity<glm::mat4>(), Math::TWOPI, glm::vec3(0.0f, 0.0f, 1.0f));
             constantBuffer.texProjection = mTexProjection;
 
+            m_CommandList->writeBuffer(m_ConstantBuffer.get(), sizeof(ConstantSeaVertexBuffer), &constantBuffer);
+
             /*rs->DrawIndexedPrimitiveNoVShader(D3DPT_TRIANGLELIST, m_VerticesSeaBuffer, sizeof(SeaVertex), m_IndicesSeaBuffer, 0,
                 verticesStart, 0, trianglesStart, "Sea2");*/
 
@@ -1783,6 +1866,7 @@ void Sea::Realize(float deltaTime)
                 seaPipelineDesc.renderState.dstColorBlendFactor = RHI::BlendState::SRC_ALPHA;
                 seaPipelineDesc.renderState.alphaBlend = true;
                 seaPipelineDesc.renderState.blendEnable = true;
+                seaPipelineDesc.renderState.CCWCullMode = false;
 
                 m_SeaPipeline = m_Device->createGraphicsPipeline(seaPipelineDesc, framebuffer.get());
             }
@@ -1798,7 +1882,7 @@ void Sea::Realize(float deltaTime)
             m_CommandList->setGraphicsState(seaGraphicsState);
 
             RHI::DrawArguments drawArgs{};
-            drawArgs.vertexCount = NUM_VERTICES;
+            drawArgs.vertexCount = 129023 * 2;
             m_CommandList->drawIndexed(drawArgs);
 
             if (m_FoamK > 0.0f && bFoamEnable && bIniFoamEnable)

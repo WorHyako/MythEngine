@@ -16,7 +16,7 @@ namespace mythSystem
 
 		virtual void updateBuffers() = 0;
 		virtual void composeFrame() = 0;
-		virtual bool renderScene() = 0;
+		virtual bool renderScene(float deltaTime) = 0;
 		virtual bool initializeRender() = 0;
 
 	protected:

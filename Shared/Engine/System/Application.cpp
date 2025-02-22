@@ -138,7 +138,7 @@ namespace mythSystem
             m_FpsCounter.tick(deltaSeconds);
 
             m_DynamicRHI->BeginFrame();
-            bool frameRendered = m_Renderer->renderScene();
+            bool frameRendered = m_Renderer->renderScene(deltaSeconds);
             m_DynamicRHI->Present();
 
             m_FpsCounter.tick(deltaSeconds, frameRendered);
